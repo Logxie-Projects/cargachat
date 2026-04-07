@@ -883,10 +883,13 @@
         abrirAuthModal('registro');
         return;
       }
-      // Sin perfil → algo falló en el registro, llevar a soporte
+      // Sin perfil → intentar recargar antes de mostrar error
       if (!perfilActual) {
-        showToast('Hubo un problema con tu cuenta. Escríbenos al WhatsApp.');
-        return;
+        perfilActual = await cargarPerfil(usuarioActual.id);
+        if (!perfilActual) {
+          showToast('Hubo un problema con tu cuenta. Escríbenos al WhatsApp.');
+          return;
+        }
       }
       // Cuenta pendiente → aviso claro
       if (perfilActual.estado !== 'activo') {

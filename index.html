@@ -1059,9 +1059,20 @@
       if (!ciudad) return null;
       const key = ciudad.toLowerCase().trim();
 
-      // Si ya consultamos esta ciudad antes, devolvemos el resultado cacheado
+      // 1. Caché en memoria (misma sesión)
       if (geocodeCache[key]) return geocodeCache[key];
 
+      // 2. Supabase — ciudades aprendidas anteriormente
+      try {
+        const { data: row } = await sb.from('ciudades').select('lat,lng').eq('nombre', key).single();
+        if (row) {
+          const coords = [row.lat, row.lng];
+          geocodeCache[key] = coords;
+          return coords;
+        }
+      } catch (_) {}
+
+      // 3. Google Geocoding API — primera vez que aparece esta ciudad
       try {
         const query = encodeURIComponent(ciudad + ', Colombia');
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`;
@@ -1071,7 +1082,9 @@
         if (data.results && data.results.length > 0) {
           const loc = data.results[0].geometry.location;
           const coords = [loc.lat, loc.lng];
-          geocodeCache[key] = coords; // Guardar en caché
+          geocodeCache[key] = coords;
+          // Guardar en Supabase para la próxima vez
+          sb.from('ciudades').insert({ nombre: key, lat: coords[0], lng: coords[1] }).then();
           return coords;
         }
       } catch (e) {
@@ -1081,8 +1094,7 @@
     }
 
     /**
-     * Obtiene coordenadas: primero local (gratis y rápido),
-     * luego Google (costo por llamada).
+     * Obtiene coordenadas: 1) diccionario local  2) Supabase  3) Google API
      */
     async function getCoords(ciudad) {
       return getCoordenadas(ciudad) || await geocodeCiudad(ciudad);

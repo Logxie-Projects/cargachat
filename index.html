@@ -713,15 +713,17 @@
     const supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let usuarioActual = null; // sesión activa
+    let perfilActual  = null; // datos del perfil (nombre, estado, etc.)
 
     // Escucha cambios de sesión (login, logout, refresh)
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         usuarioActual = session.user;
-        const perfil = await cargarPerfil(session.user.id);
-        actualizarNav(perfil);
+        perfilActual  = await cargarPerfil(session.user.id);
+        actualizarNav(perfilActual);
       } else {
         usuarioActual = null;
+        perfilActual  = null;
         actualizarNav(null);
       }
     });
@@ -864,6 +866,17 @@
     // Abre el form pre-llenado con los datos del viaje.
     // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
     function abrirForm(idx, accion) {
+      // Sin sesión → abrir modal de registro
+      if (!usuarioActual) {
+        abrirAuthModal('registro');
+        return;
+      }
+      // Cuenta pendiente → aviso
+      if (!perfilActual || perfilActual.estado !== 'activo') {
+        showToast('Tu cuenta está pendiente de aprobación. Te notificaremos cuando esté activa.');
+        return;
+      }
+      // Cuenta activa → abrir form
       const v = viajesData[idx];
       const precioBase = parseFloat(v.precio_base || '0') || 0;
       const params = new URLSearchParams();

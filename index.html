@@ -853,23 +853,7 @@
 
     // Abre el form pre-llenado con los datos del viaje.
     // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
-    function abrirForm(idx, accion) {
-      // Sin sesión → abrir modal de registro
-      if (!usuarioActual) {
-        abrirAuthModal('registro');
-        return;
-      }
-      // Perfil aún no cargado → pedir que espere
-      if (!perfilActual) {
-        showToast('Cargando tu cuenta, intentá de nuevo en un segundo.');
-        return;
-      }
-      // Cuenta pendiente → aviso claro
-      if (perfilActual.estado !== 'activo') {
-        showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
-        return;
-      }
-      // Cuenta activa → abrir form
+    function buildFormUrl(idx, accion) {
       const v = viajesData[idx];
       const precioBase = parseFloat(v.precio_base || '0') || 0;
       const params = new URLSearchParams();
@@ -878,7 +862,33 @@
       if (FORM_FIELDS.peso    && v.peso_kg) params.set(FORM_FIELDS.peso,    v.peso_kg);
       if (FORM_FIELDS.precio  && accion === 'aceptar' && precioBase) params.set(FORM_FIELDS.precio, precioBase);
       if (FORM_FIELDS.accion) params.set(FORM_FIELDS.accion, accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta');
-      window.open(params.toString() ? `${FORMS_URL}?${params}` : FORMS_URL, '_blank');
+      return params.toString() ? `${FORMS_URL}?${params}` : FORMS_URL;
+    }
+
+    function abrirForm(idx, accion) {
+      // Sin sesión → abrir modal de registro
+      if (!usuarioActual) { abrirAuthModal('registro'); return; }
+
+      // Perfil ya cargado → actuar de inmediato
+      if (perfilActual) {
+        if (perfilActual.estado !== 'activo') {
+          showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
+          return;
+        }
+        window.open(buildFormUrl(idx, accion), '_blank');
+        return;
+      }
+
+      // Perfil aún no cargado → recargar y abrir (ventana abierta antes del await)
+      const w = window.open('', '_blank');
+      sb.from('perfiles').select('*').eq('id', usuarioActual.id).single()
+        .then(({ data }) => {
+          perfilActual = data;
+          actualizarNav(perfilActual);
+          if (!data) { w.close(); showToast('No encontramos tu cuenta. Intentá cerrar sesión e ingresar de nuevo.'); return; }
+          if (data.estado !== 'activo') { w.close(); showToast('⏳ Tu cuenta está en revisión.'); return; }
+          w.location.href = buildFormUrl(idx, accion);
+        });
     }
 
     // ================================================================

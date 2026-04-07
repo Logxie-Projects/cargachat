@@ -716,13 +716,13 @@
     // ================================================================
     const SUPABASE_URL  = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
     const SUPABASE_KEY  = 'sb_publishable_xgu1AVHKjUQjIlw3u6P5XQ_KvLGloeG';
-    const supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const sb            = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let usuarioActual = null; // sesión activa
     let perfilActual  = null; // datos del perfil (nombre, estado, etc.)
 
     // Escucha cambios de sesión (login, logout, refresh)
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    sb.auth.onAuthStateChange(async (event, session) => {
       console.log('authStateChange:', event, session?.user?.id || 'sin sesión');
       if (session?.user) {
         usuarioActual = session.user;
@@ -736,7 +736,7 @@
     });
 
     async function cargarPerfil(userId) {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from('perfiles')
         .select('*')
         .eq('id', userId)
@@ -806,7 +806,7 @@
       const email    = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       if (!email || !password) return mostrarErrorAuth('Completa todos los campos.');
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) return mostrarErrorAuth('Email o contraseña incorrectos.');
       cerrarAuthModal();
       showToast('¡Bienvenido!');
@@ -826,7 +826,7 @@
       if (password.length < 8)
         return mostrarErrorAuth('La contraseña debe tener al menos 8 caracteres.');
 
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email, password,
         options: { data: { nombre, empresa, telefono, nit, tipo } }
       });
@@ -837,7 +837,7 @@
         return mostrarErrorAuth('Este email ya tiene una cuenta. Intentá ingresar.');
 
       // Guardar perfil en tabla perfiles (upsert por si el trigger ya creó la fila base)
-      const { error: perfilError } = await supabase.from('perfiles').upsert({
+      const { error: perfilError } = await sb.from('perfiles').upsert({
         id: data.user.id, nombre, empresa, telefono, nit, tipo,
         estado: 'pendiente', email
       }, { onConflict: 'id' });
@@ -847,7 +847,7 @@
     }
 
     async function cerrarSesion() {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       showToast('Sesión cerrada');
     }
 

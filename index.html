@@ -1129,7 +1129,7 @@
      * activo=true → fondo navy (seleccionado), activo=false → fondo blanco
      */
     function crearIconoOrigen(precioCorto, origen, activo, idx = -1) {
-      const texto = `${origen} · ${precioCorto || 'A convenir'}`;
+      const texto = precioCorto || 'A convenir';
       const click = idx >= 0 ? `event.stopPropagation(); seleccionarViaje(${idx});` : '';
       const colorCirculo = activo ? '#1B2A6B' : '#00BFDF';
       return L.divIcon({
@@ -1346,6 +1346,7 @@
 
       mapaCapas = [];
       const todosLosPuntos = [];
+      const origenesVistos = {}; // origen → marker ya creado
 
       for (let viajeIdx = 0; viajeIdx < viajes.length; viajeIdx++) {
         const v = viajes[viajeIdx];
@@ -1359,18 +1360,24 @@
         const puntosRuta = [];
         let originMarker = null;
 
-        // ── Pin de ORIGEN — precio estilo Airbnb ──────────────
+        // ── Pin de ORIGEN — un solo pin por ciudad ────────────
         const coordOrigen = await getCoords(origen);
         if (coordOrigen) {
           todosLosPuntos.push(coordOrigen);
           bounds.push(coordOrigen);
           puntosRuta.push(coordOrigen);
 
-          originMarker = L.marker(coordOrigen, {
-            icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
-          }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
-
-          grupo.addLayer(originMarker);
+          if (!origenesVistos[origen]) {
+            // Primera vez que aparece este origen → crear pin
+            originMarker = L.marker(coordOrigen, {
+              icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
+            }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
+            grupo.addLayer(originMarker);
+            origenesVistos[origen] = originMarker;
+          } else {
+            // Origen ya tiene pin → reusar el marker existente
+            originMarker = origenesVistos[origen];
+          }
         }
 
         // ── Pins de DESTINOS (puntos navy con número) ──────────

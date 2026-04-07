@@ -1361,9 +1361,21 @@
           destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
         );
 
-        const destinosOrdenados = destinosConCoord
-          .filter(d => d.coord !== null)
-          .sort((a, b) => a.coord[0] - b.coord[0]);
+        // Ordenar destinos por vecino más cercano (desde el origen)
+        const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
+        const destinosOrdenados = [];
+        let puntoActual = coordOrigen;
+        const pendientes = [...destinosValidos];
+        while (pendientes.length > 0) {
+          let minDist = Infinity, minIdx = 0;
+          pendientes.forEach((d, i) => {
+            const dist = Math.hypot(d.coord[0] - puntoActual[0], d.coord[1] - puntoActual[1]);
+            if (dist < minDist) { minDist = dist; minIdx = i; }
+          });
+          destinosOrdenados.push(pendientes[minIdx]);
+          puntoActual = pendientes[minIdx].coord;
+          pendientes.splice(minIdx, 1);
+        }
 
         destinosOrdenados.forEach((dest, i) => {
           todosLosPuntos.push(dest.coord);

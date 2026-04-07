@@ -817,11 +817,12 @@
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) return mostrarErrorAuth(error.message);
 
-      // Guardar perfil en tabla perfiles
-      await supabase.from('perfiles').insert({
+      // Guardar perfil en tabla perfiles (upsert por si el trigger ya creó la fila base)
+      const { error: perfilError } = await supabase.from('perfiles').upsert({
         id: data.user.id, nombre, empresa, telefono, nit, tipo,
         estado: 'pendiente', email
-      });
+      }, { onConflict: 'id' });
+      if (perfilError) console.warn('Perfil no guardado:', perfilError.message);
 
       mostrarSuccessAuth('¡Cuenta creada! Tu acceso está pendiente de aprobación por Logxie. Te notificaremos por email.');
     }

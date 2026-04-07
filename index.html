@@ -878,35 +878,15 @@
 
     // Abre el form pre-llenado con los datos del viaje.
     // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
-    async function abrirForm(idx, accion) {
+    function abrirForm(idx, accion) {
       // Sin sesión → abrir modal de registro
       if (!usuarioActual) {
         abrirAuthModal('registro');
         return;
       }
-      // Sin perfil → recargar (abrimos ventana vacía antes del await para evitar popup blocker)
+      // Perfil aún no cargado → pedir que espere
       if (!perfilActual) {
-        const ventana = window.open('', '_blank');
-        perfilActual = await cargarPerfil(usuarioActual.id);
-        if (!perfilActual) {
-          ventana.close();
-          showToast('Hubo un problema con tu cuenta. Escríbenos al WhatsApp.');
-          return;
-        }
-        if (perfilActual.estado !== 'activo') {
-          ventana.close();
-          showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
-          return;
-        }
-        const v = viajesData[idx];
-        const precioBase = parseFloat(v.precio_base || '0') || 0;
-        const params = new URLSearchParams();
-        if (FORM_FIELDS.origen  && v.origen)  params.set(FORM_FIELDS.origen,  v.origen);
-        if (FORM_FIELDS.destino && v.destino) params.set(FORM_FIELDS.destino, v.destino);
-        if (FORM_FIELDS.peso    && v.peso_kg) params.set(FORM_FIELDS.peso,    v.peso_kg);
-        if (FORM_FIELDS.precio  && accion === 'aceptar' && precioBase) params.set(FORM_FIELDS.precio, precioBase);
-        if (FORM_FIELDS.accion) params.set(FORM_FIELDS.accion, accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta');
-        ventana.location = params.toString() ? `${FORMS_URL}?${params}` : FORMS_URL;
+        showToast('Cargando tu cuenta, intentá de nuevo en un segundo.');
         return;
       }
       // Cuenta pendiente → aviso claro
@@ -914,7 +894,7 @@
         showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
         return;
       }
-      // Cuenta activa → abrir form directamente
+      // Cuenta activa → abrir form
       const v = viajesData[idx];
       const precioBase = parseFloat(v.precio_base || '0') || 0;
       const params = new URLSearchParams();

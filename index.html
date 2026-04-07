@@ -1429,16 +1429,16 @@
 
       // ── Zoom para ver todas las rutas ─────────────────────────
       if (todosLosPuntos.length > 1) {
-        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40] });
+        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40], animate: false });
       }
-      // Redibujar todos los price pins después de que el mapa termine de moverse
-      mapaLeaflet.once('moveend', () => {
+      // Redibujar price pins después de que el mapa se estabilice
+      setTimeout(() => {
         mapaCapas.forEach((capa, i) => {
           if (capa.originMarker) {
             capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
           }
         });
-      });
+      }, 400);
 
       // ── Leyenda ───────────────────────────────────────────────
       const leyenda = L.control({ position: 'bottomleft' });

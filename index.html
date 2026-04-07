@@ -1346,7 +1346,7 @@
 
       mapaCapas = [];
       const todosLosPuntos = [];
-      const origenesVistos = {}; // origen → marker ya creado
+      const origenesConteo = {}; // origen → cuántos viajes ya tienen pin ahí
 
       for (let viajeIdx = 0; viajeIdx < viajes.length; viajeIdx++) {
         const v = viajes[viajeIdx];
@@ -1360,24 +1360,22 @@
         const puntosRuta = [];
         let originMarker = null;
 
-        // ── Pin de ORIGEN — un solo pin por ciudad ────────────
-        const coordOrigen = await getCoords(origen);
-        if (coordOrigen) {
+        // ── Pin de ORIGEN — desplazado si hay varios del mismo origen ──
+        const coordBase = await getCoords(origen);
+        if (coordBase) {
+          const n = origenesConteo[origen] || 0;
+          origenesConteo[origen] = n + 1;
+          // Pequeño offset para que no se superpongan (0.012° ≈ 1.3 km)
+          const coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.012, coordBase[1] + n * 0.008];
+
           todosLosPuntos.push(coordOrigen);
           bounds.push(coordOrigen);
           puntosRuta.push(coordOrigen);
 
-          if (!origenesVistos[origen]) {
-            // Primera vez que aparece este origen → crear pin
-            originMarker = L.marker(coordOrigen, {
-              icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
-            }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
-            grupo.addLayer(originMarker);
-            origenesVistos[origen] = originMarker;
-          } else {
-            // Origen ya tiene pin → reusar el marker existente
-            originMarker = origenesVistos[origen];
-          }
+          originMarker = L.marker(coordOrigen, {
+            icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
+          }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
+          grupo.addLayer(originMarker);
         }
 
         // ── Pins de DESTINOS (puntos navy con número) ──────────

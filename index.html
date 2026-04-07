@@ -35,6 +35,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <style>
     /* ═══════════════════════════════════════════════════════════
@@ -390,6 +391,32 @@
     /* ═══════════════════════════════════════════════════════════
        RESPONSIVE — Ajustes para pantallas pequeñas (<640px)
     ═══════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════
+       AUTH MODAL
+    ═══════════════════════════════════════════════════════════ */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; padding:1rem; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:white; border-radius:20px; padding:2rem; width:100%; max-width:420px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+    .modal-close { position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:22px; color:var(--gray-400); cursor:pointer; line-height:1; }
+    .modal-close:hover { color:var(--gray-900); }
+    .modal-tabs { display:flex; gap:4px; background:var(--gray-50); border-radius:10px; padding:4px; margin-bottom:1.5rem; }
+    .modal-tab { flex:1; padding:8px; border:none; background:none; border-radius:8px; font-size:13px; font-weight:500; color:var(--gray-600); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+    .modal-tab.active { background:white; color:var(--navy); box-shadow:0 1px 4px rgba(0,0,0,0.1); font-weight:600; }
+    .modal-form h3 { font-size:18px; font-weight:600; color:var(--navy); margin-bottom:1.25rem; }
+    .modal-input { width:100%; padding:10px 14px; border:1.5px solid var(--gray-100); border-radius:10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--gray-900); margin-bottom:10px; outline:none; transition:border-color 0.2s; }
+    .modal-input:focus { border-color:var(--cyan); }
+    .modal-btn-primary { width:100%; padding:12px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.2s; margin-top:4px; }
+    .modal-btn-primary:hover { background:var(--navy-dark); }
+    .modal-link { font-size:12px; color:var(--gray-400); text-align:center; margin-top:12px; }
+    .modal-link a { color:var(--cyan); cursor:pointer; font-weight:500; }
+    .modal-error { background:#fff0f0; color:#cc0000; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
+    .modal-success { background:#f0fff8; color:#00875a; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
+    /* Nav usuario logueado */
+    .nav-user { display:flex; align-items:center; gap:10px; }
+    .nav-user-name { font-size:13px; font-weight:500; color:var(--navy); }
+    .nav-user-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:100px; background:var(--cyan-light); color:var(--navy); }
+    .nav-user-badge.pendiente { background:#fff3e6; color:#cc5500; }
+
     @media (max-width: 640px) {
       .bifurcacion { grid-template-columns: 1fr; }   /* Una columna en móvil */
       .stats       { grid-template-columns: 1fr; }
@@ -415,8 +442,15 @@
     </div>
     <div class="nav-links">
       <!-- Los botones muestran un toast mientras no existe login real -->
-      <button class="btn-outline" onclick="showToast('Próximamente disponible')">Ingresar</button>
-      <button class="btn-solid"   onclick="showToast('Registro próximamente')">Registrarse</button>
+      <div id="nav-auth-buttons">
+        <button class="btn-outline" onclick="abrirAuthModal('login')">Ingresar</button>
+        <button class="btn-solid"   onclick="abrirAuthModal('registro')">Registrarse</button>
+      </div>
+      <div id="nav-user-info" class="nav-user" style="display:none">
+        <span class="nav-user-name" id="nav-user-name"></span>
+        <span class="nav-user-badge" id="nav-user-badge"></span>
+        <button class="btn-outline" onclick="cerrarSesion()">Salir</button>
+      </div>
     </div>
   </nav>
 
@@ -625,10 +659,178 @@
   <!-- Toast de notificaciones (mensajes temporales) -->
   <div class="toast" id="toast"></div>
 
+  <!-- AUTH MODAL -->
+  <div class="modal-overlay" id="auth-modal" onclick="cerrarModalOverlay(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="cerrarAuthModal()">×</button>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tab-login"    onclick="cambiarAuthTab('login')">Ingresar</button>
+        <button class="modal-tab"        id="tab-registro" onclick="cambiarAuthTab('registro')">Registrarse</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="form-login" class="modal-form">
+        <h3>Bienvenido de nuevo</h3>
+        <input type="email"    id="login-email"    class="modal-input" placeholder="Email">
+        <input type="password" id="login-password" class="modal-input" placeholder="Contraseña">
+        <button class="modal-btn-primary" onclick="iniciarSesion()">Ingresar →</button>
+        <p class="modal-link">¿No tienes cuenta? <a onclick="cambiarAuthTab('registro')">Regístrate aquí</a></p>
+      </div>
+
+      <!-- REGISTRO -->
+      <div id="form-registro" class="modal-form" style="display:none">
+        <h3>Crear cuenta</h3>
+        <input type="text"     id="reg-nombre"   class="modal-input" placeholder="Nombre completo">
+        <input type="text"     id="reg-empresa"  class="modal-input" placeholder="Empresa / Razón social">
+        <input type="text"     id="reg-telefono" class="modal-input" placeholder="Teléfono">
+        <input type="text"     id="reg-nit"      class="modal-input" placeholder="NIT">
+        <select id="reg-tipo" class="modal-input">
+          <option value="">Tipo de cuenta...</option>
+          <option value="transportadora">Empresa transportadora</option>
+          <option value="camionero">Camionero independiente</option>
+        </select>
+        <input type="email"    id="reg-email"    class="modal-input" placeholder="Email">
+        <input type="password" id="reg-password" class="modal-input" placeholder="Contraseña (mín. 8 caracteres)">
+        <button class="modal-btn-primary" onclick="registrarse()">Crear cuenta →</button>
+        <p class="modal-link">¿Ya tienes cuenta? <a onclick="cambiarAuthTab('login')">Inicia sesión</a></p>
+      </div>
+
+      <div id="auth-error"   class="modal-error"   style="display:none"></div>
+      <div id="auth-success" class="modal-success"  style="display:none"></div>
+    </div>
+  </div>
+
   <!-- Leaflet JS — debe cargarse al final del body -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
+    // ================================================================
+    // SUPABASE — AUTH
+    // ================================================================
+    const SUPABASE_URL  = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+    const SUPABASE_KEY  = 'sb_publishable_xgu1AVHKjUQjIlw3u6P5XQ_KvLGloeG';
+    const supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let usuarioActual = null; // sesión activa
+
+    // Escucha cambios de sesión (login, logout, refresh)
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        usuarioActual = session.user;
+        const perfil = await cargarPerfil(session.user.id);
+        actualizarNav(perfil);
+      } else {
+        usuarioActual = null;
+        actualizarNav(null);
+      }
+    });
+
+    async function cargarPerfil(userId) {
+      const { data } = await supabase
+        .from('perfiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      return data;
+    }
+
+    function actualizarNav(perfil) {
+      const btnArea  = document.getElementById('nav-auth-buttons');
+      const userArea = document.getElementById('nav-user-info');
+      if (!perfil) {
+        btnArea.style.display  = 'flex';
+        userArea.style.display = 'none';
+        return;
+      }
+      btnArea.style.display  = 'none';
+      userArea.style.display = 'flex';
+      document.getElementById('nav-user-name').textContent  = perfil.nombre || perfil.email;
+      const badge = document.getElementById('nav-user-badge');
+      badge.textContent = perfil.estado === 'activo' ? '✓ Activo' : '⏳ Pendiente';
+      badge.className   = 'nav-user-badge' + (perfil.estado !== 'activo' ? ' pendiente' : '');
+    }
+
+    function abrirAuthModal(tab = 'login') {
+      document.getElementById('auth-modal').classList.add('open');
+      cambiarAuthTab(tab);
+      limpiarMensajesAuth();
+    }
+
+    function cerrarAuthModal() {
+      document.getElementById('auth-modal').classList.remove('open');
+      limpiarMensajesAuth();
+    }
+
+    function cerrarModalOverlay(e) {
+      if (e.target === document.getElementById('auth-modal')) cerrarAuthModal();
+    }
+
+    function cambiarAuthTab(tab) {
+      document.getElementById('form-login').style.display    = tab === 'login'    ? 'block' : 'none';
+      document.getElementById('form-registro').style.display = tab === 'registro' ? 'block' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+      document.getElementById('tab-registro').classList.toggle('active', tab === 'registro');
+      limpiarMensajesAuth();
+    }
+
+    function mostrarErrorAuth(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg; el.style.display = 'block';
+      document.getElementById('auth-success').style.display = 'none';
+    }
+
+    function mostrarSuccessAuth(msg) {
+      const el = document.getElementById('auth-success');
+      el.textContent = msg; el.style.display = 'block';
+      document.getElementById('auth-error').style.display = 'none';
+    }
+
+    function limpiarMensajesAuth() {
+      document.getElementById('auth-error').style.display   = 'none';
+      document.getElementById('auth-success').style.display = 'none';
+    }
+
+    async function iniciarSesion() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return mostrarErrorAuth('Completa todos los campos.');
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return mostrarErrorAuth('Email o contraseña incorrectos.');
+      cerrarAuthModal();
+      showToast('¡Bienvenido!');
+    }
+
+    async function registrarse() {
+      const nombre   = document.getElementById('reg-nombre').value.trim();
+      const empresa  = document.getElementById('reg-empresa').value.trim();
+      const telefono = document.getElementById('reg-telefono').value.trim();
+      const nit      = document.getElementById('reg-nit').value.trim();
+      const tipo     = document.getElementById('reg-tipo').value;
+      const email    = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+
+      if (!nombre || !empresa || !telefono || !tipo || !email || !password)
+        return mostrarErrorAuth('Completa todos los campos.');
+      if (password.length < 8)
+        return mostrarErrorAuth('La contraseña debe tener al menos 8 caracteres.');
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return mostrarErrorAuth(error.message);
+
+      // Guardar perfil en tabla perfiles
+      await supabase.from('perfiles').insert({
+        id: data.user.id, nombre, empresa, telefono, nit, tipo,
+        estado: 'pendiente', email
+      });
+
+      mostrarSuccessAuth('¡Cuenta creada! Tu acceso está pendiente de aprobación por Logxie. Te notificaremos por email.');
+    }
+
+    async function cerrarSesion() {
+      await supabase.auth.signOut();
+      showToast('Sesión cerrada');
+    }
+
     // ================================================================
     // CONFIGURACIÓN GLOBAL
     // ================================================================

@@ -385,8 +385,8 @@
        TOAST — Mensaje temporal de confirmación
        Aparece en la esquina inferior derecha por 2.5 segundos.
     ═══════════════════════════════════════════════════════════ */
-    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--navy); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 999; }
-    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--navy); color: white; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s; z-index: 3000; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25); text-align: center; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     /* ═══════════════════════════════════════════════════════════
        RESPONSIVE — Ajustes para pantallas pequeñas (<640px)
@@ -871,9 +871,14 @@
         abrirAuthModal('registro');
         return;
       }
-      // Cuenta pendiente → aviso
-      if (!perfilActual || perfilActual.estado !== 'activo') {
-        showToast('Tu cuenta está pendiente de aprobación. Te notificaremos cuando esté activa.');
+      // Sin perfil → algo falló en el registro, llevar a soporte
+      if (!perfilActual) {
+        showToast('Hubo un problema con tu cuenta. Escríbenos al WhatsApp.');
+        return;
+      }
+      // Cuenta pendiente → aviso claro
+      if (perfilActual.estado !== 'activo') {
+        showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
         return;
       }
       // Cuenta activa → abrir form

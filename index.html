@@ -879,15 +879,14 @@
         return;
       }
 
-      // Perfil aún no cargado → recargar y abrir (ventana abierta antes del await)
-      const w = window.open('', '_blank');
+      // Perfil aún no cargado → recargar primero, luego abrir ventana solo si está activo
       sb.from('perfiles').select('*').eq('id', usuarioActual.id).single()
         .then(({ data }) => {
           perfilActual = data;
           actualizarNav(perfilActual);
-          if (!data) { w.close(); showToast('No encontramos tu cuenta. Intentá cerrar sesión e ingresar de nuevo.'); return; }
-          if (data.estado !== 'activo') { w.close(); showToast('⏳ Tu cuenta está en revisión.'); return; }
-          w.location.href = buildFormUrl(idx, accion);
+          if (!data) { showToast('No encontramos tu cuenta. Cerrá sesión e ingresá de nuevo.'); return; }
+          if (data.estado !== 'activo') { showToast('⏳ Tu cuenta está en revisión.'); return; }
+          window.open(buildFormUrl(idx, accion), '_blank');
         });
     }
 

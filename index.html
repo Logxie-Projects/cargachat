@@ -1427,18 +1427,17 @@
         mapaCapas.push({ grupo, bounds, originMarker, precioCorto, origen });
       }
 
+      // ── Redibujar price pins ANTES del zoom final ─────────────
+      mapaCapas.forEach((capa, i) => {
+        if (capa.originMarker) {
+          capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
+        }
+      });
+
       // ── Zoom para ver todas las rutas ─────────────────────────
       if (todosLosPuntos.length > 1) {
-        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40], animate: false });
+        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40] });
       }
-      // Redibujar price pins después de que el mapa se estabilice
-      setTimeout(() => {
-        mapaCapas.forEach((capa, i) => {
-          if (capa.originMarker) {
-            capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
-          }
-        });
-      }, 400);
 
       // ── Leyenda ───────────────────────────────────────────────
       const leyenda = L.control({ position: 'bottomleft' });

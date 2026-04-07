@@ -814,7 +814,10 @@
       if (password.length < 8)
         return mostrarErrorAuth('La contraseña debe tener al menos 8 caracteres.');
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { nombre, empresa, telefono, nit, tipo } }
+      });
       if (error) return mostrarErrorAuth(error.message);
 
       // Guardar perfil en tabla perfiles (upsert por si el trigger ya creó la fila base)

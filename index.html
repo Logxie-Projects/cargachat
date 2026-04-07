@@ -735,11 +735,13 @@
     });
 
     async function cargarPerfil(userId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('perfiles')
         .select('*')
         .eq('id', userId)
         .single();
+      if (error) console.warn('cargarPerfil error:', error.message, '| userId:', userId);
+      console.log('cargarPerfil resultado:', data);
       return data;
     }
 

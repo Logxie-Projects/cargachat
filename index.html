@@ -714,19 +714,18 @@
     // ================================================================
     // SUPABASE — AUTH
     // ================================================================
-    const SUPABASE_URL  = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
-    const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
-    const sb            = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+    const sb           = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let usuarioActual = null; // sesión activa
-    let perfilActual  = null; // datos del perfil (nombre, estado, etc.)
+    let usuarioActual = null;
+    let perfilActual  = null;
 
-    // Escucha cambios de sesión (login, logout, refresh)
     sb.auth.onAuthStateChange(async (event, session) => {
-      console.log('authStateChange:', event, session?.user?.id || 'sin sesión');
       if (session?.user) {
         usuarioActual = session.user;
-        perfilActual  = await cargarPerfil(session.user.id);
+        const { data } = await sb.from('perfiles').select('*').eq('id', session.user.id).single();
+        perfilActual = data;
         actualizarNav(perfilActual);
       } else {
         usuarioActual = null;
@@ -734,17 +733,6 @@
         actualizarNav(null);
       }
     });
-
-    async function cargarPerfil(userId) {
-      const { data, error } = await sb
-        .from('perfiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (error) console.warn('cargarPerfil error:', error.message, '| userId:', userId);
-      console.log('cargarPerfil resultado:', data);
-      return data;
-    }
 
     function actualizarNav(perfil) {
       const btnArea  = document.getElementById('nav-auth-buttons');
@@ -756,27 +744,25 @@
       }
       btnArea.style.display  = 'none';
       userArea.style.display = 'flex';
-      document.getElementById('nav-user-name').textContent  = perfil.nombre || perfil.email;
+      document.getElementById('nav-user-name').textContent = perfil.nombre || perfil.email;
       const badge = document.getElementById('nav-user-badge');
       badge.textContent = perfil.estado === 'activo' ? '✓ Activo' : '⏳ Pendiente';
       badge.className   = 'nav-user-badge' + (perfil.estado !== 'activo' ? ' pendiente' : '');
     }
 
+    // ── Modal de autenticación ──────────────────────────────────────
     function abrirAuthModal(tab = 'login') {
       document.getElementById('auth-modal').classList.add('open');
       cambiarAuthTab(tab);
       limpiarMensajesAuth();
     }
-
     function cerrarAuthModal() {
       document.getElementById('auth-modal').classList.remove('open');
       limpiarMensajesAuth();
     }
-
     function cerrarModalOverlay(e) {
       if (e.target === document.getElementById('auth-modal')) cerrarAuthModal();
     }
-
     function cambiarAuthTab(tab) {
       document.getElementById('form-login').style.display    = tab === 'login'    ? 'block' : 'none';
       document.getElementById('form-registro').style.display = tab === 'registro' ? 'block' : 'none';
@@ -784,24 +770,22 @@
       document.getElementById('tab-registro').classList.toggle('active', tab === 'registro');
       limpiarMensajesAuth();
     }
-
     function mostrarErrorAuth(msg) {
       const el = document.getElementById('auth-error');
       el.textContent = msg; el.style.display = 'block';
       document.getElementById('auth-success').style.display = 'none';
     }
-
     function mostrarSuccessAuth(msg) {
       const el = document.getElementById('auth-success');
       el.textContent = msg; el.style.display = 'block';
       document.getElementById('auth-error').style.display = 'none';
     }
-
     function limpiarMensajesAuth() {
       document.getElementById('auth-error').style.display   = 'none';
       document.getElementById('auth-success').style.display = 'none';
     }
 
+    // ── Acciones de auth ───────────────────────────────────────────
     async function iniciarSesion() {
       const email    = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
@@ -831,19 +815,10 @@
         options: { data: { nombre, empresa, telefono, nit, tipo } }
       });
       if (error) return mostrarErrorAuth(error.message);
-
-      // Si el email ya existe, Supabase devuelve user con identities vacío
       if (!data.user || data.user.identities?.length === 0)
         return mostrarErrorAuth('Este email ya tiene una cuenta. Intentá ingresar.');
 
-      // Guardar perfil en tabla perfiles (upsert por si el trigger ya creó la fila base)
-      const { error: perfilError } = await sb.from('perfiles').upsert({
-        id: data.user.id, nombre, empresa, telefono, nit, tipo,
-        estado: 'pendiente', email
-      }, { onConflict: 'id' });
-      if (perfilError) console.warn('Perfil no guardado:', perfilError.message);
-
-      mostrarSuccessAuth('¡Cuenta creada! Tu acceso está pendiente de aprobación por Logxie. Te notificaremos por email.');
+      mostrarSuccessAuth('¡Cuenta creada! Tu acceso está pendiente de aprobación. Te notificaremos por email.');
     }
 
     async function cerrarSesion() {
@@ -879,7 +854,6 @@
     // Abre el form pre-llenado con los datos del viaje.
     // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
     function abrirForm(idx, accion) {
-      console.log('abrirForm llamado:', idx, accion, 'usuario:', !!usuarioActual, 'perfil:', perfilActual?.estado);
       // Sin sesión → abrir modal de registro
       if (!usuarioActual) {
         abrirAuthModal('registro');

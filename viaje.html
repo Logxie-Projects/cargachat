@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CARGACHAT — Tarjeta de Viaje</title>
+
+  <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  viaje.html — TARJETA DE VIAJE PARA SCREENSHOT              ║
+    ║                                                              ║
+    ║  Esta página muestra UNA SOLA tarjeta con los datos de un   ║
+    ║  viaje específico. Está diseñada para ser capturada por      ║
+    ║  Screenshotone y publicada en LinkedIn con cada viaje nuevo. ║
+    ║                                                              ║
+    ║  CÓMO FUNCIONA:                                              ║
+    ║  1. n8n procesa un mail de consolidación                     ║
+    ║  2. Construye una URL con los datos del viaje como params    ║
+    ║  3. Screenshotone abre esa URL y toma la foto                ║
+    ║  4. La foto se publica en LinkedIn                           ║
+    ║                                                              ║
+    ║  EJEMPLO DE URL:                                             ║
+    ║  viaje.html?origen=Funza&destino=Cucuta,Bucaramanga          ║
+    ║            &peso=1219&fecha=31/03/2026&cajas=40              ║
+    ║            &precio=1200000                                   ║
+    ╚══════════════════════════════════════════════════════════════╝
+
+    DEPENDENCIAS EXTERNAS:
+    - DM Sans (Google Fonts): tipografía principal del sistema
+    - Leaflet 1.9.4: librería de mapas interactivos open source
+    - CartoDB tiles: mapas en blanco y negro (más elegantes que Google Maps)
+    - Google Geocoding API: para ciudades no encontradas en el diccionario local
+  -->
+
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    /* ─── RESET Y BASE ───────────────────────────────────────────
+       Eliminamos márgenes y paddings por defecto del navegador
+       y usamos border-box para que el padding no sume al ancho.
+    ──────────────────────────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── COLORES DE MARCA CARGACHAT ─────────────────────────────
+       Navy: color principal de marca
+       Cyan: color de acento
+       Gray: fondo y textos secundarios
+    ──────────────────────────────────────────────────────────── */
+    :root {
+      --navy:      #1B2A6B;
+      --cyan:      #00BFDF;
+      --green:     #00c48c;
+      --gray-bg:   #f0f4ff;
+      --gray-card: #f8f9fc;
+      --gray-border: #eef0f6;
+      --gray-text: #9aa0b8;
+      --gray-dark: #5a6280;
+    }
+
+    /* ─── BODY ───────────────────────────────────────────────────
+       Centramos la tarjeta horizontal y verticalmente.
+       El fondo gris azulado hace que la tarjeta blanca resalte.
+    ──────────────────────────────────────────────────────────── */
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--gray-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+
+    /* ─── TARJETA PRINCIPAL ──────────────────────────────────────
+       Ancho fijo de 520px para que el screenshot siempre
+       tenga las mismas proporciones en LinkedIn.
+    ──────────────────────────────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.25rem;
+      width: 520px;
+      box-shadow: 0 4px 24px rgba(27, 42, 107, 0.10);
+    }
+
+    /* ─── HEADER DE LA TARJETA ───────────────────────────────────
+       Logo CARGACHAT a la izquierda, badge "Viaje disponible" a la derecha.
+    ──────────────────────────────────────────────────────────── */
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--gray-border);
+    }
+
+    .logo        { font-size: 18px; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
+    .logo span   { color: var(--cyan); }  /* La palabra "CHAT" en cyan */
+    .logo-sub    { font-size: 10px; color: var(--gray-text); margin-top: 1px; }
+    .badge       { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: #fff0e6; color: #cc5500; }
+
+    /* ─── RUTA PRINCIPAL ─────────────────────────────────────────
+       "Funza → Cúcuta +2 destinos" — lo más importante de la tarjeta.
+       Texto grande y bold para que sea lo primero que se ve.
+    ──────────────────────────────────────────────────────────── */
+    .ruta        { font-size: 19px; font-weight: 600; color: var(--navy); margin-bottom: 3px; line-height: 1.3; }
+    .destinos-sub { font-size: 11px; color: var(--gray-text); margin-bottom: 0.75rem; line-height: 1.5; }
+
+    /* ─── MAPA ───────────────────────────────────────────────────
+       Leaflet necesita un contenedor con altura definida.
+       Sin esto el mapa no se renderiza correctamente.
+    ──────────────────────────────────────────────────────────── */
+    .map-container {
+      border-radius: 12px;
+      overflow: hidden;       /* Para que el mapa respete el border-radius */
+      margin-bottom: 0.75rem;
+      height: 220px;
+      border: 1px solid var(--gray-border);
+    }
+
+    /* ─── GRILLA DE METADATOS ────────────────────────────────────
+       3 columnas iguales para: peso, fecha, unidades.
+    ──────────────────────────────────────────────────────────── */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+      margin-bottom: 0.75rem;
+    }
+
+    .meta-item  { background: var(--gray-card); border-radius: 10px; padding: 9px 11px; }
+    .meta-label { font-size: 10px; color: var(--gray-text); margin-bottom: 2px; }
+    .meta-value { font-size: 13px; font-weight: 600; color: var(--navy); }
+
+    /* ─── CAJA DE PRECIO ─────────────────────────────────────────
+       Se muestra solo si hay precio disponible (display: none por defecto).
+       Contiene el precio a la izquierda y los botones a la derecha.
+    ──────────────────────────────────────────────────────────── */
+    .precio-box {
+      background: #f0f4ff;
+      border-radius: 12px;
+      padding: 11px 14px;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .precio-label { font-size: 10px; color: var(--gray-dark); margin-bottom: 2px; }
+    .precio-value { font-size: 22px; font-weight: 600; color: var(--navy); }
+    .precio-sub   { font-size: 10px; color: var(--gray-text); margin-top: 1px; }
+
+    /* Botones de acción: Aceptar (verde) y Hacer oferta (navy) */
+    .btn-accion {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 99px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .btn-aceptar { background: var(--green); }
+    .btn-ofertar { background: var(--navy); }
+
+    /* ─── FOOTER DE LA TARJETA ───────────────────────────────────
+       URL de la plataforma para que el transportador sepa
+       dónde ir a ver más viajes.
+    ──────────────────────────────────────────────────────────── */
+    .card-footer      { text-align: center; padding-top: 0.6rem; border-top: 1px solid var(--gray-border); }
+    .card-footer-text { font-size: 11px; color: var(--gray-text); }
+    .card-footer-url  { font-weight: 600; color: var(--navy); }
+  </style>
+</head>
+<body>
+
+  <!-- ─── ESTRUCTURA HTML DE LA TARJETA ──────────────────────────
+       Los elementos con id="..." son llenados dinámicamente
+       por el JavaScript al leer los parámetros de la URL.
+  ─────────────────────────────────────────────────────────────── -->
+  <div class="card">
+
+    <!-- Header: logo + badge -->
+    <div class="card-header">
+      <div>
+        <div class="logo">CARGA<span>CHAT</span></div>
+        <div class="logo-sub">by Logxie Connect · Logística Inteligente</div>
+      </div>
+      <span class="badge">🔥 Viaje disponible</span>
+    </div>
+
+    <!-- Ruta principal: "Funza → Cúcuta +2 destinos" -->
+    <div class="ruta" id="ruta">Cargando...</div>
+    <!-- Lista de todos los destinos si hay más de uno -->
+    <div class="destinos-sub" id="destinos-sub"></div>
+
+    <!-- Mapa Leaflet — se inicializa en el JS -->
+    <div class="map-container">
+      <div id="map" style="height:100%; width:100%;"></div>
+    </div>
+
+    <!-- Metadatos: peso, fecha, unidades -->
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Peso total</div>
+        <div class="meta-value" id="peso">—</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Fecha cargue</div>
+        <div class="meta-value" id="fecha">—</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Unidades</div>
+        <div class="meta-value" id="unidades">—</div>
+      </div>
+    </div>
+
+    <!-- Caja de precio (oculta por defecto, se muestra si hay precio) -->
+    <div class="precio-box" id="precio-box" style="display:none">
+      <div>
+        <div class="precio-label">Precio base estimado</div>
+        <div class="precio-value" id="precio">—</div>
+        <div class="precio-sub">Acepta este precio o haz una oferta</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div class="btn-accion btn-aceptar">Aceptar →</div>
+        <div class="btn-accion btn-ofertar">Hacer oferta</div>
+      </div>
+    </div>
+
+    <!-- Footer con URL de la plataforma -->
+    <div class="card-footer">
+      <div class="card-footer-text">
+        Oferta en <span class="card-footer-url">cargachat.netlify.app</span>
+      </div>
+    </div>
+
+  </div><!-- fin .card -->
+
+  <!-- Leaflet JS — debe cargarse DESPUÉS del CSS de Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ================================================================
+    // CONFIGURACIÓN
+    // ================================================================
+
+    // API key de Google Maps para el geocoding de ciudades desconocidas.
+    // Si una ciudad no está en el diccionario local, se consulta esta API.
+    const GMAPS_KEY = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
+
+    // ================================================================
+    // DICCIONARIO DE CIUDADES
+    // ================================================================
+    // Coordenadas [latitud, longitud] de las ciudades más frecuentes.
+    // Formato: 'nombre en minúsculas': [lat, lng]
+    //
+    // ¿Por qué tener este diccionario si existe la API de Google?
+    // → Velocidad: evita una llamada a la API para las ciudades comunes.
+    // → Costo: cada llamada a Geocoding API cuesta dinero.
+    // → Cuando la ciudad no está aquí, el sistema la busca en Google automáticamente.
+    //
+    // Para agregar ciudades nuevas: copia una línea y pon el nombre y las coordenadas.
+    // Puedes obtener coordenadas de cualquier lugar en Google Maps haciendo clic derecho.
+    const CIUDADES = {
+      // ── Bodegas principales de Logxie / Avgust ──
+      'funza':    [4.7132, -74.1966],
+      'yumbo':    [3.5928, -76.4944],
+      'espinal':  [4.1544, -74.8864],
+
+      // ── Ciudades principales de Colombia ──
+      'bogota':        [4.7110, -74.0721],
+      'bogotá':        [4.7110, -74.0721],
+      'cali':          [3.4516, -76.5319],
+      'medellin':      [6.2442, -75.5812],
+      'medellín':      [6.2442, -75.5812],
+      'barranquilla':  [10.9685, -74.7813],
+      'cartagena':     [10.3910, -75.4794],
+      'cucuta':        [7.8939, -72.5078],
+      'cúcuta':        [7.8939, -72.5078],
+      'bucaramanga':   [7.1253, -73.1198],
+      'santa marta':   [11.2408, -74.2110],
+      'monteria':      [8.7575, -75.8906],
+      'montería':      [8.7575, -75.8906],
+      'valledupar':    [10.4631, -73.2532],
+      'riohacha':      [11.5444, -72.9072],
+      'sincelejo':     [9.3047, -75.3978],
+      'neiva':         [2.9273, -75.2820],
+      'ibague':        [4.4389, -75.2322],
+      'ibagué':        [4.4389, -75.2322],
+      'villavicencio': [4.1420, -73.6266],
+
+      // ── Eje Cafetero ──
+      'manizales':     [5.0703, -75.5138],
+      'pereira':       [4.8087, -75.6906],
+      'armenia':       [4.5339, -75.6811],
+      'cartago':       [4.7454, -75.9120],
+      'la virginia':   [4.9000, -75.8833],
+      'dosquebradas':  [4.8378, -75.6742],
+
+      // ── Boyacá (zona frecuente de Avgust) ──
+      'tunja':         [5.5353, -73.3678],
+      'duitama':       [5.8281, -73.0297],
+      'sogamoso':      [5.7150, -72.9267],
+      'paipa':         [5.7833, -73.1167],
+      'chiquinquira':  [5.6167, -73.8167],
+      'chiquinquirá':  [5.6167, -73.8167],
+      'buenavista':    [5.7167, -73.9667],
+      'ventaquemada':  [5.4167, -73.5167],
+      'sachica':       [5.6667, -73.6833],
+      'jenesano':      [5.3833, -73.4167],
+      'jenessano':     [5.3833, -73.4167],
+      'tuta':          [5.6667, -73.2000],
+      'toca':          [5.5667, -73.1667],
+      'tibana':        [5.3167, -73.3833],
+      'tibaná':        [5.3167, -73.3833],
+      'arcabuco':      [5.7667, -73.4333],
+      'macheta':       [5.0333, -73.8333],
+      'umbita':        [5.3000, -73.5167],
+      'aquitania':     [5.5167, -72.8833],
+      'saboya':        [5.7000, -73.7667],
+      'samaca':        [5.4833, -73.4833],
+      'samacá':        [5.4833, -73.4833],
+      'sutamarchan':   [5.6333, -73.7833],
+
+      // ── Cundinamarca ──
+      'tenjo':         [4.8714, -74.1436],
+      'zipaquira':     [5.0228, -74.0061],
+      'zipaquirá':     [5.0228, -74.0061],
+      'facatativa':    [4.8142, -74.3597],
+      'mosquera':      [4.7066, -74.2303],
+      'madrid':        [4.7339, -74.2644],
+      'soacha':        [4.5797, -74.2167],
+      'chia':          [4.8614, -73.9314],
+      'chía':          [4.8614, -73.9314],
+      'cajica':        [4.9186, -74.0028],
+      'cajicá':        [4.9186, -74.0028],
+      'tocancipa':     [4.9678, -73.9139],
+      'tocancipá':     [4.9678, -73.9139],
+      'aguachica':     [8.3081, -73.6189],
+
+      // ── Santander ──
+      'barrancabermeja': [7.0653, -73.8546],
+      'giron':           [7.0725, -73.1686],
+      'girón':           [7.0725, -73.1686],
+      'floridablanca':   [7.0639, -73.0880],
+      'piedecuesta':     [6.9868, -73.0522],
+      'san gil':         [6.5567, -73.1356],
+      'socorro':         [6.5133, -73.2642],
+
+      // ── Llanos Orientales ──
+      'yopal':           [5.3378, -72.3952],
+      'arauca':          [7.0897, -70.7617],
+      'acacias':         [3.9894, -73.7597],
+      'granada':         [3.5461, -73.7229],
+      'aguazul':         [5.1739, -72.5506],
+
+      // ── Sur (Cauca, Nariño, Putumayo) ──
+      'pasto':           [1.2136, -77.2811],
+      'popayan':         [2.4448, -76.6147],
+      'popayán':         [2.4448, -76.6147],
+      'mocoa':           [1.1520, -76.6481],
+      'florencia':       [1.6144, -75.6062],
+      'el tigre':        [0.3500, -75.1833],
+      'puerto asis':     [0.5000, -76.5000],
+      'puerto asís':     [0.5000, -76.5000],
+      'orito':           [0.6667, -76.8667],
+      'la hormiga':      [0.0833, -76.9000],
+    };
+
+    // ================================================================
+    // FUNCIONES DE UTILIDAD
+    // ================================================================
+
+    /**
+     * Busca las coordenadas de una ciudad en el diccionario local.
+     * Normaliza el texto para manejar tildes y mayúsculas.
+     * @param {string} ciudad - Nombre de la ciudad a buscar
+     * @returns {[number, number]|null} - [lat, lng] o null si no se encuentra
+     */
+    function getCoordenadas(ciudad) {
+      if (!ciudad) return null;
+
+      // Normalizar: minúsculas, sin tildes, sin espacios extras
+      const key = ciudad
+        .toLowerCase()
+        .normalize('NFD')                    // Descompone caracteres con tildes
+        .replace(/[\u0300-\u036f]/g, '')     // Elimina las tildes
+        .trim();
+
+      for (const [nombre, coords] of Object.entries(CIUDADES)) {
+        const nombreNorm = nombre
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        // Busca coincidencia exacta o parcial (para "Funza, Cundinamarca" → "Funza")
+        if (nombreNorm === key || key.includes(nombreNorm) || nombreNorm.includes(key)) {
+          return coords;
+        }
+      }
+
+      return null; // Ciudad no encontrada en el diccionario
+    }
+
+    /**
+     * Busca las coordenadas de una ciudad usando la API de Google Maps Geocoding.
+     * Solo se llama cuando la ciudad NO está en el diccionario local.
+     * @param {string} ciudad - Nombre de la ciudad
+     * @returns {[number, number]|null} - [lat, lng] o null si falla
+     */
+    async function geocodeCiudad(ciudad) {
+      try {
+        const query = encodeURIComponent(ciudad + ', Colombia');
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`;
+        const respuesta = await fetch(url);
+        const datos = await respuesta.json();
+
+        if (datos.results && datos.results[0]) {
+          const loc = datos.results[0].geometry.location;
+          return [loc.lat, loc.lng];
+        }
+      } catch (error) {
+        console.warn('Geocoding falló para:', ciudad, error);
+      }
+      return null;
+    }
+
+    /**
+     * Obtiene coordenadas de una ciudad.
+     * Primero busca en el diccionario local (rápido y gratis).
+     * Si no encuentra, consulta Google Maps (más lento, tiene costo).
+     * @param {string} ciudad
+     * @returns {[number, number]|null}
+     */
+    async function getCoords(ciudad) {
+      return getCoordenadas(ciudad) || await geocodeCiudad(ciudad);
+    }
+
+    /**
+     * Formatea un peso en kg a texto legible.
+     * Ejemplo: 1219 → "1.2 ton", 800 → "800 kg"
+     */
+    function formatPeso(kg) {
+      const n = parseFloat(kg);
+      if (isNaN(n) || n === 0) return '—';
+      return n >= 1000
+        ? `${(n / 1000).toFixed(1)} ton`
+        : `${Math.round(n)} kg`;
+    }
+
+    /**
+     * Formatea un número como moneda colombiana.
+     * Ejemplo: 1200000 → "$1.200.000"
+     */
+    function formatCOP(valor) {
+      if (!valor || valor === 0) return null;
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0
+      }).format(valor);
+    }
+
+    // ================================================================
+    // FUNCIÓN PRINCIPAL — INICIALIZACIÓN
+    // ================================================================
+    /**
+     * Lee los parámetros de la URL, llena la tarjeta con los datos
+     * y dibuja el mapa con la ruta del viaje.
+     *
+     * Los parámetros que acepta la URL son:
+     * - origen: ciudad de origen (ej: "Funza")
+     * - destino: ciudades de destino separadas por coma (ej: "Cucuta,Bucaramanga")
+     * - peso: peso en kg (ej: "1219")
+     * - fecha: fecha de cargue (ej: "31/03/2026")
+     * - cajas: número de cajas
+     * - bidones: número de bidones
+     * - precio: precio base en pesos (ej: "1200000")
+     */
+    async function init() {
+
+      // ── Leer parámetros de la URL ──────────────────────────────
+      // URLSearchParams convierte "?origen=Funza&peso=1219" en un objeto
+      const params = new URLSearchParams(window.location.search);
+      const origen  = params.get('origen')  || '';
+      const destino = params.get('destino') || '';
+      const peso    = params.get('peso')    || '0';
+      const fecha   = params.get('fecha')   || '';
+      const cajas   = params.get('cajas')   || '0';
+      const bidones = params.get('bidones') || '0';
+      const precio  = parseFloat(params.get('precio') || '0') || 0;
+
+      // ── Procesar destinos ──────────────────────────────────────
+      // "Cucuta, Bucaramanga, Aguachica" → ["Cucuta", "Bucaramanga", "Aguachica"]
+      const destinos = destino.split(',').map(d => d.trim()).filter(Boolean);
+
+      // Texto resumido para mostrar en la tarjeta
+      // "Cucuta +2 destinos" cuando hay más de uno
+      const destinoTexto = destinos.length > 1
+        ? `${destinos[0]} +${destinos.length - 1} destinos`
+        : destino;
+
+      // Lista completa de destinos para mostrar debajo de la ruta principal
+      const destinoTooltip = destinos.length > 1
+        ? destinos.join(' · ')
+        : '';
+
+      // ── Llenar la tarjeta con los datos ───────────────────────
+      document.getElementById('ruta').textContent = `${origen} → ${destinoTexto}`;
+      document.getElementById('destinos-sub').textContent = destinoTooltip;
+      document.getElementById('peso').textContent = formatPeso(peso);
+      document.getElementById('fecha').textContent = fecha || 'Por confirmar';
+
+      // Texto de unidades: solo muestra los que tienen valor > 0
+      const unidades = [];
+      if (parseInt(cajas)   > 0) unidades.push(`${cajas} cajas`);
+      if (parseInt(bidones) > 0) unidades.push(`${bidones} bidones`);
+      document.getElementById('unidades').textContent = unidades.join(', ') || 'Ver detalle';
+
+      // Mostrar precio si hay uno disponible
+      if (precio > 0) {
+        document.getElementById('precio').textContent = formatCOP(precio);
+        document.getElementById('precio-box').style.display = 'flex';
+      }
+
+      // ── Inicializar el mapa ────────────────────────────────────
+      // zoomControl: false → sin botones de zoom (más limpio para screenshot)
+      // attributionControl: false → sin el texto "Leaflet | OpenStreetMap" (más limpio)
+      const map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([4.5709, -74.2973], 6); // Vista inicial: Colombia completa
+
+      // Capa de tiles: CartoDB "light_all" = mapa en blanco y negro elegante
+      // {s} = subdomain (a,b,c,d) para distribuir la carga de requests
+      // {z}/{x}/{y} = nivel de zoom y coordenadas del tile
+      // {r} = sufijo "@2x" en pantallas de alta densidad
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 18
+      }).addTo(map);
+
+      // ── Icono personalizado para el ORIGEN ────────────────────
+      // L.divIcon permite crear un marcador con HTML/CSS puro
+      // Punto cyan más grande = origen del viaje
+      const iconOrigen = L.divIcon({
+        html: `<div style="
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          background: #00BFDF;
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,191,223,0.5);
+        "></div>`,
+        iconSize:   [14, 14],
+        iconAnchor: [7, 7],    // Punto de anclaje = centro del círculo
+        className:  ''         // Sin clase de Leaflet por defecto
+      });
+
+      // Arrays para manejar los puntos del mapa
+      const bounds = []; // Para hacer fitBounds() al final y ver todo el mapa
+      const puntos  = []; // Para trazar la línea de ruta
+
+      // ── Agregar pin de ORIGEN ──────────────────────────────────
+      const coordOrigen = await getCoords(origen);
+      if (coordOrigen) {
+        bounds.push(coordOrigen);
+        puntos.push(coordOrigen);
+        L.marker(coordOrigen, { icon: iconOrigen })
+          .addTo(map)
+          .bindPopup(`<b>${origen}</b><br>Origen`);
+      }
+
+      // ── Agregar pins de DESTINOS ───────────────────────────────
+      // Obtenemos las coordenadas de todos los destinos en paralelo
+      // Promise.all() espera a que TODAS las promesas terminen antes de continuar
+      const destinosConCoord = await Promise.all(
+        destinos.map(async (d) => ({
+          nombre: d,
+          coord: await getCoords(d)
+        }))
+      );
+
+      // Filtrar los que no se encontraron y ordenar de sur a norte
+      // (menor latitud = más al sur) para trazar la ruta en orden geográfico
+      const destinosOrdenados = destinosConCoord
+        .filter(d => d.coord !== null)
+        .sort((a, b) => a.coord[0] - b.coord[0]);
+
+      destinosOrdenados.forEach((dest, idx) => {
+        bounds.push(dest.coord);
+        puntos.push(dest.coord);
+
+        // Número de parada: "1", "2", "3"... (solo si hay múltiples destinos)
+        const num = destinosOrdenados.length > 1 ? `${idx + 1}` : '';
+
+        // Icono de destino: punto navy pequeño con número encima
+        const iconDest = L.divIcon({
+          html: `<div style="position: relative;">
+            <div style="
+              width: 12px; height: 12px;
+              border-radius: 50%;
+              background: #1B2A6B;
+              border: 2px solid white;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            "></div>
+            ${num ? `<div style="
+              position: absolute; top: -8px; left: 11px;
+              background: #1B2A6B; color: white;
+              font-size: 9px; font-weight: 700;
+              padding: 1px 4px; border-radius: 3px;
+            ">${num}</div>` : ''}
+          </div>`,
+          iconSize:   [12, 12],
+          iconAnchor: [6, 6],
+          className:  ''
+        });
+
+        L.marker(dest.coord, { icon: iconDest })
+          .addTo(map)
+          .bindPopup(`<b>${dest.nombre}</b>`);
+      });
+
+      // ── Trazar la línea de ruta ────────────────────────────────
+      // polyline() une todos los puntos con una línea punteada
+      if (puntos.length > 1) {
+        L.polyline(puntos, {
+          color:     '#1B2A6B',
+          weight:    2.5,
+          opacity:   0.6,
+          dashArray: '6 4'    // Línea punteada: 6px línea, 4px espacio
+        }).addTo(map);
+      }
+
+      // ── Ajustar el zoom para ver todos los puntos ──────────────
+      // fitBounds() calcula automáticamente el zoom necesario
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 10); // Zoom más cercano si solo hay un punto
+      }
+
+    } // fin init()
+
+    // Ejecutar cuando la página cargue
+    init();
+
+  </script>
+</body>
+</html>

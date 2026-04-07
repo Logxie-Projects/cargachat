@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CARGACHAT — Marketplace de Carga Colombia</title>
+
+  <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  index.html — LANDING PRINCIPAL DE CARGACHAT                ║
+    ║                                                              ║
+    ║  Esta es la página pública de CARGACHAT donde los           ║
+    ║  transportadores ven los viajes disponibles y hacen ofertas. ║
+    ║                                                              ║
+    ║  FLUJO DE DATOS:                                             ║
+    ║  1. n8n procesa mails de Avgust y escribe viajes en Sheets  ║
+    ║  2. Google Sheets publica un CSV público con los viajes      ║
+    ║  3. Esta página lee ese CSV al cargar y muestra las tarjetas ║
+    ║  4. El transportador hace clic en "Hacer oferta" → Google   ║
+    ║     Forms captura su oferta                                  ║
+    ║                                                              ║
+    ║  ARCHIVOS EN NETLIFY:                                        ║
+    ║  - index.html → cargachat.netlify.app (esta página)         ║
+    ║  - viaje.html → cargachat.netlify.app/viaje.html            ║
+    ║    (tarjeta individual para screenshots de LinkedIn)         ║
+    ╚══════════════════════════════════════════════════════════════╝
+
+    DEPENDENCIAS EXTERNAS:
+    - DM Sans + DM Mono (Google Fonts): tipografías del sistema
+    - Leaflet 1.9.4: librería de mapas interactivos
+    - CartoDB tiles: estilo de mapa gris elegante
+    - Google Geocoding API: para ciudades no encontradas en el diccionario
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       VARIABLES DE DISEÑO — SISTEMA DE COLORES Y TOKENS
+       Las variables CSS permiten cambiar colores en un solo lugar.
+       Para cambiar la paleta de marca, solo editar aquí.
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --navy:       #1B2A6B;   /* Color principal de marca */
+      --navy-dark:  #0f1a45;   /* Versión más oscura del navy (hovers) */
+      --cyan:       #00BFDF;   /* Color de acento */
+      --cyan-light: #e6f9fd;   /* Cyan muy claro (fondos) */
+      --green:      #00c48c;   /* Verde para botones de aceptar */
+      --white:      #ffffff;
+      --gray-50:    #f8f9fc;   /* Fondo de secciones */
+      --gray-100:   #eef0f6;   /* Bordes */
+      --gray-400:   #9aa0b8;   /* Textos secundarios */
+      --gray-600:   #5a6280;   /* Textos medios */
+      --gray-900:   #1a1d2e;   /* Texto principal */
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESET BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html  { scroll-behavior: smooth; }
+    body  {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--white);
+      color: var(--gray-900);
+      overflow-x: hidden;   /* Sin scroll horizontal */
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       BARRA DE NAVEGACIÓN
+       sticky: se queda pegada al tope al hacer scroll.
+       backdrop-filter: efecto de vidrio esmerilado.
+    ═══════════════════════════════════════════════════════════ */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-100);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo    { display: flex; flex-direction: column; line-height: 1; }
+    .logo-main   { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--navy); }
+    .logo-main span { color: var(--cyan); }   /* "CHAT" en cyan */
+    .logo-sub    { font-size: 10px; color: var(--gray-400); letter-spacing: 0.5px; margin-top: 1px; }
+    .nav-links   { display: flex; gap: 8px; align-items: center; }
+
+    /* Botones de la navbar */
+    .btn-outline {
+      padding: 8px 18px; border-radius: 100px;
+      border: 1.5px solid var(--navy); color: var(--navy); background: transparent;
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { background: var(--navy); color: white; }
+
+    .btn-solid {
+      padding: 8px 18px; border-radius: 100px;
+      border: none; background: var(--navy); color: white;
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-solid:hover { background: var(--navy-dark); }
+
+    /* ═══════════════════════════════════════════════════════════
+       HERO (SECCIÓN PRINCIPAL)
+       El gradiente radial crea el efecto de luz cyan en el fondo.
+    ═══════════════════════════════════════════════════════════ */
+    .hero {
+      background: var(--navy);
+      padding: 5rem 2rem 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Luz decorativa en la esquina superior derecha */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -100px; right: -100px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,191,223,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(0,191,223,0.15); color: var(--cyan);
+      border: 1px solid rgba(0,191,223,0.3);
+      padding: 4px 14px; border-radius: 100px;
+      font-size: 11px; font-weight: 500; letter-spacing: 1px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      /* clamp(mínimo, preferido, máximo) → tamaño responsivo automático */
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 600; color: white;
+      line-height: 1.15; letter-spacing: -1px;
+      margin-bottom: 1rem;
+    }
+    .hero h1 span { color: var(--cyan); }
+
+    .hero-sub {
+      font-size: 1.1rem; color: rgba(255,255,255,0.65);
+      max-width: 520px; margin: 0 auto 2.5rem;
+      line-height: 1.7; font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       BIFURCACIÓN — CARDS DE EMPRESA vs TRANSPORTADOR
+       CSS Grid con 2 columnas iguales.
+    ═══════════════════════════════════════════════════════════ */
+    .bifurcacion {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .bif-card {
+      border-radius: 16px; padding: 1.5rem 1.25rem;
+      cursor: pointer; transition: transform 0.2s; text-align: left;
+    }
+    .bif-card:hover { transform: translateY(-2px); }
+
+    .bif-empresa   { background: white; }
+    .bif-conductor { background: rgba(0,191,223,0.12); border: 1.5px solid rgba(0,191,223,0.4); }
+
+    .bif-icon      { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; }
+    .bif-icon-e    { background: var(--cyan-light); }
+    .bif-icon-c    { background: rgba(0,191,223,0.2); }
+    .bif-title     { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+    .bif-desc      { font-size: 12px; color: var(--gray-600); line-height: 1.5; margin-bottom: 14px; }
+    .bif-conductor .bif-desc { color: rgba(255,255,255,0.7); }
+
+    .bif-btn       { display: block; width: 100%; padding: 9px; border-radius: 10px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .bif-btn-e     { background: var(--navy); color: white; }
+    .bif-btn-e:hover { background: var(--navy-dark); }
+    .bif-btn-c     { background: var(--cyan); color: var(--navy-dark); }
+    .bif-btn-c:hover { background: #00a8c5; }
+
+    /* ═══════════════════════════════════════════════════════════
+       CUPÓN DE DESCUENTO
+    ═══════════════════════════════════════════════════════════ */
+    .coupon-wrap { background: var(--gray-50); padding: 1rem 2rem; display: flex; justify-content: center; }
+    .coupon      { display: flex; align-items: center; gap: 12px; background: #fffde7; border: 1.5px dashed #ffc107; border-radius: 12px; padding: 10px 16px; max-width: 520px; width: 100%; }
+    .coupon-text { flex: 1; }
+    .coupon-title { font-size: 13px; font-weight: 600; color: #7a5c00; }
+    .coupon-sub   { font-size: 11px; color: #a07800; }
+    .coupon-code  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--navy); background: white; border: 1px solid #ffc107; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .coupon-code:hover { background: var(--navy); color: white; }
+
+    /* ═══════════════════════════════════════════════════════════
+       ESTADÍSTICAS (3 columnas)
+    ═══════════════════════════════════════════════════════════ */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--gray-100); }
+    .stat  { padding: 1.5rem 1rem; text-align: center; border-right: 1px solid var(--gray-100); }
+    .stat:last-child { border-right: none; }
+    .stat-val { font-size: 1.8rem; font-weight: 600; color: var(--navy); letter-spacing: -1px; }
+    .stat-lbl { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECCIONES GENÉRICAS
+    ═══════════════════════════════════════════════════════════ */
+    .section     { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-hdr { margin-bottom: 1.5rem; }
+    .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
+    .section-hdr p  { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       TARJETAS DE VIAJE
+       auto-fill: crea columnas automáticamente según el espacio.
+       minmax(300px, 1fr): mínimo 300px, máximo ocupa el espacio disponible.
+    ═══════════════════════════════════════════════════════════ */
+    .viajes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .viaje-card {
+      background: white; border: 1px solid var(--gray-100);
+      border-radius: 16px; padding: 1.25rem;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .viaje-card:hover { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,191,223,0.1); transform: translateY(-1px); }
+
+    .viaje-header  { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .viaje-ruta    { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; }
+    .viaje-badge   { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; white-space: nowrap; }
+    .badge-disponible { background: #e6f9f4; color: #00875a; }
+    .badge-nuevo      { background: #fff3e6; color: #cc5500; }
+
+    /* Grid 2x2 para los metadatos del viaje */
+    .viaje-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .meta-label { font-size: 10px; color: var(--gray-400); margin-bottom: 2px; }
+    .meta-value { font-size: 13px; font-weight: 500; color: var(--gray-900); }
+
+    /* Footer de la tarjeta cuando NO hay precio */
+    .viaje-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--gray-100); padding-top: 10px; }
+    .precio-label { font-size: 10px; color: var(--gray-400); }
+    .precio-value { font-size: 16px; font-weight: 600; color: var(--navy); }
+
+    /* Botón genérico de ofertar (cuando no hay precio base) */
+    .btn-ofertar { padding: 7px 16px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-ofertar:hover { background: var(--cyan); color: var(--navy-dark); }
+
+    /* Tarjeta seleccionada */
+    .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 6px 24px rgba(0,191,223,0.2); background: #f5fdff; }
+
+    /* Pin de precio estilo Airbnb */
+    .precio-pin {
+      position: absolute;
+      background: white;
+      border: 2.5px solid var(--navy);
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-size: 11px; font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+      transform: translate(-50%, calc(-100% - 6px));
+      cursor: pointer;
+    }
+    .precio-pin.activo {
+      background: var(--navy);
+      color: white;
+      box-shadow: 0 4px 16px rgba(27,42,107,0.35);
+      transform: translate(-50%, calc(-100% - 6px)) scale(1.12);
+      z-index: 1000;
+    }
+
+    /* Botón "Ver todos" flotante sobre el mapa */
+    .mapa-wrap { position: relative; }
+    .btn-ver-todos {
+      display: none;
+      position: absolute;
+      top: 12px; left: 12px;
+      z-index: 1000;
+      background: white;
+      border: 1.5px solid var(--navy);
+      border-radius: 100px;
+      padding: 7px 16px;
+      font-size: 12px; font-weight: 600;
+      color: var(--navy);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+      transition: all 0.2s;
+    }
+    .btn-ver-todos.visible { display: block; }
+    .btn-ver-todos:hover { background: var(--navy); color: white; }
+
+    /* Caja de precio base (cuando SÍ hay precio calculado por n8n) */
+    .precio-base-box   { background: #f0f4ff; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+    .precio-base-label { font-size: 10px; color: #5a6280; margin-bottom: 2px; }
+    .precio-base-value { font-size: 18px; font-weight: 600; color: var(--navy); }
+    .precio-base-sub   { font-size: 10px; color: #9aa0b8; margin-top: 1px; }
+
+    /* Botones de acción cuando hay precio */
+    .btn-aceptar { padding: 8px 14px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: "DM Sans", sans-serif; transition: all 0.2s; }
+    .btn-aceptar:hover { background: #00a87a; }
+    .btn-menor   { padding: 8px 14px; background: white; color: var(--navy); border: 1.5px solid var(--navy); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: "DM Sans", sans-serif; transition: all 0.2s; }
+    .btn-menor:hover { background: var(--navy); color: white; }
+
+    .loading-msg { text-align: center; padding: 3rem; color: var(--gray-400); font-size: 14px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       MAPA — necesita altura explícita o Leaflet no se renderiza
+    ═══════════════════════════════════════════════════════════ */
+    .mapa-calc-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 0 2rem 3rem; max-width: 1100px; margin: 0 auto; align-items: start; }
+    #map { height: 420px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
+    .calc-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 20px; padding: 1.5rem; }
+    .calc-row { margin-bottom: 1.25rem; }
+    .calc-label { font-size: 12px; font-weight: 500; color: var(--gray-600); display: block; margin-bottom: 8px; }
+    .calc-slider-wrap { display: flex; align-items: center; gap: 12px; }
+    .calc-slider-wrap input[type=range] { flex: 1; accent-color: var(--navy); }
+    .calc-val { font-size: 13px; font-weight: 600; color: var(--navy); min-width: 80px; text-align: right; }
+    .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.25rem 0; }
+    .calc-result-card { background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 0.75rem; text-align: center; }
+    .calc-result-card.main { border-color: var(--cyan); background: var(--cyan-light); }
+    .calc-result-label { font-size: 11px; color: var(--gray-400); margin-bottom: 4px; }
+    .calc-result-val { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .calc-result-card.main .calc-result-val { font-size: 17px; }
+    .calc-rango { margin-bottom: 1rem; }
+    .calc-rango-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
+    .calc-rango-label span { font-weight: 600; color: var(--navy); }
+    .calc-bar-track { height: 6px; background: var(--gray-100); border-radius: 3px; margin-bottom: 4px; }
+    .calc-bar-fill { height: 6px; border-radius: 3px; background: var(--cyan); transition: width 0.2s; }
+    .calc-bar-extremos { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-400); }
+    .calc-nota { font-size: 10px; color: var(--gray-400); line-height: 1.5; margin-bottom: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
+    .calc-cta { display: block; text-align: center; background: var(--navy); color: white; border-radius: 100px; padding: 10px 20px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+    .calc-cta:hover { background: var(--navy-dark); }
+    @media (max-width: 768px) { .mapa-calc-section { grid-template-columns: 1fr; } #map { height: 280px; } }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECCIÓN CÓMO FUNCIONA — TABS
+       Los tabs cambian entre "Para empresas" y "Para transportadores"
+    ═══════════════════════════════════════════════════════════ */
+    .como-section  { background: var(--gray-50); padding: 4rem 2rem; }
+    .como-inner    { max-width: 900px; margin: 0 auto; }
+    .como-tabs     { display: flex; gap: 8px; margin-bottom: 2rem; }
+    .como-tab      { padding: 8px 20px; border-radius: 100px; border: 1.5px solid var(--gray-100); background: white; color: var(--gray-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .como-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .como-steps    { display: none; }
+    .como-steps.active { display: flex; flex-direction: column; gap: 16px; }
+
+    .step          { display: flex; gap: 16px; align-items: flex-start; background: white; border-radius: 16px; padding: 1.25rem; border: 1px solid var(--gray-100); }
+    .step-num      { width: 32px; height: 32px; border-radius: 50%; background: var(--cyan-light); color: var(--navy); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-title    { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+    .step-desc     { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECCIÓN DE TRANSPORTADORES
+    ═══════════════════════════════════════════════════════════ */
+    .transportadores { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .trans-logos     { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
+    .trans-logo      { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--gray-600); }
+
+    /* ═══════════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════════ */
+    footer      { background: var(--navy-dark); padding: 2rem; text-align: center; }
+    .footer-logo { font-size: 18px; font-weight: 600; color: white; letter-spacing: -0.5px; }
+    .footer-logo span { color: var(--cyan); }
+    .footer-sub  { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOAST — Mensaje temporal de confirmación
+       Aparece en la esquina inferior derecha por 2.5 segundos.
+    ═══════════════════════════════════════════════════════════ */
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--navy); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 999; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE — Ajustes para pantallas pequeñas (<640px)
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .bifurcacion { grid-template-columns: 1fr; }   /* Una columna en móvil */
+      .stats       { grid-template-columns: 1fr; }
+      .stat        { border-right: none; border-bottom: 1px solid var(--gray-100); }
+      .viajes-grid { grid-template-columns: 1fr; }
+      nav          { padding: 0 1rem; }
+      .hero        { padding: 3rem 1rem 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ESTRUCTURA HTML
+       El orden importa: nav → hero → secciones → footer
+  ═══════════════════════════════════════════════════════════ -->
+
+  <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+  <nav>
+    <div class="nav-logo">
+      <div class="logo-main">CARGA<span>CHAT</span></div>
+      <div class="logo-sub">by Logxie Connect · Logística Inteligente</div>
+    </div>
+    <div class="nav-links">
+      <!-- Los botones muestran un toast mientras no existe login real -->
+      <button class="btn-outline" onclick="showToast('Próximamente disponible')">Ingresar</button>
+      <button class="btn-solid"   onclick="showToast('Registro próximamente')">Registrarse</button>
+    </div>
+  </nav>
+
+  <!-- HERO: primera sección visible al entrar -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">MARKETPLACE DE CARGA · COLOMBIA</div>
+      <h1>Mueve tu carga al precio<br><span>justo</span>, en tiempo real</h1>
+      <p class="hero-sub">Conectamos empresas con transportadores en todo el país. Sin WhatsApp, sin Excel. Solo eficiencia.</p>
+
+      <!-- BIFURCACIÓN: empresa (izquierda) vs transportador (derecha) -->
+      <div class="bifurcacion">
+        <div class="bif-card bif-empresa">
+          <div class="bif-icon bif-icon-e">🏭</div>
+          <div class="bif-title">Soy empresa</div>
+          <p class="bif-desc">Necesito mover carga y quiero el mejor precio del mercado</p>
+          <!-- WhatsApp de Bernardo con mensaje pre-escrito -->
+          <button class="bif-btn bif-btn-e" onclick="window.open('https://wa.me/573214401975?text=Hola%20Bernardo%2C%20quiero%20inscribir%20mi%20empresa%20en%20CARGACHAT','_blank')">Publicar carga →</button>
+        </div>
+        <div class="bif-card bif-conductor">
+          <div class="bif-icon bif-icon-c">🚛</div>
+          <div class="bif-title" style="color:var(--cyan)">Soy transportador</div>
+          <p class="bif-desc" style="color:rgba(255,255,255,0.6)">Tengo vehículo y quiero más viajes disponibles</p>
+          <!-- Scroll suave hasta la sección de viajes -->
+          <button class="bif-btn bif-btn-c" onclick="document.getElementById('viajes').scrollIntoView({behavior:'smooth'})">Ver viajes disponibles →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CUPÓN DE DESCUENTO PARA EMPRESAS NUEVAS -->
+  <div class="coupon-wrap">
+    <div class="coupon">
+      <span style="font-size:24px">🎁</span>
+      <div class="coupon-text">
+        <div class="coupon-title">20% de descuento en tu primer servicio</div>
+        <div class="coupon-sub">Para empresas nuevas · válido por 30 días</div>
+      </div>
+      <!-- Al hacer clic copia el código al portapapeles -->
+      <div class="coupon-code" onclick="copiarCodigo(this)">LOGXIE20</div>
+    </div>
+  </div>
+
+  <!-- ESTADÍSTICAS DE LA PLATAFORMA -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val">2.000+</div><div class="stat-lbl">viajes gestionados</div></div>
+    <div class="stat"><div class="stat-val">9.9M kg</div><div class="stat-lbl">carga transportada</div></div>
+    <div class="stat"><div class="stat-val">4PL/5PL</div><div class="stat-lbl">modelo de gestión</div></div>
+  </div>
+
+  <!-- SECCIÓN DE VIAJES DISPONIBLES (se llena dinámicamente con JS) -->
+  <div class="section" id="viajes">
+    <div class="section-hdr">
+      <h2>Viajes disponibles ahora</h2>
+      <p id="viajes-subtitle">Cargando viajes en tiempo real...</p>
+    </div>
+    <!-- Este div se llena con las tarjetas de viaje por renderViajes() -->
+    <div class="viajes-grid" id="viajes-grid">
+      <div class="loading-msg">Cargando viajes disponibles...</div>
+    </div>
+  </div>
+
+  <!-- MAPA + CALCULADORA LADO A LADO -->
+  <div class="mapa-calc-section">
+
+    <!-- MAPA -->
+    <div class="mapa-col">
+      <div class="section-hdr">
+        <h2>Rutas activas en Colombia</h2>
+        <p>Viajes disponibles hoy en todo el país</p>
+      </div>
+      <div class="mapa-wrap">
+        <div id="map"></div>
+        <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
+      </div>
+    </div>
+
+    <!-- CALCULADORA DE FLETE -->
+    <div class="calc-col">
+      <div class="section-hdr">
+        <h2>Estimador de flete</h2>
+        <p>Basado en más de 1.000 viajes reales en Colombia</p>
+      </div>
+      <div class="calc-card">
+
+        <div class="calc-row">
+          <label class="calc-label">Distancia</label>
+          <div class="calc-slider-wrap">
+            <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
+            <span class="calc-val" id="cc-km-out">400 km</span>
+          </div>
+        </div>
+
+        <div class="calc-row">
+          <label class="calc-label">Peso de la carga</label>
+          <div class="calc-slider-wrap">
+            <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
+            <span class="calc-val" id="cc-kg-out">5.000 kg</span>
+          </div>
+        </div>
+
+        <div class="calc-results">
+          <div class="calc-result-card">
+            <div class="calc-result-label">Piso (−15%)</div>
+            <div class="calc-result-val" id="cc-piso">—</div>
+          </div>
+          <div class="calc-result-card main">
+            <div class="calc-result-label">Precio base</div>
+            <div class="calc-result-val" id="cc-base">—</div>
+          </div>
+          <div class="calc-result-card">
+            <div class="calc-result-label">Techo (+15%)</div>
+            <div class="calc-result-val" id="cc-techo">—</div>
+          </div>
+        </div>
+
+        <div class="calc-rango">
+          <div class="calc-rango-label">Rango histórico — <span id="cc-zona-badge">—</span></div>
+          <div class="calc-bar-track"><div class="calc-bar-fill" id="cc-bar"></div></div>
+          <div class="calc-bar-extremos">
+            <span id="cc-hist-min">—</span>
+            <span style="color:var(--gray-400);font-size:11px">mediana histórica</span>
+            <span id="cc-hist-max">—</span>
+          </div>
+        </div>
+
+        <div class="calc-nota">
+          Fórmula: Logxie Connect · Fuente: viajes Colombia 2025–2026
+        </div>
+
+        <a href="https://wa.me/573214401975?text=Quiero%20cotizar%20mi%20carga" target="_blank" class="calc-cta">
+          Cotizar mi carga →
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN CÓMO FUNCIONA — TABS -->
+  <div class="como-section">
+    <div class="como-inner">
+      <div class="section-hdr"><h2>¿Cómo funciona?</h2></div>
+
+      <!-- Tabs: al hacer clic llaman a cambiarTab() -->
+      <div class="como-tabs">
+        <button class="como-tab active" onclick="cambiarTab('empresa', this)">Para empresas</button>
+        <button class="como-tab"        onclick="cambiarTab('conductor', this)">Para transportadores</button>
+      </div>
+
+      <!-- Pasos para empresas (visible por defecto) -->
+      <div class="como-steps active" id="steps-empresa">
+        <div class="step"><div class="step-num">1</div><div>
+          <div class="step-title">Publica tu carga</div>
+          <div class="step-desc">Origen, destino, peso y fecha. En minutos tu carga llega a toda la red de transportadores.</div>
+        </div></div>
+        <div class="step"><div class="step-num">2</div><div>
+          <div class="step-title">Transportadores compiten en subasta inversa</div>
+          <div class="step-desc">Cada transportador oferta su mejor precio sin ver las ofertas de los demás. Competencia real.</div>
+        </div></div>
+        <div class="step"><div class="step-num">3</div><div>
+          <div class="step-title">Tú eliges, nosotros coordinamos</div>
+          <div class="step-desc">Asignas al ganador y CARGACHAT gestiona el viaje completo de principio a fin.</div>
+        </div></div>
+      </div>
+
+      <!-- Pasos para transportadores (oculto por defecto) -->
+      <div class="como-steps" id="steps-conductor">
+        <div class="step"><div class="step-num">1</div><div>
+          <div class="step-title">Ve la carga disponible</div>
+          <div class="step-desc">Ruta, peso, fecha y precio objetivo en una sola pantalla. Sin llamadas, sin WhatsApp.</div>
+        </div></div>
+        <div class="step"><div class="step-num">2</div><div>
+          <div class="step-title">Haz tu oferta</div>
+          <div class="step-desc">Acepta el precio objetivo o propone el tuyo. Tan fácil como usar WhatsApp.</div>
+        </div></div>
+        <div class="step"><div class="step-num">3</div><div>
+          <div class="step-title">Recibe la confirmación</div>
+          <div class="step-desc">Si eres seleccionado, tienes todo listo para arrancar — documentos, contactos y ruta.</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSPORTADORES ALIADOS -->
+  <div class="transportadores">
+    <div class="section-hdr">
+      <h2>Operamos con</h2>
+      <p>Transportadores verificados en nuestra red</p>
+    </div>
+    <div class="trans-logos">
+      <span class="trans-logo">Entrapetrol</span>
+      <span class="trans-logo">Trans Nueva Colombia</span>
+      <span class="trans-logo">JR Logística</span>
+      <span class="trans-logo">Global Logística</span>
+      <span class="trans-logo">Vigía</span>
+      <span class="trans-logo">Trasamer</span>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">CARGA<span>CHAT</span></div>
+    <div class="footer-sub">by Logxie Connect S.A.S. · Logística Inteligente · Colombia</div>
+  </footer>
+
+  <!-- Toast de notificaciones (mensajes temporales) -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Leaflet JS — debe cargarse al final del body -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ================================================================
+    // CONFIGURACIÓN GLOBAL
+    // ================================================================
+
+    // URL del CSV público de Google Sheets (pestaña VIAJES_LANDING).
+    // Google Sheets permite publicar una hoja como CSV para que cualquiera la lea.
+    // Para actualizar: Archivo → Compartir → Publicar en la web → CSV
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
+
+    // Google Maps API Key para geocoding de ciudades desconocidas
+    const GMAPS_KEY = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
+
+    // URL del Google Forms donde los transportadores hacen sus ofertas
+    const FORMS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfKm5Gev8CQdJliOvideqsAi6ye-2UogKncV_3DfxpKgPwLDQ/viewform';
+
+    // IDs de los campos del form para pre-llenado.
+    // Para obtenerlos: abre el form → Ver código fuente → busca atributos "entry.XXXXXXXX"
+    const FORM_FIELDS = {
+      origen:  '',  // ej. 'entry.123456789'
+      destino: '',
+      peso:    '',
+      precio:  '',  // precio sugerido o a ofertar
+      accion:  '',  // 'Aceptar precio' o 'Hacer oferta'
+    };
+
+    // Abre el form pre-llenado con los datos del viaje.
+    // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
+    function abrirForm(idx, accion) {
+      const v = viajesData[idx];
+      const precioBase = parseFloat(v.precio_base || '0') || 0;
+      const params = new URLSearchParams();
+      if (FORM_FIELDS.origen  && v.origen)   params.set(FORM_FIELDS.origen,  v.origen);
+      if (FORM_FIELDS.destino && v.destino)  params.set(FORM_FIELDS.destino, v.destino);
+      if (FORM_FIELDS.peso    && v.peso_kg)  params.set(FORM_FIELDS.peso,    v.peso_kg);
+      if (FORM_FIELDS.precio  && accion === 'aceptar' && precioBase)
+        params.set(FORM_FIELDS.precio, precioBase);
+      if (FORM_FIELDS.accion)
+        params.set(FORM_FIELDS.accion, accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta');
+      window.open(params.toString() ? `${FORMS_URL}?${params}` : FORMS_URL, '_blank');
+    }
+
+    // ================================================================
+    // DICCIONARIO DE CIUDADES
+    // ================================================================
+    // Coordenadas [latitud, longitud] organizadas por región.
+    // Cuando una ciudad no está aquí, se consulta Google Geocoding API.
+    // Para agregar: busca las coordenadas en Google Maps (clic derecho → ¿Qué hay aquí?)
+    const CIUDADES = {
+      // ── Bodegas principales Logxie / Avgust ──
+      'funza':   [4.7132, -74.1966],
+      'yumbo':   [3.5928, -76.4944],
+      'espinal': [4.1544, -74.8864],
+
+      // ── Ciudades principales ──
+      'bogota':        [4.7110, -74.0721],
+      'bogotá':        [4.7110, -74.0721],
+      'cali':          [3.4516, -76.5319],
+      'medellin':      [6.2442, -75.5812],
+      'medellín':      [6.2442, -75.5812],
+      'barranquilla':  [10.9685, -74.7813],
+      'cartagena':     [10.3910, -75.4794],
+      'cucuta':        [7.8939, -72.5078],
+      'cúcuta':        [7.8939, -72.5078],
+      'bucaramanga':   [7.1253, -73.1198],
+      'santa marta':   [11.2408, -74.2110],
+      'monteria':      [8.7575, -75.8906],
+      'montería':      [8.7575, -75.8906],
+      'valledupar':    [10.4631, -73.2532],
+      'riohacha':      [11.5444, -72.9072],
+      'sincelejo':     [9.3047, -75.3978],
+      'neiva':         [2.9273, -75.2820],
+      'ibague':        [4.4389, -75.2322],
+      'ibagué':        [4.4389, -75.2322],
+      'villavicencio': [4.1420, -73.6266],
+      'aguachica':     [8.3081, -73.6189],
+
+      // ── Eje Cafetero ──
+      'manizales':    [5.0703, -75.5138],
+      'pereira':      [4.8087, -75.6906],
+      'armenia':      [4.5339, -75.6811],
+      'cartago':      [4.7454, -75.9120],
+      'la virginia':  [4.9000, -75.8833],
+      'dosquebradas': [4.8378, -75.6742],
+
+      // ── Boyacá (zona frecuente de Avgust) ──
+      'tunja':        [5.5353, -73.3678],
+      'duitama':      [5.8281, -73.0297],
+      'sogamoso':     [5.7150, -72.9267],
+      'paipa':        [5.7833, -73.1167],
+      'chiquinquira': [5.6167, -73.8167],
+      'chiquinquirá': [5.6167, -73.8167],
+      'buenavista':   [5.7167, -73.9667],
+      'ventaquemada': [5.4167, -73.5167],
+      'sachica':      [5.6667, -73.6833],
+      'jenesano':     [5.3833, -73.4167],
+      'jenessano':    [5.3833, -73.4167],
+      'tuta':         [5.6667, -73.2000],
+      'toca':         [5.5667, -73.1667],
+      'tibana':       [5.3167, -73.3833],
+      'tibaná':       [5.3167, -73.3833],
+      'arcabuco':     [5.7667, -73.4333],
+      'macheta':      [5.0333, -73.8333],
+      'umbita':       [5.3000, -73.5167],
+      'aquitania':    [5.5167, -72.8833],
+      'saboya':       [5.7000, -73.7667],
+      'samaca':       [5.4833, -73.4833],
+      'samacá':       [5.4833, -73.4833],
+      'sutamarchan':  [5.6333, -73.7833],
+
+      // ── Cundinamarca ──
+      'tenjo':        [4.8714, -74.1436],
+      'zipaquira':    [5.0228, -74.0061],
+      'zipaquirá':    [5.0228, -74.0061],
+      'facatativa':   [4.8142, -74.3597],
+      'facatativá':   [4.8142, -74.3597],
+      'mosquera':     [4.7066, -74.2303],
+      'madrid':       [4.7339, -74.2644],
+      'soacha':       [4.5797, -74.2167],
+      'chia':         [4.8614, -73.9314],
+      'chía':         [4.8614, -73.9314],
+      'cajica':       [4.9186, -74.0028],
+      'cajicá':       [4.9186, -74.0028],
+      'tocancipa':    [4.9678, -73.9139],
+      'tocancipá':    [4.9678, -73.9139],
+      'gachancipa':   [4.9969, -73.8717],
+
+      // ── Santander ──
+      'barrancabermeja': [7.0653, -73.8546],
+      'giron':           [7.0725, -73.1686],
+      'girón':           [7.0725, -73.1686],
+      'floridablanca':   [7.0639, -73.0880],
+      'piedecuesta':     [6.9868, -73.0522],
+      'lebrija':         [7.1167, -73.2167],
+      'san gil':         [6.5567, -73.1356],
+      'socorro':         [6.5133, -73.2642],
+      'velez':           [6.0125, -73.6778],
+      'vélez':           [6.0125, -73.6778],
+      'barbosa':         [5.9364, -73.6189],
+
+      // ── Llanos Orientales ──
+      'yopal':           [5.3378, -72.3952],
+      'arauca':          [7.0897, -70.7617],
+      'acacias':         [3.9894, -73.7597],
+      'granada':         [3.5461, -73.7229],
+      'aguazul':         [5.1739, -72.5506],
+      'puerto lopez':    [4.0847, -72.9583],
+      'restrepo':        [4.2572, -73.5703],
+      'cumaral':         [4.2708, -73.4864],
+
+      // ── Sur (Cauca, Nariño, Putumayo) ──
+      'pasto':           [1.2136, -77.2811],
+      'popayan':         [2.4448, -76.6147],
+      'popayán':         [2.4448, -76.6147],
+      'mocoa':           [1.1520, -76.6481],
+      'florencia':       [1.6144, -75.6062],
+      'el tigre':        [0.3500, -75.1833],
+      'puerto asis':     [0.5000, -76.5000],
+      'puerto asís':     [0.5000, -76.5000],
+      'orito':           [0.6667, -76.8667],
+      'la hormiga':      [0.0833, -76.9000],
+      'sibundoy':        [1.2000, -76.9167],
+      'villagarzon':     [1.0333, -76.6167],
+      'villagarzón':     [1.0333, -76.6167],
+
+      // ── Capitales departamentales adicionales ──
+      'leticia':         [-4.2153, -69.9401],
+      'mitu':            [1.2531, -70.2333],
+      'puerto inirida':  [3.8653, -67.9239],
+      'san jose del guaviare': [2.5694, -72.6416],
+      'quibdo':          [5.6919, -76.6583],
+      'quibdó':          [5.6919, -76.6583],
+      'puerto carreno':  [6.1893, -67.4841],
+    };
+
+    // Caché de geocoding para no repetir llamadas a la API
+    const geocodeCache = {};
+
+    // ================================================================
+    // FUNCIONES DE UTILIDAD
+    // ================================================================
+
+    /**
+     * Busca coordenadas en el diccionario local.
+     * Normaliza para manejar tildes y mayúsculas.
+     */
+    function getCoordenadas(ciudad) {
+      if (!ciudad) return null;
+      const key = ciudad
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')  // Eliminar tildes
+        .trim();
+
+      for (const [nombre, coords] of Object.entries(CIUDADES)) {
+        const nombreNorm = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (nombreNorm === key || key.includes(nombreNorm) || nombreNorm.includes(key)) {
+          return coords;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Consulta Google Geocoding API para ciudades no encontradas localmente.
+     * Usa caché para no repetir la misma consulta dos veces.
+     */
+    async function geocodeCiudad(ciudad) {
+      if (!ciudad) return null;
+      const key = ciudad.toLowerCase().trim();
+
+      // Si ya consultamos esta ciudad antes, devolvemos el resultado cacheado
+      if (geocodeCache[key]) return geocodeCache[key];
+
+      try {
+        const query = encodeURIComponent(ciudad + ', Colombia');
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.results && data.results.length > 0) {
+          const loc = data.results[0].geometry.location;
+          const coords = [loc.lat, loc.lng];
+          geocodeCache[key] = coords; // Guardar en caché
+          return coords;
+        }
+      } catch (e) {
+        console.warn('Geocoding falló para:', ciudad);
+      }
+      return null;
+    }
+
+    /**
+     * Obtiene coordenadas: primero local (gratis y rápido),
+     * luego Google (costo por llamada).
+     */
+    async function getCoords(ciudad) {
+      return getCoordenadas(ciudad) || await geocodeCiudad(ciudad);
+    }
+
+    /**
+     * Formatea peso: 1219 → "1.2 ton", 800 → "800 kg"
+     */
+    function formatPeso(kg) {
+      const n = parseFloat(kg);
+      if (isNaN(n) || n === 0) return '—';
+      return n >= 1000
+        ? `${(n / 1000).toFixed(1)} ton`
+        : `${Math.round(n)} kg`;
+    }
+
+    /**
+     * Formatea número como moneda colombiana.
+     * 1200000 → "$1.200.000"
+     */
+    function formatCOP(valor) {
+      if (!valor || valor === 0) return 'A convenir';
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0
+      }).format(valor);
+    }
+
+    /**
+     * Formatea precio compacto para el pin del mapa: 1200000 → "$1.2M", 800000 → "$800K"
+     */
+    function formatPrecioCorto(precio) {
+      const n = parseFloat(precio);
+      if (!n || n === 0) return null;
+      if (n >= 1000000) {
+        const m = n / 1000000;
+        return '$' + (Number.isInteger(m) ? m : m.toFixed(1)) + 'M';
+      }
+      return '$' + Math.round(n / 1000) + 'K';
+    }
+
+    /**
+     * Crea el divIcon de Leaflet con el pin de precio estilo Airbnb.
+     * activo=true → fondo navy (seleccionado), activo=false → fondo blanco
+     */
+    function crearIconoOrigen(precioCorto, origen, activo, idx = -1) {
+      const texto = `${origen} · ${precioCorto || 'A convenir'}`;
+      const click = idx >= 0 ? `event.stopPropagation(); seleccionarViaje(${idx});` : '';
+      const colorCirculo = activo ? '#1B2A6B' : '#00BFDF';
+      return L.divIcon({
+        html: `<div style="position:relative;width:0;height:0;">
+          <div class="precio-pin${activo ? ' activo' : ''}" onclick="${click}">${texto}</div>
+          <div style="position:absolute;width:14px;height:14px;border-radius:50%;background:${colorCirculo};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);transform:translate(-50%,-50%);pointer-events:none;"></div>
+        </div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+        className: ''
+      });
+    }
+
+    // ================================================================
+    // PARSEAR CSV
+    // ================================================================
+    /**
+     * Convierte el texto CSV de Google Sheets en un array de objetos.
+     *
+     * El CSV tiene esta estructura:
+     * ORIGEN,DESTINO,FECHA_CARGUE,...
+     * Funza,Cúcuta,31/03/2026,...
+     *
+     * Devuelve: [{ origen: 'Funza', destino: 'Cúcuta', ... }]
+     *
+     * El parser maneja campos vacíos (doble coma: ,,) y campos entre comillas.
+     * Esto es importante porque el campo OTRO puede estar vacío.
+     */
+    function parseCSV(text) {
+      const lineas = text.trim().split('\n');
+      if (lineas.length < 2) return []; // Sin datos
+
+      // Primera línea = headers (en minúsculas para facilitar el acceso)
+      const headers = lineas[0]
+        .split(',')
+        .map(h => h.trim().replace(/"/g, '').toLowerCase());
+
+      // Resto de líneas = datos
+      return lineas.slice(1).map(linea => {
+        // Parser carácter por carácter para manejar comas dentro de comillas
+        const valores = [];
+        let valorActual = '';
+        let dentroDeComillas = false;
+
+        for (let i = 0; i < linea.length; i++) {
+          const caracter = linea[i];
+          if (caracter === '"') {
+            dentroDeComillas = !dentroDeComillas;
+          } else if (caracter === ',' && !dentroDeComillas) {
+            valores.push(valorActual.trim());
+            valorActual = '';
+          } else {
+            valorActual += caracter;
+          }
+        }
+        valores.push(valorActual.trim()); // Último valor
+
+        // Crear objeto mapeando header[i] → valor[i]
+        const objeto = {};
+        headers.forEach((header, i) => {
+          objeto[header] = (valores[i] || '').replace(/"/g, '').trim();
+        });
+        return objeto;
+      });
+    }
+
+    // ================================================================
+    // RENDERIZAR TARJETAS DE VIAJE
+    // ================================================================
+    /**
+     * Recibe el array de viajes (desde el CSV) y genera las tarjetas HTML.
+     *
+     * Lógica importante:
+     * - Agrupa por RT_TOTAL para que un viaje con múltiples RMs
+     *   aparezca como UNA sola tarjeta (no duplicados)
+     * - Si hay precio_base → muestra "Aceptar →" y "Hacer oferta"
+     * - Si no hay precio → muestra "A convenir" con botón "Ofertar →"
+     * - Los primeros 2 viajes se marcan como "🔥 Nuevo"
+     */
+    function renderViajes(viajes) {
+      const grid     = document.getElementById('viajes-grid');
+      const subtitle = document.getElementById('viajes-subtitle');
+
+      if (!viajes.length) {
+        grid.innerHTML = '<div class="loading-msg">No hay viajes disponibles en este momento. Vuelve pronto.</div>';
+        subtitle.textContent = 'Actualizado en tiempo real desde nuestra red';
+        return;
+      }
+
+      subtitle.textContent = `${viajes.length} viaje${viajes.length !== 1 ? 's' : ''} disponible${viajes.length !== 1 ? 's' : ''} ahora mismo`;
+
+      // ── Generar HTML de cada tarjeta ─────────────────────────
+      grid.innerHTML = viajes.map((v, idx) => {
+
+        // Datos básicos del viaje
+        const origen    = v.origen     || '';
+        const destino   = v.destino    || '';
+        const peso      = v.peso_kg    || '0';
+        const fecha     = v.fecha_cargue || '';
+        const tipo      = v.tipo_mercancia || 'General';
+        const precioBase = parseFloat(v.precio_base || '0') || 0;
+        const kmReales  = v.km      || '';
+        const minutos   = v.minutos || '';
+        const esNuevo   = idx < 2; // Los 2 primeros son "Nuevo"
+
+        // Conteo de unidades por tipo
+        const contenedores = parseInt(v.contenedores       || '0');
+        const cajas        = parseInt(v.cajas              || '0');
+        const bidones      = parseInt(v.bidones            || '0');
+        const canecas      = parseInt(v.canecas            || '0');
+        const uSueltas     = parseInt(v.unidades_sueltas   || '0');
+
+        // Construir texto de unidades (solo los que tienen valor)
+        const unidades = [];
+        if (contenedores > 0) unidades.push(`${contenedores} contenedores`);
+        if (cajas        > 0) unidades.push(`${cajas} cajas`);
+        if (bidones      > 0) unidades.push(`${bidones} bidones`);
+        if (canecas      > 0) unidades.push(`${canecas} canecas`);
+        if (uSueltas     > 0) unidades.push(`${uSueltas} uds sueltas`);
+        const unidadesTexto = unidades.join(', ') || 'Ver detalle';
+
+        // Procesar destinos múltiples
+        const destinos      = destino.split(',').map(d => d.trim()).filter(Boolean);
+        const destinoResumen = destinos.length > 1
+          ? `${destinos[0]} +${destinos.length - 1} destinos`
+          : destino;
+        const destinoDetalle = destinos.length > 1
+          ? destinos.join(' · ')
+          : '';
+
+        // HTML de la tarjeta
+        return `
+          <div class="viaje-card" onclick="seleccionarViaje(${idx})">
+
+            <!-- Ruta + badge de estado -->
+            <div class="viaje-header">
+              <div>
+                <div class="viaje-ruta">${origen} → ${destinoResumen}</div>
+                ${destinoDetalle ? `<div style="font-size:11px;color:#9aa0b8;margin-top:2px;">${destinoDetalle}</div>` : ''}
+              </div>
+              <span class="viaje-badge ${esNuevo ? 'badge-nuevo' : 'badge-disponible'}">
+                ${esNuevo ? '🔥 Nuevo' : '✓ Disponible'}
+              </span>
+            </div>
+
+            <!-- Metadatos del viaje (2x2 grid) -->
+            <div class="viaje-meta">
+              <div class="meta-item"><div class="meta-label">Peso total</div><div class="meta-value">${formatPeso(peso)}</div></div>
+              <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${fecha || 'Por confirmar'}</div></div>
+              <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${tipo}</div></div>
+              <div class="meta-item"><div class="meta-label">Unidades</div><div class="meta-value">${unidadesTexto}</div></div>
+            </div>
+
+            <!-- Precio y botones de acción -->
+            ${precioBase > 0 ? `
+              <!-- CON PRECIO: muestra precio base calculado por n8n + Distance Matrix API -->
+              <div class="precio-base-box">
+                <div class="precio-base-label">
+                  Precio base
+                  ${kmReales ? ` · ${kmReales} km` : ''}
+                  ${minutos  ? ` · ${minutos}`     : ''}
+                </div>
+                <div class="precio-base-value">${formatCOP(precioBase)}</div>
+                <div class="precio-base-sub">Acepta este precio o haz una oferta</div>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn-aceptar" onclick="event.stopPropagation(); abrirForm(${idx}, 'aceptar')">Aceptar →</button>
+                <button class="btn-menor"   onclick="event.stopPropagation(); abrirForm(${idx}, 'oferta')">Hacer oferta</button>
+              </div>
+            ` : `
+              <!-- SIN PRECIO: viajes anteriores al sistema de cálculo automático -->
+              <div class="viaje-footer">
+                <div>
+                  <div class="precio-label">Precio subasta</div>
+                  <div class="precio-value">A convenir</div>
+                </div>
+                <button class="btn-ofertar" onclick="event.stopPropagation(); abrirForm(${idx}, 'oferta')">Ofertar →</button>
+              </div>
+            `}
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ================================================================
+    // MAPA CON RUTAS ACTIVAS
+    // ================================================================
+    /**
+     * Inicializa el mapa de Leaflet y dibuja las rutas de todos los viajes.
+     *
+     * Para cada viaje:
+     * 1. Obtiene coordenadas del origen (cyan)
+     * 2. Obtiene coordenadas de cada destino (navy con número)
+     * 3. Traza una línea punteada entre todos los puntos
+     * 4. Agrega popups con información al hacer clic
+     *
+     * Al final: fitBounds() hace zoom para ver todas las rutas.
+     */
+    let mapaLeaflet;        // instancia del mapa Leaflet
+    let viajesData = [];    // array de viajes deduplicados (compartido entre tarjetas y mapa)
+    let mapaCapas = [];     // [{grupo, bounds, originMarker, precioCorto, origen}] por índice
+    let viajeSeleccionado = -1; // índice del viaje activo (-1 = todos visibles)
+
+    async function initMapa(viajes) {
+      mapaLeaflet = L.map('map', { zoomControl: true })
+        .setView([4.5709, -74.2973], 6);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CARTO',
+        subdomains: 'abcd',
+        maxZoom: 18
+      }).addTo(mapaLeaflet);
+
+      mapaCapas = [];
+      const todosLosPuntos = [];
+
+      for (let viajeIdx = 0; viajeIdx < viajes.length; viajeIdx++) {
+        const v = viajes[viajeIdx];
+        const origen      = v.origen || '';
+        const destinos    = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+        const precioBase  = parseFloat(v.precio_base || '0') || 0;
+        const precioCorto = formatPrecioCorto(precioBase);
+
+        const grupo      = L.layerGroup();
+        const bounds     = [];
+        const puntosRuta = [];
+        let originMarker = null;
+
+        // ── Pin de ORIGEN — precio estilo Airbnb ──────────────
+        const coordOrigen = await getCoords(origen);
+        if (coordOrigen) {
+          todosLosPuntos.push(coordOrigen);
+          bounds.push(coordOrigen);
+          puntosRuta.push(coordOrigen);
+
+          originMarker = L.marker(coordOrigen, {
+            icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
+          }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
+
+          grupo.addLayer(originMarker);
+        }
+
+        // ── Pins de DESTINOS (puntos navy con número) ──────────
+        const destinosConCoord = await Promise.all(
+          destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
+        );
+
+        const destinosOrdenados = destinosConCoord
+          .filter(d => d.coord !== null)
+          .sort((a, b) => a.coord[0] - b.coord[0]);
+
+        destinosOrdenados.forEach((dest, i) => {
+          todosLosPuntos.push(dest.coord);
+          bounds.push(dest.coord);
+          puntosRuta.push(dest.coord);
+
+          const numParada = destinosOrdenados.length > 1 ? `${i + 1}` : '';
+
+          const iconDest = L.divIcon({
+            html: `<div style="position:relative">
+              <div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+              ${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}
+            </div>`,
+            iconSize: [12, 12], iconAnchor: [6, 6], className: ''
+          });
+
+          grupo.addLayer(
+            L.marker(dest.coord, { icon: iconDest })
+              .bindPopup(`<b style="color:#1B2A6B">Parada${numParada ? ' ' + numParada : ''}:</b> ${dest.nombre}`)
+          );
+        });
+
+        // ── Línea de ruta punteada ────────────────────────────
+        if (puntosRuta.length > 1) {
+          grupo.addLayer(L.polyline(puntosRuta, {
+            color: '#1B2A6B', weight: 2.5, opacity: 0.6, dashArray: '6 4'
+          }));
+        }
+
+        grupo.addTo(mapaLeaflet);
+        mapaCapas.push({ grupo, bounds, originMarker, precioCorto, origen });
+      }
+
+      // ── Zoom para ver todas las rutas ─────────────────────────
+      if (todosLosPuntos.length > 1) {
+        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40] });
+      }
+
+      // ── Leyenda ───────────────────────────────────────────────
+      const leyenda = L.control({ position: 'bottomleft' });
+      leyenda.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.innerHTML = `
+          <div style="background:white;padding:8px 12px;border-radius:8px;border:1px solid #eef0f6;font-family:'DM Sans',sans-serif;font-size:11px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <div style="background:white;border:2px solid #1B2A6B;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;color:#1B2A6B;">$</div>
+              <span style="color:#5a6280">Origen · precio</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#1B2A6B;"></div>
+              <span style="color:#5a6280">Destino</span>
+            </div>
+          </div>`;
+        return div;
+      };
+      leyenda.addTo(mapaLeaflet);
+    }
+
+    // ================================================================
+    // CARGAR DATOS DESDE GOOGLE SHEETS
+    // ================================================================
+    /**
+     * Función principal que orquesta todo:
+     * 1. Descarga el CSV de Google Sheets
+     * 2. Lo parsea en objetos JavaScript
+     * 3. Renderiza las tarjetas
+     * 4. Inicializa el mapa
+     *
+     * Si algo falla, muestra datos de ejemplo para que la página
+     * no quede en blanco durante desarrollo o si Sheets no responde.
+     */
+    async function cargarViajes() {
+      try {
+        const respuesta = await fetch(CSV_URL);
+        if (!respuesta.ok) throw new Error('No se pudo cargar el CSV');
+
+        const texto  = await respuesta.text();
+        const viajes = parseCSV(texto);
+
+        // Deduplicar por RT_TOTAL (un viaje con múltiples RMs → una sola tarjeta)
+        const rtVistos = {};
+        viajesData = [];
+        viajes.forEach((v, i) => {
+          const rt = v.rt_total || `sin-rt-${i}`;
+          if (!rtVistos[rt]) { rtVistos[rt] = true; viajesData.push(v); }
+        });
+
+        renderViajes(viajesData);
+        await initMapa(viajesData);
+
+      } catch (error) {
+        console.warn('Error al cargar viajes:', error);
+
+        viajesData = [
+          { origen: 'Funza', destino: 'Cucuta, Bucaramanga, Aguachica', peso_kg: '1219', fecha_cargue: '31/03/2026', tipo_mercancia: 'Productos químicos', cajas: '40', precio_base: '1200000', km: '600', minutos: '10h 30min' },
+          { origen: 'Yumbo', destino: 'El Tigre, Pasto',                peso_kg: '2802', fecha_cargue: '06/04/2026', tipo_mercancia: 'Productos químicos', cajas: '150', precio_base: '0' },
+        ];
+
+        renderViajes(viajesData);
+        await initMapa(viajesData);
+      }
+    }
+
+    // ================================================================
+    // FUNCIONES DE UI (Interfaz de Usuario)
+    // ================================================================
+
+    /**
+     * Selecciona/deselecciona una tarjeta de viaje.
+     * Al seleccionar: resalta la tarjeta, oculta el resto en el mapa,
+     * activa el pin de precio y hace zoom a esa ruta.
+     * Al volver a hacer clic: restaura todo.
+     */
+    function seleccionarViaje(idx) {
+      const cards = document.querySelectorAll('.viaje-card');
+
+      if (viajeSeleccionado === idx) {
+        // Deseleccionar → mostrar todo
+        viajeSeleccionado = -1;
+        cards.forEach(c => c.classList.remove('selected'));
+        document.getElementById('btn-ver-todos').classList.remove('visible');
+        mapaCapas.forEach((capa, i) => {
+          if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
+          if (capa.originMarker) capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
+        });
+        const todos = mapaCapas.flatMap(c => c.bounds);
+        if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40] });
+        return;
+      }
+
+      // Seleccionar
+      viajeSeleccionado = idx;
+      cards.forEach((c, i) => c.classList.toggle('selected', i === idx));
+      document.getElementById('btn-ver-todos').classList.add('visible');
+
+      mapaCapas.forEach((capa, i) => {
+        if (i === idx) {
+          if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
+          if (capa.originMarker) capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, true, i));
+        } else {
+          mapaLeaflet.removeLayer(capa.grupo);
+        }
+      });
+
+      if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 0) {
+        mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60] });
+      }
+
+      // Actualizar calculadora con los valores del viaje seleccionado
+      const v = viajesData[idx];
+      const km = parseInt(v.km)      || 0;
+      const kg = parseInt(v.peso_kg) || 0;
+      if (km > 0) document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
+      if (kg > 0) document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
+      if (km > 0 || kg > 0) ccCalc();
+
+      // Scroll suave al mapa
+      document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /**
+     * Cambia entre los tabs "Para empresas" y "Para transportadores"
+     * en la sección "¿Cómo funciona?".
+     * @param {string} tab - 'empresa' o 'conductor'
+     * @param {HTMLElement} btn - El botón que se hizo clic
+     */
+    function cambiarTab(tab, btn) {
+      // Desactivar todos los tabs y secciones
+      document.querySelectorAll('.como-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.como-steps').forEach(s => s.classList.remove('active'));
+      // Activar el tab y sección seleccionados
+      btn.classList.add('active');
+      document.getElementById(`steps-${tab}`).classList.add('active');
+    }
+
+    /**
+     * Muestra un mensaje temporal en la esquina inferior derecha.
+     * Se usa para botones que aún no tienen funcionalidad real.
+     * @param {string} mensaje - Texto a mostrar
+     */
+    function showToast(mensaje) {
+      const toast = document.getElementById('toast');
+      toast.textContent = mensaje;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    /**
+     * Copia el código de cupón al portapapeles y muestra confirmación visual.
+     * @param {HTMLElement} el - El elemento del código cupón
+     */
+    function copiarCodigo(el) {
+      navigator.clipboard.writeText('LOGXIE20').then(() => {
+        const textoOriginal = el.textContent;
+        el.textContent = '¡Copiado!';
+        setTimeout(() => el.textContent = textoOriginal, 2000);
+      });
+    }
+
+    // ================================================================
+    // INICIO
+    // ================================================================
+    // Cargar los viajes cuando la página termine de cargar
+    cargarViajes();
+
+  </script>
+  <script>
+    // CALCULADORA DE FLETE — lógica idéntica al nodo n8n
+    const CC_RANGOS = [
+      { label:'< 100 km',    min:0,    max:100,  p25:350000,  p75:900000  },
+      { label:'100–300 km',  min:100,  max:300,  p25:750000,  p75:2000000 },
+      { label:'300–600 km',  min:300,  max:600,  p25:1100000, p75:2800000 },
+      { label:'600–1000 km', min:600,  max:1000, p25:1800000, p75:4200000 },
+      { label:'> 1000 km',   min:1000, max:9999, p25:2800000, p75:6500000 },
+    ];
+    function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
+    function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
+    function ccCalc() {
+      const km  = parseInt(document.getElementById('cc-km').value);
+      const kg  = parseInt(document.getElementById('cc-kg').value);
+      document.getElementById('cc-km-out').textContent  = km.toLocaleString('es-CO') + ' km';
+      document.getElementById('cc-kg-out').textContent  = kg.toLocaleString('es-CO') + ' kg';
+      const base   = 3016*km + 156*kg + 100469;
+      document.getElementById('cc-base').textContent   = ccFmt(base);
+      document.getElementById('cc-piso').textContent   = ccFmt(base * 0.85);
+      document.getElementById('cc-techo').textContent  = ccFmt(base * 1.15);
+      const r = ccRango(km);
+      document.getElementById('cc-zona-badge').textContent = r.label;
+      document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
+      document.getElementById('cc-hist-max').textContent   = ccFmt(r.p75);
+      const pct = Math.min(100, Math.max(0, (base - r.p25) / (r.p75 - r.p25) * 100));
+      document.getElementById('cc-bar').style.width = Math.round(pct) + '%';
+    }
+    document.getElementById('cc-km').addEventListener('input', ccCalc);
+    document.getElementById('cc-kg').addEventListener('input', ccCalc);
+    ccCalc();
+  </script>
+</body>
+</html>

@@ -878,7 +878,7 @@
 
     // Abre el form pre-llenado con los datos del viaje.
     // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
-    function abrirForm(idx, accion) {
+    async function abrirForm(idx, accion) {
       // Sin sesión → abrir modal de registro
       if (!usuarioActual) {
         abrirAuthModal('registro');

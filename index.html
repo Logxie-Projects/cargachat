@@ -263,8 +263,7 @@
     .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 6px 24px rgba(0,191,223,0.2); background: #f5fdff; }
 
     /* Pin de precio estilo Airbnb */
-    .precio-pin {
-      position: absolute;
+    .leaflet-tooltip.precio-tooltip {
       background: white;
       border: 2.5px solid var(--navy);
       border-radius: 20px;
@@ -274,16 +273,15 @@
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.18);
       font-family: 'DM Sans', sans-serif;
-      transition: all 0.15s;
-      transform: translate(-50%, calc(-100% - 6px));
       cursor: pointer;
+      transition: all 0.15s;
     }
-    .precio-pin.activo {
+    .leaflet-tooltip.precio-tooltip::before { display: none; }
+    .leaflet-tooltip.precio-tooltip.activo {
       background: var(--navy);
       color: white;
       box-shadow: 0 4px 16px rgba(27,42,107,0.35);
-      transform: translate(-50%, calc(-100% - 6px)) scale(1.12);
-      z-index: 1000;
+      transform: scale(1.12);
     }
 
     /* Botón "Ver todos" flotante sobre el mapa */
@@ -1128,19 +1126,32 @@
      * Crea el divIcon de Leaflet con el pin de precio estilo Airbnb.
      * activo=true → fondo navy (seleccionado), activo=false → fondo blanco
      */
-    function crearIconoOrigen(precioCorto, origen, activo, idx = -1) {
+    function crearMarkerOrigen(coord, precioCorto, idx) {
       const texto = precioCorto || 'A convenir';
-      const click = idx >= 0 ? `event.stopPropagation(); seleccionarViaje(${idx});` : '';
-      const colorCirculo = activo ? '#1B2A6B' : '#00BFDF';
-      return L.divIcon({
-        html: `<div style="position:relative;width:0;height:0;">
-          <div class="precio-pin${activo ? ' activo' : ''}" onclick="${click}">${texto}</div>
-          <div style="position:absolute;width:14px;height:14px;border-radius:50%;background:${colorCirculo};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);transform:translate(-50%,-50%);pointer-events:none;"></div>
-        </div>`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
-        className: ''
+      const marker = L.circleMarker(coord, {
+        radius: 7, color: 'white', weight: 2,
+        fillColor: '#00BFDF', fillOpacity: 1
       });
+      marker.bindTooltip(texto, {
+        permanent: true, direction: 'top',
+        className: 'precio-tooltip', offset: [0, -8]
+      });
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        seleccionarViaje(idx);
+      });
+      return marker;
+    }
+
+    function activarMarkerOrigen(marker, activo) {
+      marker.setStyle({
+        fillColor: activo ? '#1B2A6B' : '#00BFDF'
+      });
+      const tooltip = marker.getTooltip();
+      if (tooltip) {
+        const el = tooltip.getElement();
+        if (el) el.classList.toggle('activo', activo);
+      }
     }
 
     // ================================================================
@@ -1372,9 +1383,7 @@
           bounds.push(coordOrigen);
           puntosRuta.push(coordOrigen);
 
-          originMarker = L.marker(coordOrigen, {
-            icon: crearIconoOrigen(precioCorto, origen, false, viajeIdx)
-          }).bindPopup(`<b style="color:#1B2A6B">Origen:</b> ${origen}<br><b style="color:#1B2A6B">Peso:</b> ${formatPeso(v.peso_kg)}`);
+          originMarker = crearMarkerOrigen(coordOrigen, precioCorto, viajeIdx);
           grupo.addLayer(originMarker);
         }
 
@@ -1430,13 +1439,6 @@
         grupo.addTo(mapaLeaflet);
         mapaCapas.push({ grupo, bounds, originMarker, precioCorto, origen });
       }
-
-      // ── Redibujar price pins ANTES del zoom final ─────────────
-      mapaCapas.forEach((capa, i) => {
-        if (capa.originMarker) {
-          capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
-        }
-      });
 
       // ── Zoom para ver todas las rutas ─────────────────────────
       if (todosLosPuntos.length > 1) {
@@ -1526,9 +1528,9 @@
         viajeSeleccionado = -1;
         cards.forEach(c => c.classList.remove('selected'));
         document.getElementById('btn-ver-todos').classList.remove('visible');
-        mapaCapas.forEach((capa, i) => {
+        mapaCapas.forEach((capa) => {
           if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
-          if (capa.originMarker) capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, false, i));
+          if (capa.originMarker) activarMarkerOrigen(capa.originMarker, false);
         });
         const todos = mapaCapas.flatMap(c => c.bounds);
         if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40] });
@@ -1543,7 +1545,7 @@
       mapaCapas.forEach((capa, i) => {
         if (i === idx) {
           if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
-          if (capa.originMarker) capa.originMarker.setIcon(crearIconoOrigen(capa.precioCorto, capa.origen, true, i));
+          if (capa.originMarker) activarMarkerOrigen(capa.originMarker, true);
         } else {
           mapaLeaflet.removeLayer(capa.grupo);
         }

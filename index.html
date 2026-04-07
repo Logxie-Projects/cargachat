@@ -672,7 +672,10 @@
       <div id="form-login" class="modal-form">
         <h3>Bienvenido de nuevo</h3>
         <input type="email"    id="login-email"    class="modal-input" placeholder="Email">
-        <input type="password" id="login-password" class="modal-input" placeholder="Contraseña">
+        <div style="position:relative">
+          <input type="password" id="login-password" class="modal-input" placeholder="Contraseña" style="padding-right:40px;width:100%;box-sizing:border-box">
+          <span onclick="togglePass('login-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;color:#9aa0b8">👁</span>
+        </div>
         <button class="modal-btn-primary" onclick="iniciarSesion()">Ingresar →</button>
         <p class="modal-link">¿No tienes cuenta? <a onclick="cambiarAuthTab('registro')">Regístrate aquí</a></p>
       </div>
@@ -691,7 +694,10 @@
           <option value="generador_carga">Generador de carga</option>
         </select>
         <input type="email"    id="reg-email"    class="modal-input" placeholder="Email">
-        <input type="password" id="reg-password" class="modal-input" placeholder="Contraseña (mín. 8 caracteres)">
+        <div style="position:relative">
+          <input type="password" id="reg-password" class="modal-input" placeholder="Contraseña (mín. 8 caracteres)" style="padding-right:40px;width:100%;box-sizing:border-box">
+          <span onclick="togglePass('reg-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;color:#9aa0b8">👁</span>
+        </div>
         <button class="modal-btn-primary" onclick="registrarse()">Crear cuenta →</button>
         <p class="modal-link">¿Ya tienes cuenta? <a onclick="cambiarAuthTab('login')">Inicia sesión</a></p>
       </div>
@@ -1576,6 +1582,13 @@
       // Activar el tab y sección seleccionados
       btn.classList.add('active');
       document.getElementById(`steps-${tab}`).classList.add('active');
+    }
+
+    function togglePass(inputId, icon) {
+      const input = document.getElementById(inputId);
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      icon.style.opacity = visible ? '0.5' : '1';
     }
 
     /**

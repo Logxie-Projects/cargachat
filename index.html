@@ -823,6 +823,10 @@
       });
       if (error) return mostrarErrorAuth(error.message);
 
+      // Si el email ya existe, Supabase devuelve user con identities vacío
+      if (!data.user || data.user.identities?.length === 0)
+        return mostrarErrorAuth('Este email ya tiene una cuenta. Intentá ingresar.');
+
       // Guardar perfil en tabla perfiles (upsert por si el trigger ya creó la fila base)
       const { error: perfilError } = await supabase.from('perfiles').upsert({
         id: data.user.id, nombre, empresa, telefono, nit, tipo,

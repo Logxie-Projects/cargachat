@@ -723,6 +723,7 @@
 
     // Escucha cambios de sesión (login, logout, refresh)
     supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('authStateChange:', event, session?.user?.id || 'sin sesión');
       if (session?.user) {
         usuarioActual = session.user;
         perfilActual  = await cargarPerfil(session.user.id);

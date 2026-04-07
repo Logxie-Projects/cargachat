@@ -1431,6 +1431,8 @@
       if (todosLosPuntos.length > 1) {
         mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40] });
       }
+      // Forzar repaint de markers después de que el mapa se estabilice
+      setTimeout(() => mapaLeaflet.invalidateSize(), 200);
 
       // ── Leyenda ───────────────────────────────────────────────
       const leyenda = L.control({ position: 'bottomleft' });

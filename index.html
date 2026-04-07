@@ -1062,9 +1062,11 @@
       // 1. Caché en memoria (misma sesión)
       if (geocodeCache[key]) return geocodeCache[key];
 
-      // 2. Supabase — ciudades aprendidas anteriormente
+      // 2. Supabase — ciudades aprendidas anteriormente (con timeout de 2s)
       try {
-        const { data: row } = await sb.from('ciudades').select('lat,lng').eq('nombre', key).single();
+        const sbQuery = sb.from('ciudades').select('lat,lng').eq('nombre', key).single();
+        const timeout = new Promise(r => setTimeout(() => r({ data: null }), 2000));
+        const { data: row } = await Promise.race([sbQuery, timeout]);
         if (row) {
           const coords = [row.lat, row.lng];
           geocodeCache[key] = coords;

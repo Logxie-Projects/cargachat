@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Panel — CARGACHAT</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="./supabase.min.js"></script>
+
+  <style>
+    :root {
+      --navy:       #1B2A6B;
+      --navy-dark:  #0f1a45;
+      --cyan:       #00BFDF;
+      --cyan-light: #e6f9fd;
+      --gray-50:    #f8f9fc;
+      --gray-100:   #eef0f6;
+      --gray-400:   #9aa0b8;
+      --gray-600:   #5a6280;
+      --gray-900:   #1a1d2e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+    /* NAV */
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 12px 2rem; background: white; border-bottom: 1px solid var(--gray-100); position: sticky; top: 0; z-index: 100; }
+    .logo-main { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--navy); }
+    .logo-main span { color: var(--cyan); }
+    .logo-sub { font-size: 10px; color: var(--gray-400); letter-spacing: 0.5px; margin-top: 1px; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-user-name { font-size: 13px; font-weight: 500; color: var(--navy); }
+    .nav-badge { font-size: 10px; padding: 2px 8px; border-radius: 100px; font-weight: 600; }
+    .badge-activo { background: #e6f9f4; color: #00875a; }
+    .badge-revision { background: #fff3e6; color: #cc5500; }
+    .btn-outline { padding: 6px 14px; border: 1.5px solid var(--gray-100); border-radius: 8px; background: white; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--gray-600); font-family: 'DM Sans', sans-serif; transition: all 0.2s; text-decoration: none; }
+    .btn-outline:hover { border-color: var(--cyan); color: var(--navy); }
+
+    /* LAYOUT */
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+    /* TABS */
+    .panel-tabs { display: flex; gap: 4px; background: white; border-radius: 12px; padding: 4px; margin-bottom: 1.5rem; border: 1px solid var(--gray-100); }
+    .panel-tab { flex: 1; padding: 10px; border: none; background: none; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-400); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .panel-tab.active { background: var(--navy); color: white; font-weight: 600; }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat-card { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 16px; text-align: center; }
+    .stat-val { font-size: 24px; font-weight: 600; color: var(--navy); }
+    .stat-label { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+
+    /* OFERTAS LIST */
+    .ofertas-list { display: flex; flex-direction: column; gap: 10px; }
+    .oferta-card { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 16px; transition: all 0.2s; }
+    .oferta-card:hover { border-color: var(--cyan); }
+    .oferta-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .oferta-ruta { font-size: 14px; font-weight: 600; color: var(--navy); }
+    .oferta-fecha { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .oferta-estado { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; }
+    .estado-activa { background: #e6f9f4; color: #00875a; }
+    .estado-aceptada { background: var(--cyan-light); color: var(--navy); }
+    .estado-rechazada { background: #ffe6e6; color: #cc0000; }
+    .estado-cancelada { background: var(--gray-50); color: var(--gray-400); }
+    .oferta-body { display: flex; justify-content: space-between; align-items: center; }
+    .oferta-meta { display: flex; gap: 16px; font-size: 12px; color: var(--gray-600); }
+    .oferta-meta strong { color: var(--navy); }
+    .oferta-precio { font-size: 18px; font-weight: 600; color: var(--navy); }
+    .oferta-acciones { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100); display: flex; gap: 8px; }
+    .btn-cancelar { padding: 6px 14px; border: 1px solid #ffe6e6; border-radius: 8px; background: white; font-size: 11px; font-weight: 500; cursor: pointer; color: #cc0000; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-cancelar:hover { background: #ffe6e6; }
+    .btn-editar { padding: 6px 14px; border: 1px solid var(--gray-100); border-radius: 8px; background: white; font-size: 11px; font-weight: 500; cursor: pointer; color: var(--navy); font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-editar:hover { background: var(--gray-50); }
+
+    /* EMPTY */
+    .empty-state { text-align: center; padding: 3rem; color: var(--gray-400); }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+    .empty-state a { color: var(--cyan); font-weight: 600; text-decoration: none; }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 3rem; color: var(--gray-400); font-size: 13px; }
+
+    /* LOGIN REQUIRED */
+    .login-required { text-align: center; padding: 4rem 2rem; }
+    .login-required h2 { color: var(--navy); margin-bottom: 8px; }
+    .login-required p { color: var(--gray-400); font-size: 13px; margin-bottom: 20px; }
+    .btn-primary { padding: 10px 24px; background: var(--navy); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: none; display: inline-block; }
+    .btn-primary:hover { background: var(--navy-dark); }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .oferta-body { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" style="text-decoration:none">
+      <div class="logo-main">CARGA<span>CHAT</span></div>
+      <div class="logo-sub">by Logxie Connect · Mi Panel</div>
+    </a>
+    <div class="nav-right" id="nav-right">
+      <span class="nav-user-name" id="nav-name"></span>
+      <span class="nav-badge" id="nav-badge"></span>
+      <a href="index.html" class="btn-outline">Ver viajes</a>
+      <button class="btn-outline" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </nav>
+
+  <!-- SIN LOGIN -->
+  <div class="container" id="vista-login" style="display:none">
+    <div class="login-required">
+      <div style="font-size:48px;margin-bottom:16px;">🔐</div>
+      <h2>Inicia sesion para ver tu panel</h2>
+      <p>Aqui puedes ver tus ofertas, su estado y gestionar tu actividad.</p>
+      <a href="index.html" class="btn-primary">Ir a CARGACHAT →</a>
+    </div>
+  </div>
+
+  <!-- CON LOGIN -->
+  <div class="container" id="vista-panel" style="display:none">
+
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="cambiarTab('activas', this)">Activas</button>
+      <button class="panel-tab" onclick="cambiarTab('historial', this)">Historial</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val" id="stat-activas">0</div>
+        <div class="stat-label">Ofertas activas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-aceptadas">0</div>
+        <div class="stat-label">Aceptadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-label">Total ofertas</div>
+      </div>
+    </div>
+
+    <div id="ofertas-container">
+      <div class="loading">Cargando ofertas...</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let usuario = null;
+    let token = null;
+    let perfil = null;
+    let todasOfertas = [];
+    let tabActual = 'activas';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function formatCOP(n) {
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+    }
+
+    function formatFecha(iso) {
+      const d = new Date(iso);
+      const dia = d.getDate().toString().padStart(2, '0');
+      const mes = (d.getMonth() + 1).toString().padStart(2, '0');
+      const hora = d.getHours().toString().padStart(2, '0');
+      const min = d.getMinutes().toString().padStart(2, '0');
+      return `${dia}/${mes} · ${hora}:${min}`;
+    }
+
+    async function fetchPerfil(userId, tkn) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?id=eq.${userId}&select=*`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tkn}` }
+        });
+        const rows = await r.json();
+        return rows[0] || null;
+      } catch { return null; }
+    }
+
+    async function cargarOfertas() {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?usuario_id=eq.${usuario.id}&select=*&order=created_at.desc`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+        });
+        todasOfertas = await r.json();
+        actualizarStats();
+        renderOfertas();
+      } catch (e) {
+        document.getElementById('ofertas-container').innerHTML = '<div class="empty-state"><p>Error al cargar ofertas.</p></div>';
+      }
+    }
+
+    function actualizarStats() {
+      const activas = todasOfertas.filter(o => o.estado === 'activa').length;
+      const aceptadas = todasOfertas.filter(o => o.estado === 'aceptada').length;
+      document.getElementById('stat-activas').textContent = activas;
+      document.getElementById('stat-aceptadas').textContent = aceptadas;
+      document.getElementById('stat-total').textContent = todasOfertas.length;
+    }
+
+    function renderOfertas() {
+      const container = document.getElementById('ofertas-container');
+      let filtered;
+      if (tabActual === 'activas') {
+        filtered = todasOfertas.filter(o => o.estado === 'activa');
+      } else {
+        filtered = todasOfertas.filter(o => o.estado !== 'activa');
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = tabActual === 'activas'
+          ? `<div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <p>No tienes ofertas activas.<br><a href="index.html">Ver viajes disponibles →</a></p>
+            </div>`
+          : `<div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <p>Aun no tienes historial de ofertas.</p>
+            </div>`;
+        return;
+      }
+
+      container.innerHTML = '<div class="ofertas-list">' + filtered.map(o => {
+        const estadoClass = 'estado-' + o.estado;
+        const estadoText = { activa: 'Activa', aceptada: 'Aceptada', rechazada: 'Rechazada', cancelada: 'Cancelada' }[o.estado] || o.estado;
+
+        return `
+          <div class="oferta-card">
+            <div class="oferta-header">
+              <div>
+                <div class="oferta-ruta">Viaje ${o.viaje_rt}</div>
+                <div class="oferta-fecha">${formatFecha(o.created_at)}${o.comentario ? ' · ' + o.comentario : ''}</div>
+              </div>
+              <span class="oferta-estado ${estadoClass}">${estadoText}</span>
+            </div>
+            <div class="oferta-body">
+              <div class="oferta-precio">${formatCOP(o.precio_oferta)}</div>
+            </div>
+            ${o.estado === 'activa' ? `
+              <div class="oferta-acciones">
+                <button class="btn-cancelar" onclick="cancelarOferta('${o.id}')">Cancelar oferta</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('') + '</div>';
+    }
+
+    function cambiarTab(tab, btn) {
+      tabActual = tab;
+      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      renderOfertas();
+    }
+
+    async function cancelarOferta(id) {
+      if (!confirm('Cancelar esta oferta?')) return;
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ estado: 'cancelada' })
+        });
+        if (r.ok) {
+          showToast('Oferta cancelada');
+          await cargarOfertas();
+        } else {
+          showToast('Error al cancelar');
+        }
+      } catch { showToast('Error de conexion'); }
+    }
+
+    function cerrarSesion() {
+      sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    // Init
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        usuario = session.user;
+        token = session.access_token;
+        perfil = await fetchPerfil(usuario.id, token);
+
+        document.getElementById('nav-name').textContent = perfil?.nombre || usuario.email;
+        const badge = document.getElementById('nav-badge');
+        if (perfil?.estado === 'activo') {
+          badge.textContent = 'Activo';
+          badge.className = 'nav-badge badge-activo';
+        } else {
+          badge.textContent = 'En revision';
+          badge.className = 'nav-badge badge-revision';
+        }
+
+        document.getElementById('vista-login').style.display = 'none';
+        document.getElementById('vista-panel').style.display = 'block';
+        document.getElementById('nav-right').style.display = 'flex';
+        await cargarOfertas();
+      } else {
+        document.getElementById('vista-login').style.display = 'block';
+        document.getElementById('vista-panel').style.display = 'none';
+        document.getElementById('nav-right').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

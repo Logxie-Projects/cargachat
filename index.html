@@ -1373,6 +1373,7 @@
 
         // ── Pin de ORIGEN — desplazado si hay varios del mismo origen ──
         const coordBase = await getCoords(origen);
+        if (!coordBase) console.warn(`[MAPA] Sin coords para ORIGEN: "${origen}" (viaje ${viajeIdx})`);
         let coordOrigen = null;
         if (coordBase) {
           const n = origenesConteo[origen] || 0;

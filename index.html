@@ -613,10 +613,14 @@
           </select>
         </div>
 
-        <div class="calc-results" style="grid-template-columns:1fr;">
+        <div class="calc-results" style="grid-template-columns:1fr auto;">
           <div class="calc-result-card main">
             <div class="calc-result-label">Precio base estimado</div>
             <div class="calc-result-val" id="cc-base">—</div>
+          </div>
+          <div class="calc-result-card cc-ahorro" id="cc-ahorro-card" style="display:none;">
+            <div class="calc-result-label">Ahorra hasta</div>
+            <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">—</div>
           </div>
         </div>
 
@@ -1904,7 +1908,16 @@
       const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
       const base = Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
       document.getElementById('cc-base').textContent  = ccFmt(base);
+      // Ahorro vs p75 histórico
       const r = ccRango(km);
+      const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
+      const ahorroCard = document.getElementById('cc-ahorro-card');
+      if (ahorroPct > 0) {
+        document.getElementById('cc-ahorro').textContent = ahorroPct + '%';
+        ahorroCard.style.display = '';
+      } else {
+        ahorroCard.style.display = 'none';
+      }
       document.getElementById('cc-zona-badge').textContent = r.label;
       document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
       document.getElementById('cc-hist-max').textContent   = ccFmt(r.p75);

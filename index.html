@@ -1544,7 +1544,7 @@
           if (capa.originMarker) activarMarkerOrigen(capa.originMarker, false);
         });
         const todos = mapaCapas.flatMap(c => c.bounds);
-        if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40] });
+        if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40], animate: false });
         return;
       }
 
@@ -1563,7 +1563,7 @@
       });
 
       if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 0) {
-        mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60] });
+        mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60], animate: false });
       }
 
       // Actualizar calculadora con los valores del viaje seleccionado

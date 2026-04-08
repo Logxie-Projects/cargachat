@@ -1840,11 +1840,18 @@
         const texto  = await respuesta.text();
         const viajes = parseCSV(texto);
 
-        // Deduplicar por RT_TOTAL (un viaje con múltiples RMs → una sola tarjeta)
+        // Generar ID único por viaje y deduplicar
         const rtVistos = {};
         viajesData = [];
         viajes.forEach((v, i) => {
-          const rt = v.rt_total || `sin-rt-${i}`;
+          // Si no hay rt_total, generar ID desde origen+destino+fecha+peso
+          if (!v.rt_total) {
+            const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
+            let hash = 0;
+            for (let c = 0; c < raw.length; c++) hash = ((hash << 5) - hash + raw.charCodeAt(c)) | 0;
+            v.rt_total = 'v-' + Math.abs(hash).toString(36);
+          }
+          const rt = v.rt_total;
           if (!rtVistos[rt]) { rtVistos[rt] = true; viajesData.push(v); }
         });
 
@@ -1987,7 +1994,13 @@
         const rtVistos = {};
         const nuevos = [];
         viajes.forEach((v, i) => {
-          const rt = v.rt_total || `sin-rt-${i}`;
+          if (!v.rt_total) {
+            const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
+            let hash = 0;
+            for (let c = 0; c < raw.length; c++) hash = ((hash << 5) - hash + raw.charCodeAt(c)) | 0;
+            v.rt_total = 'v-' + Math.abs(hash).toString(36);
+          }
+          const rt = v.rt_total;
           if (!rtVistos[rt]) { rtVistos[rt] = true; nuevos.push(v); }
         });
         if (nuevos.length !== viajesData.length) {

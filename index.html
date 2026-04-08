@@ -1160,7 +1160,12 @@
           const el = marker.getTooltip()?.getElement();
           if (el) {
             el.style.cursor = 'pointer';
-            L.DomEvent.on(el, 'click', onClick);
+            el.style.pointerEvents = 'auto';
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              console.log('[PIN] click en viaje', idx);
+              seleccionarViaje(idx);
+            });
           }
         }, 50);
       });

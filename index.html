@@ -816,7 +816,13 @@
         });
         const data = await resp.json();
         if (!resp.ok) return mostrarErrorAuth(data.error_description || data.msg || data.message || 'Credenciales incorrectas.');
-        await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+        const { data: sd, error: se } = await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+        console.log('[SESION]', sd, se);
+        if (se) return mostrarErrorAuth('Error al iniciar sesión: ' + se.message);
+        usuarioActual = sd.user;
+        const { data: perfil } = await sb.from('perfiles').select('*').eq('id', sd.user.id).single();
+        perfilActual = perfil;
+        actualizarNav(perfilActual);
         cerrarAuthModal();
         showToast('¡Bienvenido!');
       } catch(e) {

@@ -734,16 +734,28 @@
 
     let usuarioActual = null;
     let perfilActual  = null;
+    let tokenActual   = null;
+
+    async function fetchPerfil(userId, token) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?id=eq.${userId}&select=*`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}` }
+        });
+        const rows = await r.json();
+        return rows[0] || null;
+      } catch { return null; }
+    }
 
     sb.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         usuarioActual = session.user;
-        const { data } = await sb.from('perfiles').select('*').eq('id', session.user.id).single();
-        perfilActual = data;
+        tokenActual   = session.access_token;
+        perfilActual  = await fetchPerfil(session.user.id, session.access_token);
         actualizarNav(perfilActual);
       } else {
         usuarioActual = null;
         perfilActual  = null;
+        tokenActual   = null;
         actualizarNav(null);
       }
     });
@@ -816,12 +828,10 @@
         });
         const data = await resp.json();
         if (!resp.ok) return mostrarErrorAuth(data.error_description || data.msg || data.message || 'Credenciales incorrectas.');
-        const { data: sd, error: se } = await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
-        console.log('[SESION]', sd, se);
-        if (se) return mostrarErrorAuth('Error al iniciar sesión: ' + se.message);
-        usuarioActual = sd.user;
-        const { data: perfil } = await sb.from('perfiles').select('*').eq('id', sd.user.id).single();
-        perfilActual = perfil;
+        usuarioActual = data.user;
+        tokenActual   = data.access_token;
+        perfilActual  = await fetchPerfil(data.user.id, data.access_token);
+        sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
         actualizarNav(perfilActual);
         cerrarAuthModal();
         showToast('¡Bienvenido!');
@@ -914,8 +924,8 @@
       }
 
       // Perfil aún no cargado → recargar primero, luego abrir ventana solo si está activo
-      sb.from('perfiles').select('*').eq('id', usuarioActual.id).single()
-        .then(({ data }) => {
+      fetchPerfil(usuarioActual.id, tokenActual)
+        .then((data) => {
           perfilActual = data;
           actualizarNav(perfilActual);
           if (!data) { showToast('No encontramos tu cuenta. Cerrá sesión e ingresá de nuevo.'); return; }

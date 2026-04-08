@@ -256,6 +256,10 @@
     /* ═══════════════════════════════════════════════════════════
        CUPÓN DE DESCUENTO
     ═══════════════════════════════════════════════════════════ */
+    /* MODAL LEAD */
+    .lead-box   { max-width: 440px; }
+    .lead-field { margin-bottom: 1rem; }
+
     /* MODAL VINCULACIÓN */
     .vinc-box        { max-width: 460px; }
     .vinc-tag        { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
@@ -472,6 +476,12 @@
     .calc-nota { font-size: 10px; color: var(--gray-400); line-height: 1.5; margin-bottom: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
     .calc-cta { display: block; text-align: center; background: var(--navy); color: white; border-radius: 100px; padding: 10px 20px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
     .calc-cta:hover { background: var(--navy-dark); }
+    .bpo-promo       { margin-top: 1.25rem; border-top: 1px dashed var(--gray-100); padding-top: 1.25rem; }
+    .bpo-promo-tag   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
+    .bpo-promo-text  { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 0.75rem; }
+    .bpo-promo-text strong { color: var(--navy); }
+    .bpo-promo-link  { font-size: 12px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; transition: color 0.2s; }
+    .bpo-promo-link:hover { color: var(--cyan); }
     @media (max-width: 768px) { .mapa-calc-section { grid-template-columns: 1fr; } #map { height: 280px; } }
 
     /* ═══════════════════════════════════════════════════════════
@@ -793,9 +803,16 @@
           Modelo: regresión polinomial (n=1.015 viajes) · Fuente: viajes Colombia 2025–2026
         </div>
 
-        <a href="https://wa.me/573214401975?text=Quiero%20cotizar%20mi%20carga" target="_blank" class="calc-cta">
-          Cotizar mi carga →
-        </a>
+        <button onclick="abrirLeadModal()" class="calc-cta" style="border:none;cursor:pointer;width:100%">
+          Solicitar cotización →
+        </button>
+
+        <!-- BPO PROMO -->
+        <div class="bpo-promo">
+          <div class="bpo-promo-tag">bpo logístico</div>
+          <p class="bpo-promo-text">¿Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestión logística integral</strong> — operación completa, sin carga administrativa.</p>
+          <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO →</a>
+        </div>
 
       </div>
     </div>
@@ -928,6 +945,58 @@
     <div class="footer-logo">NET<span>FLEET</span></div>
     <div class="footer-sub">NETFLEET · Marketplace de carga · Colombia</div>
   </footer>
+
+  <!-- MODAL LEAD CALCULADORA -->
+  <div class="modal-overlay" id="lead-modal" onclick="if(event.target===this)cerrarLeadModal()">
+    <div class="modal-box lead-box" id="lead-box">
+
+      <!-- ESTADO: formulario -->
+      <div id="lead-form-state">
+        <button class="modal-close" onclick="cerrarLeadModal()">×</button>
+        <div class="vinc-tag">solicitud de cotización</div>
+        <h3 class="vinc-title">Cuéntanos sobre tu operación</h3>
+        <p class="vinc-intro">Un asesor de NETFLEET te contactará en menos de 24 horas con una propuesta.</p>
+
+        <div class="lead-field">
+          <label class="calc-label">Nombre y empresa</label>
+          <input type="text" id="lead-nombre" class="modal-input" placeholder="Ej: Carlos Pérez · Grupo Nutresa">
+        </div>
+        <div class="lead-field">
+          <label class="calc-label">Email corporativo</label>
+          <input type="email" id="lead-email" class="modal-input" placeholder="carlos@empresa.com">
+        </div>
+        <div class="lead-field">
+          <label class="calc-label">Ruta principal</label>
+          <input type="text" id="lead-ruta" class="modal-input" placeholder="Ej: Bogotá → Medellín">
+        </div>
+        <div class="lead-field">
+          <label class="calc-label">Volumen mensual estimado</label>
+          <select id="lead-volumen" class="calc-select" style="width:100%">
+            <option value="">Selecciona...</option>
+            <option value="1-5">Menos de 5 viajes / mes</option>
+            <option value="5-20">5 – 20 viajes / mes</option>
+            <option value="20-50">20 – 50 viajes / mes</option>
+            <option value="50+">Más de 50 viajes / mes</option>
+          </select>
+        </div>
+
+        <div id="lead-error" style="font-size:12px;color:#e53e3e;margin-bottom:10px;display:none"></div>
+        <button class="calc-cta" style="border:none;cursor:pointer;width:100%;font-size:14px;padding:12px" onclick="enviarLead()">
+          Solicitar cotización →
+        </button>
+      </div>
+
+      <!-- ESTADO: éxito -->
+      <div id="lead-success-state" style="display:none;text-align:center;padding:1rem 0">
+        <div style="font-size:40px;margin-bottom:1rem">✓</div>
+        <div class="vinc-tag" style="justify-content:center">solicitud enviada</div>
+        <h3 class="vinc-title" style="margin-top:0.5rem">¡Listo!</h3>
+        <p class="vinc-intro">Un asesor de NETFLEET te contactará en menos de <strong>24 horas</strong> para presentarte una propuesta.</p>
+        <button class="calc-cta" style="border:none;cursor:pointer;width:100%;font-size:14px;padding:12px;margin-top:0.5rem" onclick="cerrarLeadModal()">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- MODAL DE VINCULACIÓN (empresa / transportador) -->
   <div class="modal-overlay" id="vinculacion-modal" onclick="if(event.target===this)cerrarVinculacionModal()">
@@ -1125,6 +1194,58 @@
 
     function cerrarVinculacionModal() {
       document.getElementById('vinculacion-modal').classList.remove('open');
+    }
+
+    /* ── MODAL LEAD CALCULADORA ── */
+    function abrirLeadModal() {
+      document.getElementById('lead-form-state').style.display    = 'block';
+      document.getElementById('lead-success-state').style.display = 'none';
+      document.getElementById('lead-error').style.display         = 'none';
+      document.getElementById('lead-modal').classList.add('open');
+    }
+    function cerrarLeadModal() {
+      document.getElementById('lead-modal').classList.remove('open');
+    }
+    async function enviarLead() {
+      const nombre  = document.getElementById('lead-nombre').value.trim();
+      const email   = document.getElementById('lead-email').value.trim();
+      const ruta    = document.getElementById('lead-ruta').value.trim();
+      const volumen = document.getElementById('lead-volumen').value;
+      const errEl   = document.getElementById('lead-error');
+
+      if (!nombre || !email || !volumen) {
+        errEl.textContent = 'Por favor completa nombre, email y volumen.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errEl.textContent = 'Ingresa un email válido.';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ nombre_empresa: nombre, email, ruta, volumen, fuente: 'calculadora' })
+        });
+        if (!resp.ok) throw new Error('Error al guardar');
+        document.getElementById('lead-form-state').style.display    = 'none';
+        document.getElementById('lead-success-state').style.display = 'block';
+        // Limpiar campos
+        ['lead-nombre','lead-email','lead-ruta'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('lead-volumen').value = '';
+      } catch(e) {
+        errEl.textContent = 'Error de conexión. Intenta de nuevo.';
+        errEl.style.display = 'block';
+      }
     }
     function cerrarModalOverlay(e) {
       if (e.target === document.getElementById('auth-modal')) cerrarAuthModal();

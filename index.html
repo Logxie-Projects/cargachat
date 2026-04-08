@@ -346,6 +346,8 @@
     .calc-slider-wrap { display: flex; align-items: center; gap: 12px; }
     .calc-slider-wrap input[type=range] { flex: 1; accent-color: var(--navy); }
     .calc-val { font-size: 13px; font-weight: 600; color: var(--navy); min-width: 80px; text-align: right; }
+    .calc-select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-100); border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231B2A6B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    .calc-select:focus { outline: none; border-color: var(--cyan); }
     .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.25rem 0; }
     .calc-result-card { background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 0.75rem; text-align: center; }
     .calc-result-card.main { border-color: var(--cyan); background: var(--cyan-light); }
@@ -566,6 +568,32 @@
           </div>
         </div>
 
+        <div class="calc-row">
+          <label class="calc-label">Paradas de entrega</label>
+          <div class="calc-slider-wrap">
+            <input type="range" id="cc-paradas" min="1" max="10" step="1" value="1">
+            <span class="calc-val" id="cc-paradas-out">1</span>
+          </div>
+        </div>
+
+        <div class="calc-row">
+          <label class="calc-label">Zona de destino</label>
+          <select id="cc-zona" class="calc-select">
+            <option value="">Sin especificar</option>
+            <option value="ANTIOQUIA">Antioquia</option>
+            <option value="BOYACA">Boyacá</option>
+            <option value="CENTRO">Centro</option>
+            <option value="CUNDINAMARCA">Cundinamarca</option>
+            <option value="EJE CAFETERO">Eje Cafetero</option>
+            <option value="LLANOS">Llanos</option>
+            <option value="OCCIDENTE">Occidente</option>
+            <option value="ORIENTE">Oriente</option>
+            <option value="SANTANDERES">Santanderes</option>
+            <option value="TOLHUIL">Tolima / Huila</option>
+            <option value="VALLE">Valle</option>
+          </select>
+        </div>
+
         <div class="calc-results">
           <div class="calc-result-card">
             <div class="calc-result-label">Piso (−15%)</div>
@@ -592,7 +620,7 @@
         </div>
 
         <div class="calc-nota">
-          Fórmula: Logxie Connect · Fuente: viajes Colombia 2025–2026
+          Modelo: regresión polinomial (n=1.015 viajes) · Fuente: viajes Colombia 2025–2026
         </div>
 
         <a href="https://wa.me/573214401975?text=Quiero%20cotizar%20mi%20carga" target="_blank" class="calc-cta">
@@ -1707,25 +1735,34 @@
 
   </script>
   <script>
-    // CALCULADORA DE FLETE — lógica idéntica al nodo n8n
+    // CALCULADORA DE FLETE — modelo polinomial grado 2 + paradas + zona (Ridge, n=1.015 viajes reales)
     const CC_RANGOS = [
-      { label:'< 100 km',    min:0,    max:100,  p25:350000,  p75:900000  },
-      { label:'100–300 km',  min:100,  max:300,  p25:750000,  p75:2000000 },
-      { label:'300–600 km',  min:300,  max:600,  p25:1100000, p75:2800000 },
-      { label:'600–1000 km', min:600,  max:1000, p25:1800000, p75:4200000 },
-      { label:'> 1000 km',   min:1000, max:9999, p25:2800000, p75:6500000 },
+      { label:'< 100 km',    min:0,    max:100,  p25:380000,   p75:800000   },
+      { label:'100–300 km',  min:100,  max:300,  p25:900000,   p75:1695000  },
+      { label:'300–600 km',  min:300,  max:600,  p25:1500000,  p75:2602500  },
+      { label:'600–1000 km', min:600,  max:1000, p25:1040025,  p75:4506945  },
+      { label:'≥ 1000 km',   min:1000, max:9999, p25:4250000,  p75:11030000 },
     ];
+    const CC_ZONA_AJUSTE = {
+      'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
+      'EJE CAFETERO':-18794,'LLANOS':159210,'OCCIDENTE':10720,'ORIENTE':-176447,
+      'SANTANDERES':-213483,'TOLHUIL':-18146,'VALLE':34226
+    };
     function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
     function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
     function ccCalc() {
-      const km  = parseInt(document.getElementById('cc-km').value);
-      const kg  = parseInt(document.getElementById('cc-kg').value);
-      document.getElementById('cc-km-out').textContent  = km.toLocaleString('es-CO') + ' km';
-      document.getElementById('cc-kg-out').textContent  = kg.toLocaleString('es-CO') + ' kg';
-      const base   = 3016*km + 156*kg + 100469;
-      document.getElementById('cc-base').textContent   = ccFmt(base);
-      document.getElementById('cc-piso').textContent   = ccFmt(base * 0.85);
-      document.getElementById('cc-techo').textContent  = ccFmt(base * 1.15);
+      const km      = parseInt(document.getElementById('cc-km').value);
+      const kg      = parseInt(document.getElementById('cc-kg').value);
+      const paradas = parseInt(document.getElementById('cc-paradas').value);
+      const zona    = document.getElementById('cc-zona').value;
+      document.getElementById('cc-km-out').textContent      = km.toLocaleString('es-CO') + ' km';
+      document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
+      document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
+      const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
+      const base = Math.max(0, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+      document.getElementById('cc-base').textContent  = ccFmt(base);
+      document.getElementById('cc-piso').textContent  = ccFmt(base * 0.85);
+      document.getElementById('cc-techo').textContent = ccFmt(base * 1.15);
       const r = ccRango(km);
       document.getElementById('cc-zona-badge').textContent = r.label;
       document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
@@ -1735,6 +1772,8 @@
     }
     document.getElementById('cc-km').addEventListener('input', ccCalc);
     document.getElementById('cc-kg').addEventListener('input', ccCalc);
+    document.getElementById('cc-paradas').addEventListener('input', ccCalc);
+    document.getElementById('cc-zona').addEventListener('change', ccCalc);
     ccCalc();
   </script>
 </body>

@@ -200,9 +200,9 @@
 
     /* BADGE LATERAL — Certificación */
     .cert-badge {
-      flex-shrink: 0; width: 240px;
+      flex-shrink: 0; width: 280px;
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; padding: 1.5rem;
+      border-radius: 16px; padding: 1.5rem 1.75rem;
     }
     .cert-badge-title {
       font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
@@ -256,6 +256,23 @@
     /* ═══════════════════════════════════════════════════════════
        CUPÓN DE DESCUENTO
     ═══════════════════════════════════════════════════════════ */
+    /* MODAL VINCULACIÓN */
+    .vinc-box        { max-width: 460px; }
+    .vinc-tag        { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
+    .vinc-title      { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; line-height: 1.3; }
+    .vinc-intro      { font-size: 13px; color: var(--gray-600); line-height: 1.6; margin-bottom: 1.25rem; }
+    .vinc-list-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--navy); margin-bottom: 0.6rem; }
+    .vinc-list       { list-style: none; padding: 0; margin: 0 0 1.75rem; display: flex; flex-direction: column; gap: 8px; }
+    .vinc-list li    { font-size: 13px; color: var(--gray-600); display: flex; align-items: center; gap: 8px; }
+    .vinc-list li::before { content: '✓'; color: var(--cyan); font-weight: 700; flex-shrink: 0; }
+    .btn-vinc-wa     { display: flex; align-items: center; justify-content: center; gap: 8px;
+                       background: #25D366; color: white; font-size: 14px; font-weight: 600;
+                       padding: 13px 24px; border-radius: 100px; text-decoration: none;
+                       transition: filter 0.2s; }
+    .btn-vinc-wa:hover { filter: brightness(1.08); }
+    .btn-vinc-wa::before { content: ''; display: inline-block; width: 18px; height: 18px;
+                            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z'/%3E%3Cpath d='M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.524 5.849L0 24l6.304-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.498-5.178-1.37l-.371-.22-3.742.895.929-3.641-.241-.381A9.94 9.94 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z'/%3E%3C/svg%3E") no-repeat center/contain; }
+
     .trust-bar       { background: var(--navy); border-top: 1px solid rgba(255,255,255,0.07); padding: 1.25rem 2rem; }
     .trust-bar-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0; }
     .trust-item      { text-align: center; padding: 0 3rem; }
@@ -480,7 +497,7 @@
     ═══════════════════════════════════════════════════════════ */
     .transportadores { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
     .trans-logos     { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
-    .trans-logo      { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--gray-600); }
+    .trans-logo      { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 16px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; }
 
     /* ═══════════════════════════════════════════════════════════
        FOOTER
@@ -613,8 +630,8 @@
         <p class="hero-sub"><strong>Transportadores certificados pujan. El mejor precio gana.</strong></p>
         <p class="hero-proof">licitación inversa en tiempo real · red verificada · todo el país</p>
         <div class="hero-ctas">
-          <button class="btn-primary-cta" onclick="window.open('https://wa.me/573214401975?text=Hola%20Bernardo%2C%20quiero%20publicar%20mi%20carga%20en%20NETFLEET','_blank')">Publicar mi carga →</button>
-          <button class="btn-secondary-cta" onclick="abrirAuthModal('registro')">Aplicar como transportador certificado →</button>
+          <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')">Publicar mi carga →</button>
+          <button class="btn-secondary-cta" onclick="abrirVinculacionModal('transportador')">Aplicar como transportador certificado →</button>
         </div>
       </div>
 
@@ -624,8 +641,11 @@
         <p class="cert-badge-desc">Solo transportadores verificados y habilitados ante el MinTransporte</p>
         <ul class="cert-badge-list">
           <li>habilitación mintransporte</li>
+          <li>conductores certificados</li>
+          <li>vehículos inspeccionados</li>
           <li>pólizas vigentes</li>
-          <li>historial verificado</li>
+          <li>mercancía asegurada</li>
+          <li>seguimiento GPS en tiempo real</li>
         </ul>
       </div>
 
@@ -893,12 +913,13 @@
       <p>Transportadores verificados en nuestra red</p>
     </div>
     <div class="trans-logos">
-      <span class="trans-logo">Entrapetrol</span>
-      <span class="trans-logo">Trans Nueva Colombia</span>
-      <span class="trans-logo">JR Logística</span>
       <span class="trans-logo">Global Logística</span>
       <span class="trans-logo">Vigía</span>
       <span class="trans-logo">Trasamer</span>
+      <span class="trans-logo">Trans Nueva Colombia</span>
+      <span class="trans-logo">JR Logística</span>
+      <span class="trans-logo">Pracargo</span>
+      <span class="trans-logo">Entrapetrol</span>
     </div>
   </div>
 
@@ -907,6 +928,21 @@
     <div class="footer-logo">NET<span>FLEET</span></div>
     <div class="footer-sub">NETFLEET · Marketplace de carga · Colombia</div>
   </footer>
+
+  <!-- MODAL DE VINCULACIÓN (empresa / transportador) -->
+  <div class="modal-overlay" id="vinculacion-modal" onclick="if(event.target===this)cerrarVinculacionModal()">
+    <div class="modal-box vinc-box">
+      <button class="modal-close" onclick="cerrarVinculacionModal()">×</button>
+      <div class="vinc-tag" id="vinc-tag"></div>
+      <h3 class="vinc-title" id="vinc-title"></h3>
+      <p class="vinc-intro" id="vinc-intro"></p>
+      <div class="vinc-list-label">Lo que verificamos:</div>
+      <ul class="vinc-list" id="vinc-list"></ul>
+      <a class="btn-vinc-wa" id="vinc-wa-btn" href="#" target="_blank" rel="noopener">
+        <span id="vinc-wa-label"></span>
+      </a>
+    </div>
+  </div>
 
   <!-- Toast de notificaciones (mensajes temporales) -->
   <div class="toast" id="toast"></div>
@@ -1041,6 +1077,54 @@
     function cerrarAuthModal() {
       document.getElementById('auth-modal').classList.remove('open');
       limpiarMensajesAuth();
+    }
+
+    /* ── MODAL DE VINCULACIÓN ── */
+    const VINCULACION = {
+      empresa: {
+        tag:   'acceso para empresas',
+        title: 'Proceso de vinculación',
+        intro: 'Para garantizar la seguridad de cada operación, verificamos tu empresa antes de activar tu cuenta en la red NETFLEET.',
+        items: [
+          'RUT y NIT vigente',
+          'Cámara de comercio',
+          'Datos de operación: rutas, volumen y tipo de carga',
+          'Persona de contacto y cargo'
+        ],
+        waLabel: 'Iniciar proceso →',
+        waMsg:   'Hola, quiero publicar mi carga en NETFLEET e iniciar el proceso de vinculación como empresa.'
+      },
+      transportador: {
+        tag:   'verificación de transportadores',
+        title: 'Proceso de certificación',
+        intro: 'Solo vinculamos operadores que cumplen con todos los requisitos legales y operativos. Tu perfil será revisado antes de activar tu cuenta.',
+        items: [
+          'Habilitación MinTransporte vigente',
+          'Tarjeta de operación del vehículo',
+          'SOAT y revisión técnico-mecánica al día',
+          'Pólizas de responsabilidad civil',
+          'Historial de operaciones'
+        ],
+        waLabel: 'Iniciar verificación →',
+        waMsg:   'Hola, quiero aplicar como transportador certificado en NETFLEET e iniciar el proceso de verificación.'
+      }
+    };
+
+    function abrirVinculacionModal(tipo) {
+      const cfg = VINCULACION[tipo];
+      if (!cfg) return;
+      document.getElementById('vinc-tag').textContent   = cfg.tag;
+      document.getElementById('vinc-title').textContent = cfg.title;
+      document.getElementById('vinc-intro').textContent = cfg.intro;
+      document.getElementById('vinc-list').innerHTML    = cfg.items.map(i => `<li>${i}</li>`).join('');
+      document.getElementById('vinc-wa-label').textContent = cfg.waLabel;
+      document.getElementById('vinc-wa-btn').href =
+        `https://wa.me/573214401975?text=${encodeURIComponent(cfg.waMsg)}`;
+      document.getElementById('vinculacion-modal').classList.add('open');
+    }
+
+    function cerrarVinculacionModal() {
+      document.getElementById('vinculacion-modal').classList.remove('open');
     }
     function cerrarModalOverlay(e) {
       if (e.target === document.getElementById('auth-modal')) cerrarAuthModal();

@@ -1149,9 +1149,14 @@
         permanent: true, direction: 'top',
         className: 'precio-tooltip', offset: [0, -8]
       });
-      marker.on('click', (e) => {
+      const onClick = (e) => {
         L.DomEvent.stopPropagation(e);
         seleccionarViaje(idx);
+      };
+      marker.on('click', onClick);
+      marker.on('tooltipopen', () => {
+        const el = marker.getTooltip()?.getElement();
+        if (el) L.DomEvent.on(el, 'click', onClick);
       });
       return marker;
     }

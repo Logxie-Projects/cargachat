@@ -1482,6 +1482,25 @@
      */
     let mapaLeaflet;        // instancia del mapa Leaflet
     let viajesData = [];    // array de viajes deduplicados (compartido entre tarjetas y mapa)
+
+    /**
+     * Obtiene la ruta real por carretera usando OSRM (gratis, sin API key).
+     * Recibe array de puntos [[lat,lng], ...] y devuelve array de coordenadas de la ruta.
+     * Si falla, devuelve null (fallback a línea recta).
+     */
+    async function obtenerRutaOSRM(puntos) {
+      if (puntos.length < 2) return null;
+      try {
+        const coords = puntos.map(p => `${p[1]},${p[0]}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        const data = await resp.json();
+        if (data.code === 'Ok' && data.routes.length > 0) {
+          return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        }
+      } catch (e) { /* silencioso — fallback a línea recta */ }
+      return null;
+    }
     let mapaCapas = [];     // [{grupo, bounds, originMarker, precioCorto, origen}] por índice
     let viajeSeleccionado = -1; // índice del viaje activo (-1 = todos visibles)
 
@@ -1598,11 +1617,24 @@
           );
         });
 
-        // ── Línea de ruta punteada ────────────────────────────
+        // ── Ruta real por carretera (OSRM) con fallback a línea recta ──
         if (puntosRuta.length > 1) {
-          grupo.addLayer(L.polyline(puntosRuta, {
+          // Línea recta punteada inmediata (se ve mientras carga OSRM)
+          const lineaRecta = L.polyline(puntosRuta, {
             color: '#1B2A6B', weight: 2.5, opacity: 0.6, dashArray: '6 4'
-          }));
+          });
+          grupo.addLayer(lineaRecta);
+
+          // Intentar obtener ruta real (async, no bloquea)
+          obtenerRutaOSRM(puntosRuta).then(rutaReal => {
+            if (rutaReal) {
+              grupo.removeLayer(lineaRecta);
+              grupo.addLayer(L.polyline(rutaReal, {
+                color: '#1B2A6B', weight: 3, opacity: 0.75
+              }));
+            }
+            // Si falla, la línea recta ya está visible
+          });
         }
 
         grupo.addTo(mapaLeaflet);

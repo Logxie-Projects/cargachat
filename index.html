@@ -596,6 +596,7 @@
           <label class="calc-label">Zona de destino</label>
           <select id="cc-zona" class="calc-select">
             <option value="">Sin especificar</option>
+            <option value="HUB">Hub (entre bodegas)</option>
             <option value="ANTIOQUIA">Antioquia</option>
             <option value="BOYACA">Boyacá</option>
             <option value="CENTRO">Centro</option>
@@ -1732,11 +1733,11 @@
       const km = parseInt(v.km)      || 0;
       const kg = parseInt(v.peso_kg) || 0;
       const numParadas = (v.destino || '').split(',').filter(d => d.trim()).length || 1;
-      if (km > 0) document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
-      if (kg > 0) document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
+      document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
+      document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
       document.getElementById('cc-paradas').value = Math.min(10, Math.max(1, numParadas));
-      // Auto-detectar zona desde el destino del viaje
-      const zonaDetectada = ccDetectarZona(v.destino);
+      // Auto-detectar zona desde origen y destino del viaje
+      const zonaDetectada = ccDetectarZona(v.destino, v.origen);
       document.getElementById('cc-zona').value = zonaDetectada;
       ccCalc();
 
@@ -1854,7 +1855,7 @@
       { label:'≥ 1000 km',   min:1000, max:9999, p25:4250000,  p75:11030000 },
     ];
     const CC_ZONA_AJUSTE = {
-      'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
+      'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
       'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,
       'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226
     };
@@ -1880,9 +1881,20 @@
     function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
     function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
 
-    // Detectar zona automáticamente a partir del texto de destinos
-    function ccDetectarZona(destinoTexto) {
+    // Bodegas hub — misma lista que n8n v2
+    const CC_HUB = ['funza','yumbo','espinal'];
+    const CC_PRECIO_MINIMO = 950000;
+
+    // Detectar zona automáticamente a partir de origen y destino
+    function ccDetectarZona(destinoTexto, origenTexto) {
+      const origNorm = ccNorm(origenTexto);
       const destNorm = ccNorm(destinoTexto);
+      // Si origen y todos los destinos son hubs → Hub
+      const esOrigenHub = CC_HUB.some(h => origNorm.includes(h));
+      const destinos = destNorm.split(',').map(d => d.trim()).filter(Boolean);
+      const todoDestinoHub = destinos.length > 0 && destinos.every(d => CC_HUB.some(h => d.includes(h)));
+      if (esOrigenHub && todoDestinoHub) return 'HUB';
+      // Buscar por ciudad en destino
       for (const [zona, ciudades] of Object.entries(CC_ZONAS_CIUDADES)) {
         if (ciudades.some(c => destNorm.includes(c))) return zona;
       }
@@ -1898,7 +1910,7 @@
       document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
       document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
       const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
-      const base = Math.max(0, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+      const base = Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
       document.getElementById('cc-base').textContent  = ccFmt(base);
       document.getElementById('cc-piso').textContent  = ccFmt(base * 0.85);
       document.getElementById('cc-techo').textContent = ccFmt(base * 1.15);

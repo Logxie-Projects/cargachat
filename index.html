@@ -247,6 +247,11 @@
     .badge-subasta    { background: #e6f9f4; color: #00875a; }
     .badge-urgente    { background: #ffe6e6; color: #cc0000; animation: badge-pulso 2s ease-in-out infinite; }
     @keyframes badge-pulso { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .nuevos-banner { display: none; background: var(--navy); color: white; text-align: center; padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 12px; transition: background 0.2s; animation: banner-in 0.4s ease-out; }
+    .nuevos-banner:hover { background: var(--navy-dark); }
+    .nuevos-banner.visible { display: block; }
+    @keyframes banner-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
     .viaje-countdown .cd-icon { font-size: 13px; }
     .viaje-countdown .cd-text { color: var(--gray-600); }
@@ -529,6 +534,10 @@
     <div class="section-hdr">
       <h2>Viajes disponibles ahora</h2>
       <p id="viajes-subtitle">Cargando viajes en tiempo real...</p>
+    </div>
+    <!-- Banner de nuevos viajes (oculto por defecto) -->
+    <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
+      🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
     </div>
     <!-- Este div se llena con las tarjetas de viaje por renderViajes() -->
     <div class="viajes-grid" id="viajes-grid">
@@ -1782,10 +1791,56 @@
     }
 
     // ================================================================
+    // POLLING — revisar viajes nuevos cada 3 minutos
+    // ================================================================
+    let viajesPendientes = null; // viajes nuevos detectados pero no mostrados
+
+    async function revisarNuevosViajes() {
+      try {
+        const resp = await fetch(CSV_URL);
+        if (!resp.ok) return;
+        const texto = await resp.text();
+        const viajes = parseCSV(texto);
+        const rtVistos = {};
+        const nuevos = [];
+        viajes.forEach((v, i) => {
+          const rt = v.rt_total || `sin-rt-${i}`;
+          if (!rtVistos[rt]) { rtVistos[rt] = true; nuevos.push(v); }
+        });
+        if (nuevos.length !== viajesData.length) {
+          viajesPendientes = nuevos;
+          const diff = nuevos.length - viajesData.length;
+          const banner = document.getElementById('nuevos-banner');
+          const texto2 = diff > 0
+            ? `${diff} viaje${diff > 1 ? 's' : ''} nuevo${diff > 1 ? 's' : ''} disponible${diff > 1 ? 's' : ''}`
+            : 'Los viajes se han actualizado';
+          document.getElementById('nuevos-banner-text').textContent = texto2;
+          banner.classList.add('visible');
+        }
+      } catch (e) { /* silencioso */ }
+    }
+
+    async function aplicarNuevosViajes() {
+      const banner = document.getElementById('nuevos-banner');
+      banner.classList.remove('visible');
+      if (viajesPendientes) {
+        viajesData = viajesPendientes;
+        viajesPendientes = null;
+        viajeSeleccionado = -1;
+        renderViajes(viajesData);
+        // Limpiar mapa y reinicializar
+        if (mapaLeaflet) { mapaLeaflet.remove(); mapaLeaflet = null; }
+        await initMapa(viajesData);
+      }
+    }
+
+    // ================================================================
     // INICIO
     // ================================================================
     // Cargar los viajes cuando la página termine de cargar
     cargarViajes();
+    // Revisar nuevos viajes cada 3 minutos
+    setInterval(revisarNuevosViajes, 180000);
 
   </script>
   <script>

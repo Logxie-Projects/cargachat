@@ -631,7 +631,7 @@
         <p class="hero-proof">licitación inversa en tiempo real · red verificada · todo el país</p>
         <div class="hero-ctas">
           <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')">Publicar mi carga →</button>
-          <button class="btn-secondary-cta" onclick="abrirVinculacionModal('transportador')">Aplicar como transportador certificado →</button>
+          <button class="btn-secondary-cta" onclick="abrirVinculacionModal('transportador')">Vincular mi empresa de transporte →</button>
         </div>
       </div>
 
@@ -863,7 +863,7 @@
 
       <div class="como-tabs">
         <button class="como-tab active" onclick="cambiarTab('empresa', this)">Para empresas</button>
-        <button class="como-tab"        onclick="cambiarTab('conductor', this)">Para transportadores</button>
+        <button class="como-tab"        onclick="cambiarTab('conductor', this)">Para empresas de transporte</button>
       </div>
 
       <!-- Pasos para empresas -->
@@ -1095,18 +1095,18 @@
         waMsg:   'Hola, quiero publicar mi carga en NETFLEET e iniciar el proceso de vinculación como empresa.'
       },
       transportador: {
-        tag:   'verificación de transportadores',
-        title: 'Proceso de certificación',
-        intro: 'Solo vinculamos operadores que cumplen con todos los requisitos legales y operativos. Tu perfil será revisado antes de activar tu cuenta.',
+        tag:   'certificación de empresas de transporte',
+        title: 'Vincula tu flota',
+        intro: 'Trabajamos con empresas de transporte que operan flotas propias o administradas. Verificamos el cumplimiento legal y operativo antes de activar tu cuenta.',
         items: [
-          'Habilitación MinTransporte vigente',
-          'Tarjeta de operación del vehículo',
-          'SOAT y revisión técnico-mecánica al día',
-          'Pólizas de responsabilidad civil',
-          'Historial de operaciones'
+          'Habilitación MinTransporte de la empresa',
+          'Tarjetas de operación de la flota',
+          'SOAT y revisiones técnico-mecánicas al día',
+          'Pólizas de responsabilidad civil vigentes',
+          'Historial de operaciones de la empresa'
         ],
-        waLabel: 'Iniciar verificación →',
-        waMsg:   'Hola, quiero aplicar como transportador certificado en NETFLEET e iniciar el proceso de verificación.'
+        waLabel: 'Iniciar vinculación de flota →',
+        waMsg:   'Hola, quiero vincular mi empresa de transporte en NETFLEET e iniciar el proceso de certificación.'
       }
     };
 

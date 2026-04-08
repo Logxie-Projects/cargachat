@@ -1154,9 +1154,14 @@
         seleccionarViaje(idx);
       };
       marker.on('click', onClick);
-      marker.on('tooltipopen', () => {
-        const el = marker.getTooltip()?.getElement();
-        if (el) L.DomEvent.on(el, 'click', onClick);
+      marker.on('add', () => {
+        setTimeout(() => {
+          const el = marker.getTooltip()?.getElement();
+          if (el) {
+            el.style.cursor = 'pointer';
+            L.DomEvent.on(el, 'click', onClick);
+          }
+        }, 50);
       });
       return marker;
     }

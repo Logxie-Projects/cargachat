@@ -252,6 +252,9 @@
     .nuevos-banner:hover { background: var(--navy-dark); }
     .nuevos-banner.visible { display: block; }
     @keyframes banner-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .ofertas-count { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-600); margin-top: 6px; }
+    .ofertas-count .oc-dot { width: 6px; height: 6px; border-radius: 50%; background: #00875a; animation: oc-pulse 2s infinite; }
+    @keyframes oc-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
     .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
     .viaje-countdown .cd-icon { font-size: 13px; }
     .viaje-countdown .cd-text { color: var(--gray-600); }
@@ -717,6 +720,24 @@
   <div class="toast" id="toast"></div>
 
   <!-- AUTH MODAL -->
+  <!-- MODAL DE OFERTA -->
+  <div class="modal-overlay" id="oferta-modal" onclick="if(event.target===this)cerrarOfertaModal()">
+    <div class="modal-box">
+      <button class="modal-close" onclick="cerrarOfertaModal()">×</button>
+      <div class="modal-form">
+        <h3 id="oferta-titulo">Hacer oferta</h3>
+        <div id="oferta-resumen" style="background:var(--gray-50);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--gray-600);line-height:1.6;"></div>
+        <label style="font-size:11px;font-weight:500;color:var(--gray-600);display:block;margin-bottom:6px;">Tu oferta (COP)</label>
+        <input type="text" id="oferta-precio" class="modal-input" placeholder="Ej: 2.500.000" inputmode="numeric" oninput="formatPrecioInput(this)" onkeydown="if(event.key==='Enter')enviarOferta()">
+        <label style="font-size:11px;font-weight:500;color:var(--gray-600);display:block;margin-bottom:6px;">Comentario (opcional)</label>
+        <input type="text" id="oferta-comentario" class="modal-input" placeholder="Ej: Tengo camión disponible mañana">
+        <button class="modal-btn-primary" id="oferta-btn" onclick="enviarOferta()">Enviar oferta →</button>
+        <div id="oferta-error" class="modal-error" style="display:none"></div>
+        <div id="oferta-success" class="modal-success" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="auth-modal" onclick="cerrarModalOverlay(event)">
     <div class="modal-box">
       <button class="modal-close" onclick="cerrarAuthModal()">×</button>
@@ -925,55 +946,185 @@
     // Google Maps API Key para geocoding de ciudades desconocidas
     const GMAPS_KEY = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
 
-    // URL del Google Forms donde los transportadores hacen sus ofertas
-    const FORMS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfKm5Gev8CQdJliOvideqsAi6ye-2UogKncV_3DfxpKgPwLDQ/viewform';
+    // ================================================================
+    // SISTEMA DE OFERTAS — Supabase
+    // ================================================================
+    let ofertaViajeIdx = null; // índice del viaje al que se está ofertando
+    let ofertasCounts = {};    // { viaje_rt: count } cache de conteos
 
-    // IDs de los campos del form para pre-llenado.
-    // Para obtenerlos: abre el form → Ver código fuente → busca atributos "entry.XXXXXXXX"
-    const FORM_FIELDS = {
-      origen:  '',  // ej. 'entry.123456789'
-      destino: '',
-      peso:    '',
-      precio:  '',  // precio sugerido o a ofertar
-      accion:  '',  // 'Aceptar precio' o 'Hacer oferta'
-    };
+    // Cargar conteo de ofertas para todos los viajes
+    async function cargarConteosOfertas() {
+      try {
+        const rts = viajesData.map(v => v.rt_total).filter(Boolean);
+        if (rts.length === 0) return;
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?estado=eq.activa&select=viaje_rt`, {
+          headers: { 'apikey': SUPABASE_KEY }
+        });
+        const rows = await r.json();
+        ofertasCounts = {};
+        rows.forEach(row => {
+          ofertasCounts[row.viaje_rt] = (ofertasCounts[row.viaje_rt] || 0) + 1;
+        });
+        // Actualizar badges en las tarjetas
+        document.querySelectorAll('[data-ofertas-rt]').forEach(el => {
+          const rt = el.getAttribute('data-ofertas-rt');
+          const count = ofertasCounts[rt] || 0;
+          el.innerHTML = count > 0
+            ? `<span class="oc-dot"></span> ${count} oferta${count > 1 ? 's' : ''} recibida${count > 1 ? 's' : ''}`
+            : '';
+        });
+      } catch (e) { /* silencioso */ }
+    }
 
-    // Abre el form pre-llenado con los datos del viaje.
-    // Si FORM_FIELDS están vacíos, abre el form sin pre-llenar.
-    function buildFormUrl(idx, accion) {
+    function formatPrecioInput(input) {
+      let val = input.value.replace(/\D/g, '');
+      if (val) input.value = parseInt(val).toLocaleString('es-CO');
+    }
+
+    function abrirOfertaModal(idx, accion) {
       const v = viajesData[idx];
       const precioBase = parseFloat(v.precio_base || '0') || 0;
-      const params = new URLSearchParams();
-      if (FORM_FIELDS.origen  && v.origen)  params.set(FORM_FIELDS.origen,  v.origen);
-      if (FORM_FIELDS.destino && v.destino) params.set(FORM_FIELDS.destino, v.destino);
-      if (FORM_FIELDS.peso    && v.peso_kg) params.set(FORM_FIELDS.peso,    v.peso_kg);
-      if (FORM_FIELDS.precio  && accion === 'aceptar' && precioBase) params.set(FORM_FIELDS.precio, precioBase);
-      if (FORM_FIELDS.accion) params.set(FORM_FIELDS.accion, accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta');
-      return params.toString() ? `${FORMS_URL}?${params}` : FORMS_URL;
+      ofertaViajeIdx = idx;
+
+      const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+      const destinoTexto = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : v.destino;
+
+      document.getElementById('oferta-titulo').textContent = accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta';
+      document.getElementById('oferta-resumen').innerHTML = `
+        <strong>${v.origen} → ${destinoTexto}</strong><br>
+        ${formatPeso(v.peso_kg)} · ${v.fecha_cargue || 'Fecha por confirmar'}
+        ${precioBase > 0 ? `<br>Precio base: <strong>${formatCOP(precioBase)}</strong>` : ''}
+      `;
+
+      const precioInput = document.getElementById('oferta-precio');
+      if (accion === 'aceptar' && precioBase > 0) {
+        precioInput.value = Math.round(precioBase).toLocaleString('es-CO');
+      } else {
+        precioInput.value = '';
+      }
+      document.getElementById('oferta-comentario').value = '';
+      document.getElementById('oferta-error').style.display = 'none';
+      document.getElementById('oferta-success').style.display = 'none';
+      document.getElementById('oferta-btn').disabled = false;
+      document.getElementById('oferta-btn').textContent = 'Enviar oferta →';
+      document.getElementById('oferta-modal').classList.add('open');
+      precioInput.focus();
+    }
+
+    function cerrarOfertaModal() {
+      document.getElementById('oferta-modal').classList.remove('open');
+      ofertaViajeIdx = null;
+    }
+
+    async function enviarOferta() {
+      const errorEl = document.getElementById('oferta-error');
+      const successEl = document.getElementById('oferta-success');
+      const btn = document.getElementById('oferta-btn');
+      errorEl.style.display = 'none';
+      successEl.style.display = 'none';
+
+      const precioRaw = document.getElementById('oferta-precio').value.replace(/\D/g, '');
+      const precio = parseInt(precioRaw) || 0;
+      const comentario = document.getElementById('oferta-comentario').value.trim();
+
+      if (precio < 100000) {
+        errorEl.textContent = 'El precio mínimo es $100.000';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const v = viajesData[ofertaViajeIdx];
+      const rt = v.rt_total;
+      if (!rt) {
+        errorEl.textContent = 'Este viaje no tiene identificador. Intenta con otro.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${tokenActual}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            viaje_rt: rt,
+            usuario_id: usuarioActual.id,
+            nombre: perfilActual?.nombre || '',
+            empresa: perfilActual?.empresa || '',
+            telefono: perfilActual?.telefono || '',
+            precio_oferta: precio,
+            comentario: comentario || null
+          })
+        });
+
+        if (r.status === 409 || r.status === 23505) {
+          errorEl.textContent = 'Ya tienes una oferta activa para este viaje.';
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Enviar oferta →';
+          return;
+        }
+
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          if (err.message?.includes('unique') || err.code === '23505') {
+            errorEl.textContent = 'Ya tienes una oferta activa para este viaje.';
+          } else {
+            errorEl.textContent = 'Error al enviar la oferta. Intenta de nuevo.';
+          }
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Enviar oferta →';
+          return;
+        }
+
+        successEl.textContent = '¡Oferta enviada! Te notificaremos cuando sea revisada.';
+        successEl.style.display = 'block';
+        btn.textContent = 'Oferta enviada ✓';
+
+        // Actualizar conteo
+        ofertasCounts[rt] = (ofertasCounts[rt] || 0) + 1;
+        const countEl = document.querySelector(`[data-ofertas-rt="${rt}"]`);
+        if (countEl) {
+          const c = ofertasCounts[rt];
+          countEl.innerHTML = `<span class="oc-dot"></span> ${c} oferta${c > 1 ? 's' : ''} recibida${c > 1 ? 's' : ''}`;
+        }
+
+        setTimeout(cerrarOfertaModal, 2000);
+      } catch (e) {
+        errorEl.textContent = 'Error de conexión. Verifica tu internet.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Enviar oferta →';
+      }
     }
 
     function abrirForm(idx, accion) {
-      // Sin sesión → abrir modal de registro
       if (!usuarioActual) { abrirAuthModal('registro'); return; }
 
-      // Perfil ya cargado → actuar de inmediato
       if (perfilActual) {
         if (perfilActual.estado !== 'activo') {
           showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
           return;
         }
-        window.open(buildFormUrl(idx, accion), '_blank');
+        abrirOfertaModal(idx, accion);
         return;
       }
 
-      // Perfil aún no cargado → recargar primero, luego abrir ventana solo si está activo
       fetchPerfil(usuarioActual.id, tokenActual)
         .then((data) => {
           perfilActual = data;
           actualizarNav(perfilActual);
           if (!data) { showToast('No encontramos tu cuenta. Cerrá sesión e ingresá de nuevo.'); return; }
           if (data.estado !== 'activo') { showToast('⏳ Tu cuenta está en revisión.'); return; }
-          window.open(buildFormUrl(idx, accion), '_blank');
+          abrirOfertaModal(idx, accion);
         });
     }
 
@@ -1445,6 +1596,7 @@
                 </div>
                 <div class="precio-base-value">${formatCOP(precioBase)}</div>
                 <div class="precio-base-sub">Acepta este precio o haz una oferta</div>
+                <div class="ofertas-count" data-ofertas-rt="${v.rt_total || ''}"></div>
               </div>
               <div style="display:flex; gap:8px;">
                 <button class="btn-aceptar" onclick="event.stopPropagation(); abrirForm(${idx}, 'aceptar')">Aceptar →</button>
@@ -1459,6 +1611,7 @@
                 </div>
                 <button class="btn-ofertar" onclick="event.stopPropagation(); abrirForm(${idx}, 'oferta')">Ofertar →</button>
               </div>
+              <div class="ofertas-count" data-ofertas-rt="${v.rt_total || ''}"></div>
             `}
 
           </div>
@@ -1697,13 +1850,14 @@
 
         renderViajes(viajesData);
         await initMapa(viajesData);
+        cargarConteosOfertas();
 
       } catch (error) {
         console.warn('Error al cargar viajes:', error);
 
         viajesData = [
-          { origen: 'Funza', destino: 'Cucuta, Bucaramanga, Aguachica', peso_kg: '1219', fecha_cargue: '31/03/2026', tipo_mercancia: 'Productos químicos', cajas: '40', precio_base: '1200000', km: '600', minutos: '10h 30min' },
-          { origen: 'Yumbo', destino: 'El Tigre, Pasto',                peso_kg: '2802', fecha_cargue: '06/04/2026', tipo_mercancia: 'Productos químicos', cajas: '150', precio_base: '0' },
+          { origen: 'Funza', destino: 'Cucuta, Bucaramanga, Aguachica', peso_kg: '1219', fecha_cargue: '31/03/2026', tipo_mercancia: 'Productos químicos', cajas: '40', precio_base: '1200000', km: '600', minutos: '10h 30min', rt_total: 'demo-1' },
+          { origen: 'Yumbo', destino: 'El Tigre, Pasto',                peso_kg: '2802', fecha_cargue: '06/04/2026', tipo_mercancia: 'Productos químicos', cajas: '150', precio_base: '0', rt_total: 'demo-2' },
         ];
 
         renderViajes(viajesData);

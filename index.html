@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARGACHAT — Marketplace de Carga Colombia</title>
+  <title>NETFLEET — Marketplace de Carga Colombia</title>
 
   <!--
     ╔══════════════════════════════════════════════════════════════╗
@@ -90,9 +90,19 @@
 
     .nav-logo    { display: flex; flex-direction: column; line-height: 1; }
     .logo-main   { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--navy); }
-    .logo-main span { color: var(--cyan); }   /* "CHAT" en cyan */
-    .logo-sub    { font-size: 10px; color: var(--gray-400); letter-spacing: 0.5px; margin-top: 1px; }
-    .nav-links   { display: flex; gap: 8px; align-items: center; }
+    .logo-main span { color: var(--cyan); }
+    .logo-sub    { display: none; }
+    .nav-menu    { display: flex; gap: 28px; align-items: center; }
+    .nav-menu a  { font-size: 13px; font-weight: 500; color: var(--gray-600); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
+    .nav-menu a:hover { color: var(--navy); }
+    .nav-links   { display: flex; gap: 12px; align-items: center; }
+    .btn-nav-access {
+      padding: 9px 22px; border-radius: 100px;
+      border: none; background: var(--navy); color: white;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-nav-access:hover { background: var(--cyan); }
 
     /* Botones de la navbar */
     .btn-outline {
@@ -132,31 +142,82 @@
       pointer-events: none;
     }
 
-    .hero-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+    .hero-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 4rem;
+      text-align: left;
+    }
+    .hero-content { flex: 1; min-width: 0; }
 
     .hero-badge {
       display: inline-block;
       background: rgba(0,191,223,0.15); color: var(--cyan);
       border: 1px solid rgba(0,191,223,0.3);
       padding: 4px 14px; border-radius: 100px;
-      font-size: 11px; font-weight: 500; letter-spacing: 1px;
+      font-size: 11px; font-weight: 600; letter-spacing: 1.2px;
+      text-transform: uppercase;
       margin-bottom: 1.5rem;
     }
 
     .hero h1 {
-      /* clamp(mínimo, preferido, máximo) → tamaño responsivo automático */
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 600; color: white;
-      line-height: 1.15; letter-spacing: -1px;
-      margin-bottom: 1rem;
+      font-size: clamp(2.4rem, 5.5vw, 4rem);
+      font-weight: 700; color: white;
+      line-height: 1.1; letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
     }
     .hero h1 span { color: var(--cyan); }
 
     .hero-sub {
-      font-size: 1.1rem; color: rgba(255,255,255,0.65);
-      max-width: 520px; margin: 0 auto 2.5rem;
+      font-size: 1rem; color: rgba(255,255,255,0.6);
+      margin: 0 0 0.75rem;
       line-height: 1.7; font-weight: 300;
     }
+    .hero-sub strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+
+    .hero-proof {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: rgba(255,255,255,0.3);
+      margin-bottom: 2.25rem;
+    }
+
+    .hero-ctas { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+    .btn-primary-cta {
+      padding: 14px 32px; border-radius: 100px;
+      border: none; background: var(--cyan); color: white;
+      font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; white-space: nowrap; align-self: flex-start;
+    }
+    .btn-primary-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-secondary-cta {
+      padding: 12px 24px; border-radius: 100px;
+      border: 1.5px solid rgba(255,255,255,0.22); background: transparent;
+      color: rgba(255,255,255,0.75);
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; white-space: nowrap; align-self: flex-start;
+    }
+    .btn-secondary-cta:hover { border-color: rgba(255,255,255,0.6); color: white; }
+
+    /* BADGE LATERAL — Certificación */
+    .cert-badge {
+      flex-shrink: 0; width: 240px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 1.5rem;
+    }
+    .cert-badge-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--cyan); margin-bottom: 0.6rem;
+    }
+    .cert-badge-desc {
+      font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.55; margin-bottom: 1.25rem;
+    }
+    .cert-badge-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+    .cert-badge-list li {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; color: rgba(255,255,255,0.8);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .cert-badge-list li::before { content: '✓'; color: var(--cyan); font-size: 13px; font-weight: 700; flex-shrink: 0; }
 
     /* ═══════════════════════════════════════════════════════════
        BIFURCACIÓN — CARDS DE EMPRESA vs TRANSPORTADOR
@@ -195,13 +256,29 @@
     /* ═══════════════════════════════════════════════════════════
        CUPÓN DE DESCUENTO
     ═══════════════════════════════════════════════════════════ */
-    .coupon-wrap { background: var(--gray-50); padding: 1rem 2rem; display: flex; justify-content: center; }
-    .coupon      { display: flex; align-items: center; gap: 12px; background: #fffde7; border: 1.5px dashed #ffc107; border-radius: 12px; padding: 10px 16px; max-width: 520px; width: 100%; }
-    .coupon-text { flex: 1; }
-    .coupon-title { font-size: 13px; font-weight: 600; color: #7a5c00; }
-    .coupon-sub   { font-size: 11px; color: #a07800; }
-    .coupon-code  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--navy); background: white; border: 1px solid #ffc107; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-    .coupon-code:hover { background: var(--navy); color: white; }
+    .trust-bar       { background: var(--navy); border-top: 1px solid rgba(255,255,255,0.07); padding: 1.25rem 2rem; }
+    .trust-bar-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0; }
+    .trust-item      { text-align: center; padding: 0 3rem; }
+    .trust-num       { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+    .trust-label     { font-size: 10px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .trust-div       { width: 1px; height: 32px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTORES QUE ATENDEMOS
+    ═══════════════════════════════════════════════════════════ */
+    .sectores         { padding: 4.5rem 2rem; background: var(--gray-50); }
+    .sectores-inner   { max-width: 1100px; margin: 0 auto; }
+    .sectores-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
+    .sectores-title   { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700; color: var(--navy); letter-spacing: -0.5px; margin-bottom: 2.5rem; line-height: 1.2; }
+    .sectores-grid    { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .sector-card      { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 1.5rem; transition: box-shadow 0.2s, transform 0.2s; }
+    .sector-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.07); transform: translateY(-2px); }
+    .sector-tag       { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.6rem; }
+    .sector-name      { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.3; }
+    .sector-desc      { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 1.1rem; }
+    .sector-req       { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--gray-100); padding-top: 1rem; }
+    .sector-req-item  { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); display: flex; align-items: center; gap: 7px; }
+    .sector-req-item::before { content: '✓'; color: var(--cyan); font-weight: 700; font-size: 11px; }
 
     /* ═══════════════════════════════════════════════════════════
        ESTADÍSTICAS (3 columnas)
@@ -384,17 +461,18 @@
        SECCIÓN CÓMO FUNCIONA — TABS
        Los tabs cambian entre "Para empresas" y "Para transportadores"
     ═══════════════════════════════════════════════════════════ */
-    .como-section  { background: var(--gray-50); padding: 4rem 2rem; }
-    .como-inner    { max-width: 900px; margin: 0 auto; }
-    .como-tabs     { display: flex; gap: 8px; margin-bottom: 2rem; }
+    .como-section  { background: var(--gray-50); padding: 4.5rem 2rem; }
+    .como-inner    { max-width: 1100px; margin: 0 auto; }
+    .como-tabs     { display: flex; gap: 8px; margin-bottom: 2.5rem; }
     .como-tab      { padding: 8px 20px; border-radius: 100px; border: 1.5px solid var(--gray-100); background: white; color: var(--gray-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
     .como-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
     .como-steps    { display: none; }
-    .como-steps.active { display: flex; flex-direction: column; gap: 16px; }
+    .como-steps.active { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
-    .step          { display: flex; gap: 16px; align-items: flex-start; background: white; border-radius: 16px; padding: 1.25rem; border: 1px solid var(--gray-100); }
-    .step-num      { width: 32px; height: 32px; border-radius: 50%; background: var(--cyan-light); color: var(--navy); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .step-title    { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+    .step          { display: flex; flex-direction: column; background: white; border-radius: 16px; padding: 1.75rem 1.5rem; border: 1px solid var(--gray-100); transition: box-shadow 0.2s; }
+    .step:hover    { box-shadow: 0 6px 24px rgba(0,0,0,0.07); }
+    .step-num      { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 1rem; }
+    .step-title    { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.3; }
     .step-desc     { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
 
     /* ═══════════════════════════════════════════════════════════
@@ -450,7 +528,7 @@
 
     /* Ticker en vivo */
     .ticker-bar { background: var(--navy); height: 34px; display: flex; align-items: center; overflow: hidden; position: relative; }
-    .ticker-label { display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--cyan); color: white; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
+    .ticker-label { display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--cyan); color: white; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
     .ticker-dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse-dot 1s infinite; }
     @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
     .ticker-track { display: flex; align-items: center; gap: 0; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
@@ -461,13 +539,23 @@
     .ticker-item .ti-sep { color: rgba(255,255,255,0.3); margin: 0 4px; }
     .ticker-item .ti-badge { font-size: 10px; }
 
+    @media (max-width: 768px) {
+      .nav-menu      { display: none; }
+      .hero-inner    { flex-direction: column; gap: 2.5rem; }
+      .cert-badge    { width: 100%; }
+      .hero-ctas     { align-items: stretch; max-width: 380px; }
+      .btn-primary-cta, .btn-secondary-cta { text-align: center; width: 100%; }
+      .sectores-grid { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 640px) {
-      .bifurcacion { grid-template-columns: 1fr; }   /* Una columna en móvil */
-      .stats       { grid-template-columns: 1fr; }
-      .stat        { border-right: none; border-bottom: 1px solid var(--gray-100); }
-      .viajes-grid { grid-template-columns: 1fr; }
-      nav          { padding: 0 1rem; }
-      .hero        { padding: 3rem 1rem 2.5rem; }
+      .bifurcacion   { grid-template-columns: 1fr; }
+      .stats         { grid-template-columns: 1fr; }
+      .stat          { border-right: none; border-bottom: 1px solid var(--gray-100); }
+      .viajes-grid   { grid-template-columns: 1fr; }
+      .sectores-grid { grid-template-columns: 1fr; }
+      .como-steps.active { grid-template-columns: 1fr; }
+      nav            { padding: 0 1rem; }
+      .hero          { padding: 3rem 1rem 2.5rem; }
     }
   </style>
 </head>
@@ -481,14 +569,17 @@
   <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
   <nav>
     <div class="nav-logo">
-      <div class="logo-main">CARGA<span>CHAT</span></div>
-      <div class="logo-sub">by Logxie Connect · Logística Inteligente</div>
+      <div class="logo-main">NET<span>FLEET</span></div>
     </div>
+    <nav-menu class="nav-menu">
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#empresas">Para empresas</a>
+      <a href="#transportadores">Transportadores</a>
+      <a href="#contacto">Contacto</a>
+    </nav-menu>
     <div class="nav-links">
-      <!-- Los botones muestran un toast mientras no existe login real -->
       <div id="nav-auth-buttons">
-        <button class="btn-outline" onclick="abrirAuthModal('login')">Ingresar</button>
-        <button class="btn-solid"   onclick="abrirAuthModal('registro')">Registrarse</button>
+        <button class="btn-nav-access" onclick="abrirAuthModal('registro')">Solicitar acceso</button>
       </div>
       <div id="nav-user-info" class="nav-user" style="display:none">
         <span class="nav-user-name" id="nav-user-name"></span>
@@ -503,7 +594,7 @@
   <div class="ticker-bar" id="ticker-bar" style="display:none">
     <div class="ticker-label">
       <div class="ticker-dot"></div>
-      EN VIVO
+      operaciones activas
     </div>
     <div style="overflow:hidden;flex:1">
       <div class="ticker-track" id="ticker-track"></div>
@@ -513,40 +604,56 @@
   <!-- HERO: primera sección visible al entrar -->
   <section class="hero">
     <div class="hero-inner">
-      <div class="hero-badge">MARKETPLACE DE CARGA · COLOMBIA</div>
-      <h1>Mueve tu carga al precio<br><span>justo</span>, en tiempo real</h1>
-      <p class="hero-sub">Conectamos empresas con transportadores en todo el país. Sin WhatsApp, sin Excel. Solo eficiencia.</p>
 
-      <!-- BIFURCACIÓN: empresa (izquierda) vs transportador (derecha) -->
-      <div class="bifurcacion">
-        <div class="bif-card bif-empresa">
-          <div class="bif-icon bif-icon-e">🏭</div>
-          <div class="bif-title">Soy empresa</div>
-          <p class="bif-desc">Necesito mover carga y quiero el mejor precio del mercado</p>
-          <!-- WhatsApp de Bernardo con mensaje pre-escrito -->
-          <button class="bif-btn bif-btn-e" onclick="window.open('https://wa.me/573214401975?text=Hola%20Bernardo%2C%20quiero%20inscribir%20mi%20empresa%20en%20CARGACHAT','_blank')">Publicar carga →</button>
-        </div>
-        <div class="bif-card bif-conductor">
-          <div class="bif-icon bif-icon-c">🚛</div>
-          <div class="bif-title" style="color:var(--cyan)">Soy transportador</div>
-          <p class="bif-desc" style="color:rgba(255,255,255,0.6)">Tengo vehículo y quiero más viajes disponibles</p>
-          <!-- Scroll suave hasta la sección de viajes -->
-          <button class="bif-btn bif-btn-c" onclick="document.getElementById('viajes').scrollIntoView({behavior:'smooth'})">Ver viajes disponibles →</button>
+      <!-- COLUMNA IZQUIERDA: copy + CTAs -->
+      <div class="hero-content">
+        <div class="hero-badge">marketplace de carga b2b · colombia</div>
+        <h1>la carga<br>va directo.<br><span>sin rosca.</span></h1>
+        <p class="hero-sub">Sin intermediarios, sin comisiones ocultas.</p>
+        <p class="hero-sub"><strong>Transportadores certificados pujan. El mejor precio gana.</strong></p>
+        <p class="hero-proof">licitación inversa en tiempo real · red verificada · todo el país</p>
+        <div class="hero-ctas">
+          <button class="btn-primary-cta" onclick="window.open('https://wa.me/573214401975?text=Hola%20Bernardo%2C%20quiero%20publicar%20mi%20carga%20en%20NETFLEET','_blank')">Publicar mi carga →</button>
+          <button class="btn-secondary-cta" onclick="abrirAuthModal('registro')">Aplicar como transportador certificado →</button>
         </div>
       </div>
+
+      <!-- COLUMNA DERECHA: badge de certificación -->
+      <div class="cert-badge">
+        <div class="cert-badge-title">red certificada</div>
+        <p class="cert-badge-desc">Solo transportadores verificados y habilitados ante el MinTransporte</p>
+        <ul class="cert-badge-list">
+          <li>habilitación mintransporte</li>
+          <li>pólizas vigentes</li>
+          <li>historial verificado</li>
+        </ul>
+      </div>
+
     </div>
   </section>
 
-  <!-- CUPÓN DE DESCUENTO PARA EMPRESAS NUEVAS -->
-  <div class="coupon-wrap">
-    <div class="coupon">
-      <span style="font-size:24px">🎁</span>
-      <div class="coupon-text">
-        <div class="coupon-title">20% de descuento en tu primer servicio</div>
-        <div class="coupon-sub">Para empresas nuevas · válido por 30 días</div>
+  <!-- BARRA DE CONFIANZA B2B -->
+  <div class="trust-bar">
+    <div class="trust-bar-inner">
+      <div class="trust-item">
+        <div class="trust-num">2.000+</div>
+        <div class="trust-label">viajes gestionados</div>
       </div>
-      <!-- Al hacer clic copia el código al portapapeles -->
-      <div class="coupon-code" onclick="copiarCodigo(this)">LOGXIE20</div>
+      <div class="trust-div"></div>
+      <div class="trust-item">
+        <div class="trust-num">98%</div>
+        <div class="trust-label">entregas a tiempo</div>
+      </div>
+      <div class="trust-div"></div>
+      <div class="trust-item">
+        <div class="trust-num">$0</div>
+        <div class="trust-label">comisión oculta</div>
+      </div>
+      <div class="trust-div"></div>
+      <div class="trust-item">
+        <div class="trust-num">Todo el país</div>
+        <div class="trust-label">cobertura nacional</div>
+      </div>
     </div>
   </div>
 
@@ -674,47 +781,107 @@
     </div>
   </div>
 
+  <!-- SECTORES QUE ATENDEMOS -->
+  <div class="sectores" id="empresas">
+    <div class="sectores-inner">
+      <div class="sectores-eyebrow">sectores que atendemos</div>
+      <h2 class="sectores-title">Carga especializada<br>por industria</h2>
+      <div class="sectores-grid">
+
+        <div class="sector-card">
+          <div class="sector-tag">oil &amp; gas</div>
+          <div class="sector-name">Equipos e insumos industriales</div>
+          <p class="sector-desc">Tuberías, válvulas, maquinaria pesada y químicos para operaciones en campo.</p>
+          <div class="sector-req">
+            <div class="sector-req-item">carga sobredimensionada</div>
+            <div class="sector-req-item">transporte especializado</div>
+            <div class="sector-req-item">escolta y permisos</div>
+          </div>
+        </div>
+
+        <div class="sector-card">
+          <div class="sector-tag">agribusiness</div>
+          <div class="sector-name">Agroinsumos y granel</div>
+          <p class="sector-desc">Fertilizantes, semillas, granel seco y cadena fría para perecederos.</p>
+          <div class="sector-req">
+            <div class="sector-req-item">cadena frío certificada</div>
+            <div class="sector-req-item">granel seco y líquido</div>
+            <div class="sector-req-item">trazabilidad completa</div>
+          </div>
+        </div>
+
+        <div class="sector-card">
+          <div class="sector-tag">health</div>
+          <div class="sector-name">Dispositivos y equipos médicos</div>
+          <p class="sector-desc">Equipos hospitalarios, dispositivos de diagnóstico y suministros clínicos.</p>
+          <div class="sector-req">
+            <div class="sector-req-item">temperatura controlada</div>
+            <div class="sector-req-item">manipulación certificada</div>
+            <div class="sector-req-item">seguro de carga incluido</div>
+          </div>
+        </div>
+
+        <div class="sector-card">
+          <div class="sector-tag">medicals</div>
+          <div class="sector-name">Medicamentos y reactivos</div>
+          <p class="sector-desc">Cadena de frío farmacéutica, reactivos de laboratorio y carga sensible regulada.</p>
+          <div class="sector-req">
+            <div class="sector-req-item">certificación INVIMA</div>
+            <div class="sector-req-item">cold chain 2–8 °C</div>
+            <div class="sector-req-item">GPS en tiempo real</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- SECCIÓN CÓMO FUNCIONA — TABS -->
-  <div class="como-section">
+  <div class="como-section" id="como-funciona">
     <div class="como-inner">
       <div class="section-hdr"><h2>¿Cómo funciona?</h2></div>
 
-      <!-- Tabs: al hacer clic llaman a cambiarTab() -->
       <div class="como-tabs">
         <button class="como-tab active" onclick="cambiarTab('empresa', this)">Para empresas</button>
         <button class="como-tab"        onclick="cambiarTab('conductor', this)">Para transportadores</button>
       </div>
 
-      <!-- Pasos para empresas (visible por defecto) -->
+      <!-- Pasos para empresas -->
       <div class="como-steps active" id="steps-empresa">
-        <div class="step"><div class="step-num">1</div><div>
-          <div class="step-title">Publica tu carga</div>
-          <div class="step-desc">Origen, destino, peso y fecha. En minutos tu carga llega a toda la red de transportadores.</div>
-        </div></div>
-        <div class="step"><div class="step-num">2</div><div>
-          <div class="step-title">Transportadores compiten en subasta inversa</div>
-          <div class="step-desc">Cada transportador oferta su mejor precio sin ver las ofertas de los demás. Competencia real.</div>
-        </div></div>
-        <div class="step"><div class="step-num">3</div><div>
-          <div class="step-title">Tú eliges, nosotros coordinamos</div>
-          <div class="step-desc">Asignas al ganador y CARGACHAT gestiona el viaje completo de principio a fin.</div>
-        </div></div>
+        <div class="step">
+          <div class="step-num">paso 01</div>
+          <div class="step-title">Publica tu operación</div>
+          <div class="step-desc">Carga, ruta, fecha y requisitos especiales. Tu licitación llega a toda la red certificada en minutos.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">paso 02</div>
+          <div class="step-title">Transportadores certificados pujan</div>
+          <div class="step-desc">Solo operadores verificados ante el MinTransporte ofertan su mejor precio. Sin intermediario, sin comisión oculta.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">paso 03</div>
+          <div class="step-title">Adjudicas y nosotros coordinamos</div>
+          <div class="step-desc">Seleccionas al ganador. NETFLEET gestiona documentos, trazabilidad y confirmación de principio a fin.</div>
+        </div>
       </div>
 
-      <!-- Pasos para transportadores (oculto por defecto) -->
+      <!-- Pasos para transportadores -->
       <div class="como-steps" id="steps-conductor">
-        <div class="step"><div class="step-num">1</div><div>
-          <div class="step-title">Ve la carga disponible</div>
-          <div class="step-desc">Ruta, peso, fecha y precio objetivo en una sola pantalla. Sin llamadas, sin WhatsApp.</div>
-        </div></div>
-        <div class="step"><div class="step-num">2</div><div>
-          <div class="step-title">Haz tu oferta</div>
-          <div class="step-desc">Acepta el precio objetivo o propone el tuyo. Tan fácil como usar WhatsApp.</div>
-        </div></div>
-        <div class="step"><div class="step-num">3</div><div>
-          <div class="step-title">Recibe la confirmación</div>
-          <div class="step-desc">Si eres seleccionado, tienes todo listo para arrancar — documentos, contactos y ruta.</div>
-        </div></div>
+        <div class="step">
+          <div class="step-num">paso 01</div>
+          <div class="step-title">Revisa las operaciones disponibles</div>
+          <div class="step-desc">Ruta, carga, fecha y precio objetivo en un solo panel. Sin llamadas, sin WhatsApp, sin intermediarios.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">paso 02</div>
+          <div class="step-title">Presenta tu mejor oferta</div>
+          <div class="step-desc">Pujas tu precio directamente. Sin ver las ofertas de otros. Competencia real y transparente.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">paso 03</div>
+          <div class="step-title">Confirmación y documentos</div>
+          <div class="step-desc">Si eres seleccionado, recibes todo al instante — documentos, contacto de cargue y ruta optimizada.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -737,8 +904,8 @@
 
   <!-- FOOTER -->
   <footer>
-    <div class="footer-logo">CARGA<span>CHAT</span></div>
-    <div class="footer-sub">by Logxie Connect S.A.S. · Logística Inteligente · Colombia</div>
+    <div class="footer-logo">NET<span>FLEET</span></div>
+    <div class="footer-sub">NETFLEET · Marketplace de carga · Colombia</div>
   </footer>
 
   <!-- Toast de notificaciones (mensajes temporales) -->

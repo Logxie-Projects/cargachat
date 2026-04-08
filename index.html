@@ -957,6 +957,19 @@
       'sutamarchan':  [5.6333, -73.7833],
 
       // ── Cundinamarca ──
+      'siberia':      [4.8856, -74.1483],
+      'cabrera':      [3.9847, -74.4856],
+      'fusagasuga':   [4.3367, -74.3644],
+      'fusagasugá':   [4.3367, -74.3644],
+      'silvania':     [4.4000, -74.4833],
+      'sibate':       [4.4878, -74.2597],
+      'sibaté':       [4.4878, -74.2597],
+      'san bernardo': [4.1833, -74.4333],
+      'usme':         [4.4367, -74.1322],
+      'subachoque':   [4.9167, -74.2667],
+      'fomeque':      [4.4833, -73.9000],
+      'fómeque':      [4.4833, -73.9000],
+      'ortigal':      [3.2798, -76.3449],
       'tenjo':        [4.8714, -74.1436],
       'zipaquira':    [5.0228, -74.0061],
       'zipaquirá':    [5.0228, -74.0061],
@@ -1362,7 +1375,7 @@
 
       for (let viajeIdx = 0; viajeIdx < viajes.length; viajeIdx++) {
         const v = viajes[viajeIdx];
-        const origen      = v.origen || '';
+        const origen      = (v.origen || '').split(',')[0].trim();
         const destinos    = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
         const precioBase  = parseFloat(v.precio_base || '0') || 0;
         const precioCorto = formatPrecioCorto(precioBase);

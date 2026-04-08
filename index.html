@@ -2563,7 +2563,15 @@
       document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
       document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
       const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
-      const base = Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+      let base;
+      if (km < 50) {
+        // Distribución local / mismo municipio — fórmula calibrada con datos reales
+        // 5 ton → $400K · 34 ton → $1.2M · mínimo $300K
+        base = Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
+      } else {
+        // Larga distancia — modelo polynomial Ridge (R²=0.919, n=1.015 viajes)
+        base = Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+      }
       document.getElementById('cc-base').textContent  = ccFmt(base);
       // Ahorro vs p75 histórico
       const r = ccRango(km);

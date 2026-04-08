@@ -411,10 +411,17 @@
 
   function calcularFlete(km, kgTotal, paradas, zona) {
     const aj = ZONA_AJUSTE[zona?.toUpperCase()] ?? 0;
-    let p = 3097.69*km + 217.94*kgTotal + 0.1215*km*kgTotal
-          - 1.0566*km*km - 0.0034*kgTotal*kgTotal
-          + 63186*paradas + aj - 306248;
-    return Math.max(950000, Math.round(p / 1000) * 1000);
+    let p;
+    if (km < 50) {
+      // Distribución local — calibrado: 5 ton→$400K, 34 ton→$1.2M
+      p = Math.max(300000, 260000 + kgTotal * 28 + 63186 * (paradas - 1));
+    } else {
+      p = 3097.69*km + 217.94*kgTotal + 0.1215*km*kgTotal
+        - 1.0566*km*km - 0.0034*kgTotal*kgTotal
+        + 63186*paradas + aj - 306248;
+      p = Math.max(950000, p);
+    }
+    return Math.round(p / 1000) * 1000;
   }
 
   function formatCOP(n) {

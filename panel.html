@@ -231,32 +231,47 @@
       return 'v-' + Math.abs(hash).toString(36);
     }
 
+    let cargando = false;
+
     async function cargarViajes() {
+      // No recargar si ya tenemos datos
+      if (Object.keys(viajesMap).length > 0) return;
       try {
         const resp = await fetch(CSV_URL);
         if (!resp.ok) return;
         const text = await resp.text();
+        // Verificar que es CSV y no HTML (Google a veces redirige)
+        if (text.trim().startsWith('<')) return;
         const viajes = parseCSV(text);
+        if (viajes.length === 0) return;
         viajesMap = {};
         viajes.forEach(v => {
           const id = v.rt_total || generarViajeId(v);
           viajesMap[id] = v;
         });
-      } catch (e) { /* silencioso */ }
+        console.log(`[PANEL] ${viajes.length} viajes cargados, ${Object.keys(viajesMap).length} en mapa`);
+      } catch (e) { console.warn('[PANEL] Error cargando viajes:', e); }
     }
 
     async function cargarOfertas() {
+      if (cargando) return;
+      cargando = true;
       try {
-        await cargarViajes();
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?usuario_id=eq.${usuario.id}&select=*&order=created_at.desc`, {
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
-        });
-        todasOfertas = await r.json();
+        // Cargar viajes y ofertas en paralelo
+        const [_, ofertasResp] = await Promise.all([
+          cargarViajes(),
+          fetch(`${SUPABASE_URL}/rest/v1/ofertas?usuario_id=eq.${usuario.id}&select=*&order=created_at.desc`, {
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+        todasOfertas = await ofertasResp.json();
+        if (!Array.isArray(todasOfertas)) todasOfertas = [];
         actualizarStats();
         renderOfertas();
       } catch (e) {
         document.getElementById('ofertas-container').innerHTML = '<div class="empty-state"><p>Error al cargar ofertas.</p></div>';
       }
+      cargando = false;
     }
 
     function actualizarStats() {
@@ -388,12 +403,20 @@
       window.location.href = 'index.html';
     }
 
-    // Init
+    // Init — onAuthStateChange puede disparar varias veces
+    let initDone = false;
     sb.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         usuario = session.user;
         token = session.access_token;
-        perfil = await fetchPerfil(usuario.id, token);
+        if (!initDone) {
+          initDone = true;
+          perfil = await fetchPerfil(usuario.id, token);
+        } else {
+          // Token renovado, solo actualizar
+          token = session.access_token;
+          return;
+        }
 
         document.getElementById('nav-name').textContent = perfil?.nombre || usuario.email;
         const badge = document.getElementById('nav-badge');

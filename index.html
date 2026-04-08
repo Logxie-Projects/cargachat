@@ -1346,6 +1346,7 @@
     let viajeSeleccionado = -1; // índice del viaje activo (-1 = todos visibles)
 
     async function initMapa(viajes) {
+      console.log(`[MAPA] initMapa llamado con ${viajes.length} viajes:`, viajes.map(v => v.origen + ' → ' + v.destino));
       mapaLeaflet = L.map('map', { zoomControl: true })
         .setView([4.5709, -74.2973], 6);
 

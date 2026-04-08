@@ -586,9 +586,11 @@
             <option value="CUNDINAMARCA">Cundinamarca</option>
             <option value="EJE CAFETERO">Eje Cafetero</option>
             <option value="LLANOS">Llanos</option>
+            <option value="NORTE">Norte / Costa</option>
             <option value="OCCIDENTE">Occidente</option>
             <option value="ORIENTE">Oriente</option>
             <option value="SANTANDERES">Santanderes</option>
+            <option value="SUR">Sur / Nariño</option>
             <option value="TOLHUIL">Tolima / Huila</option>
             <option value="VALLE">Valle</option>
           </select>
@@ -1677,6 +1679,9 @@
       if (km > 0) document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
       if (kg > 0) document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
       document.getElementById('cc-paradas').value = Math.min(10, Math.max(1, numParadas));
+      // Auto-detectar zona desde el destino del viaje
+      const zonaDetectada = ccDetectarZona(v.destino);
+      document.getElementById('cc-zona').value = zonaDetectada;
       ccCalc();
 
       // Scroll suave al mapa
@@ -1738,6 +1743,7 @@
   </script>
   <script>
     // CALCULADORA DE FLETE — modelo polinomial grado 2 + paradas + zona (Ridge, n=1.015 viajes reales)
+    // Misma fórmula que n8n v2 para que los precios coincidan
     const CC_RANGOS = [
       { label:'< 100 km',    min:0,    max:100,  p25:380000,   p75:800000   },
       { label:'100–300 km',  min:100,  max:300,  p25:900000,   p75:1695000  },
@@ -1747,11 +1753,40 @@
     ];
     const CC_ZONA_AJUSTE = {
       'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
-      'EJE CAFETERO':-18794,'LLANOS':159210,'OCCIDENTE':10720,'ORIENTE':-176447,
-      'SANTANDERES':-213483,'TOLHUIL':-18146,'VALLE':34226
+      'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,
+      'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226
     };
+
+    // Listas de ciudades por zona — idénticas a n8n v2 para detección automática
+    const CC_ZONAS_CIUDADES = {
+      'LLANOS':       ['villavicencio','yopal','arauca','acacias','granada','puerto lopez','restrepo','cumaral','aguazul','tauramena','trinidad','paz de ariporo','orocue','san martin'],
+      'BOYACA':       ['tunja','duitama','sogamoso','chiquinquira','paipa','villa de leyva','samaca','ventaquemada','tibasosa','nobsa'],
+      'SANTANDERES':  ['bucaramanga','cucuta','giron','floridablanca','piedecuesta','san gil','barrancabermeja','pamplona','ocana','los patios'],
+      'ORIENTE':      ['bucaramanga','cucuta','giron','floridablanca','piedecuesta','pamplona'],
+      'CUNDINAMARCA': ['zipaquira','chia','facatativa','soacha','mosquera','madrid','cajica','cota','tenjo','tabio','la calera','fusagasuga','silvania','tocancipa'],
+      'EJE CAFETERO': ['virginia','cartago','armenia','manizales','santa rosa','chinchina','pereira','dosquebradas','la virginia','calarca','montenegro','quimbaya','belalcazar'],
+      'VALLE':        ['cali','palmira','buga','tulua','yumbo','jamundi','candelaria','ginebra','la union'],
+      'ANTIOQUIA':    ['medellin','rionegro','envigado','itagui','bello','sabaneta','la ceja','marinilla','guarne','caucasia','apartado','turbo'],
+      'CENTRO':       ['ibague','girardot','melgar','honda','mariquita','flandes','guamo'],
+      'TOLHUIL':      ['neiva','garzon','pitalito','campoalegre','la plata','san agustin','espinal','natagaima','purificacion'],
+      'OCCIDENTE':    ['cali','palmira','buga','tulua','sevilla','buenaventura','jamundi','candelaria','ginebra','el cerrito','dagua'],
+      'NORTE':        ['monteria','valledupar','barranquilla','cartagena','santa marta','sincelejo','riohacha','lorica','cerete','magangue','mompox','el banco','aguachica'],
+      'SUR':          ['pasto','ipiales','tumaco','popayan','mocoa','el tigre','puerto asis','orito','la hormiga','sibundoy','villagarzon','santander de quilichao','miranda','patia','florencia','belen de los andaquies'],
+    };
+
+    function ccNorm(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
     function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
     function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
+
+    // Detectar zona automáticamente a partir del texto de destinos
+    function ccDetectarZona(destinoTexto) {
+      const destNorm = ccNorm(destinoTexto);
+      for (const [zona, ciudades] of Object.entries(CC_ZONAS_CIUDADES)) {
+        if (ciudades.some(c => destNorm.includes(c))) return zona;
+      }
+      return '';
+    }
+
     function ccCalc() {
       const km      = parseInt(document.getElementById('cc-km').value);
       const kg      = parseInt(document.getElementById('cc-kg').value);

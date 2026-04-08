@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propuesta NETFLEET</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #07111e;
+      --surface: #0d1c2e;
+      --border:  rgba(255,255,255,0.08);
+      --cyan:    #00BFDF;
+      --cyan-dim: rgba(0,191,223,0.12);
+      --navy:    #0a1628;
+      --text:    #ffffff;
+      --muted:   rgba(255,255,255,0.45);
+      --muted2:  rgba(255,255,255,0.2);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── FONDO con gradiente radial ── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,191,223,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── NAV ── */
+    .q-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; z-index: 1;
+    }
+    .q-logo { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+    .q-logo span { color: var(--cyan); }
+    .q-ref  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+    .q-confidential {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--cyan); background: var(--cyan-dim);
+      border: 1px solid rgba(0,191,223,0.25);
+      padding: 3px 10px; border-radius: 100px;
+    }
+
+    /* ── MAIN ── */
+    .q-main {
+      flex: 1; max-width: 660px; width: 100%;
+      margin: 0 auto; padding: 3rem 2rem 2rem;
+      position: relative; z-index: 1;
+    }
+
+    /* ── CLIENTE ── */
+    .q-prepared { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.35rem; }
+    .q-cliente  { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; color: white; letter-spacing: -1px; margin-bottom: 2.5rem; }
+
+    /* ── PRECIO ── */
+    .q-price-section { text-align: center; margin-bottom: 2.5rem; }
+    .q-price-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+    .q-price-box {
+      display: inline-flex; flex-direction: column; align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--cyan);
+      border-radius: 20px;
+      padding: 2rem 3rem;
+      min-width: 280px;
+    }
+    .q-price-amount {
+      font-size: clamp(2.4rem, 8vw, 4rem);
+      font-weight: 800; color: white;
+      letter-spacing: -2px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .q-price-note { font-size: 11px; color: var(--muted); margin-top: 0.5rem; }
+    .q-price-range {
+      font-size: 11px; color: var(--cyan);
+      margin-top: 0.75rem;
+      background: var(--cyan-dim);
+      padding: 3px 12px; border-radius: 100px;
+    }
+
+    /* ── DETALLES GRID ── */
+    .q-details {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 2rem;
+    }
+    .q-detail {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem;
+      text-align: center;
+    }
+    .q-detail-val   { font-size: 17px; font-weight: 700; color: white; }
+    .q-detail-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+
+    /* ── RUTA ── */
+    .q-ruta {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.1rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .q-ruta-city { font-size: 15px; font-weight: 700; color: white; }
+    .q-ruta-arrow {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 4px; color: var(--muted2);
+    }
+    .q-ruta-line { flex: 1; height: 1px; background: var(--border); }
+    .q-ruta-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan); flex-shrink: 0;
+    }
+    .q-ruta-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── CERT ── */
+    .q-cert {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem;
+    }
+    .q-cert-item {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 100px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .q-cert-item::before { content: '✓'; color: var(--cyan); }
+
+    /* ── COUNTDOWN ── */
+    .q-countdown {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 2rem;
+    }
+    .q-countdown-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .q-countdown-timer { display: flex; align-items: center; gap: 6px; }
+    .q-cd-block { text-align: center; }
+    .q-cd-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px; font-weight: 500; color: white;
+      background: rgba(255,255,255,0.06);
+      padding: 4px 10px; border-radius: 8px;
+      display: block; min-width: 44px;
+    }
+    .q-cd-lbl { font-size: 8px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+    .q-cd-sep { font-size: 18px; font-weight: 300; color: var(--muted2); margin-bottom: 14px; }
+    .q-expired { font-size: 13px; font-weight: 600; color: #e53e3e; }
+
+    /* ── CTAs ── */
+    .q-ctas { display: flex; flex-direction: column; gap: 10px; margin-bottom: 2rem; }
+    .q-btn-primary {
+      display: block; text-align: center;
+      background: var(--cyan); color: white;
+      font-size: 15px; font-weight: 700;
+      padding: 16px 32px; border-radius: 100px;
+      text-decoration: none; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: filter 0.2s, transform 0.2s;
+    }
+    .q-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .q-btn-secondary {
+      display: block; text-align: center;
+      background: transparent;
+      border: 1px solid var(--border); color: rgba(255,255,255,0.7);
+      font-size: 13px; font-weight: 500;
+      padding: 13px 32px; border-radius: 100px;
+      text-decoration: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .q-btn-secondary:hover { border-color: rgba(255,255,255,0.4); color: white; }
+
+    /* ── FOOTER ── */
+    .q-footer {
+      text-align: center; padding: 1.5rem 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--muted);
+      position: relative; z-index: 1;
+    }
+    .q-footer strong { color: rgba(255,255,255,0.6); }
+
+    /* ── GENERATOR (sin params) ── */
+    .gen-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 2rem; position: relative; z-index: 1;
+    }
+    .gen-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2rem; width: 100%; max-width: 520px;
+    }
+    .gen-tag   { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
+    .gen-title { font-size: 22px; font-weight: 800; color: white; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
+    .gen-sub   { font-size: 13px; color: var(--muted); margin-bottom: 1.75rem; }
+    .gen-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+    .gen-field { display: flex; flex-direction: column; gap: 5px; }
+    .gen-field.full { grid-column: 1 / -1; }
+    .gen-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.3px; }
+    .gen-input, .gen-select {
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; color: white; font-family: 'DM Sans', sans-serif;
+      outline: none; transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .gen-input::placeholder { color: var(--muted2); }
+    .gen-input:focus, .gen-select:focus { border-color: var(--cyan); }
+    .gen-select option { background: #0d1c2e; color: white; }
+    .gen-result {
+      background: rgba(0,191,223,0.08); border: 1px solid rgba(0,191,223,0.2);
+      border-radius: 10px; padding: 12px 14px;
+      font-family: 'DM Mono', monospace; font-size: 12px; color: rgba(255,255,255,0.8);
+      word-break: break-all; margin-bottom: 1rem; display: none;
+      cursor: pointer;
+    }
+    .gen-result:hover { background: rgba(0,191,223,0.14); }
+    .gen-copy-hint { font-size: 11px; color: var(--cyan); margin-top: 5px; }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: white; color: #000; }
+      body::before { display: none; }
+      .q-nav { border-color: #eee; }
+      .q-logo { color: #0a1628; }
+      .q-countdown, .q-ctas, .q-footer { display: none; }
+      .q-price-box, .q-detail, .q-ruta, .q-cert-item { background: #f8f9fa; border-color: #eee; }
+      .q-price-amount, .q-cliente, .q-ruta-city, .q-detail-val { color: #0a1628; }
+      .q-price-note, .q-detail-label, .q-ruta-sub, .q-prepared { color: #666; }
+      .q-cert-item { color: #444; }
+      .q-price-range { color: #00BFDF; background: #e8fafd; }
+    }
+
+    @media (max-width: 480px) {
+      .q-main { padding: 2rem 1.25rem; }
+      .q-details { grid-template-columns: 1fr 1fr; }
+      .q-detail:last-child { grid-column: 1 / -1; }
+      .q-price-box { padding: 1.5rem 2rem; min-width: unset; width: 100%; }
+      .gen-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="q-nav">
+    <div class="q-logo">NET<span>FLEET</span></div>
+    <div class="q-ref" id="q-ref"></div>
+    <div class="q-confidential">Propuesta confidencial</div>
+  </nav>
+
+  <!-- QUOTE PAGE (con params) -->
+  <div class="q-main" id="q-page" style="display:none">
+
+    <div class="q-prepared">Preparada para</div>
+    <div class="q-cliente" id="q-cliente">—</div>
+
+    <div class="q-price-section">
+      <div class="q-price-label">Estimado de flete</div>
+      <div class="q-price-box">
+        <div class="q-price-amount" id="q-precio">$ —</div>
+        <div class="q-price-note">Precio base estimado · sin comisión oculta</div>
+        <div class="q-price-range" id="q-rango"></div>
+      </div>
+    </div>
+
+    <div class="q-details" id="q-details"></div>
+
+    <div class="q-ruta" id="q-ruta-box">
+      <div>
+        <div class="q-ruta-city" id="q-origen">—</div>
+        <div class="q-ruta-sub">Origen</div>
+      </div>
+      <div class="q-ruta-arrow">
+        <div class="q-ruta-line"></div>
+        <div class="q-ruta-dot"></div>
+        <div class="q-ruta-line"></div>
+      </div>
+      <div style="text-align:right">
+        <div class="q-ruta-city" id="q-destino">—</div>
+        <div class="q-ruta-sub">Destino</div>
+      </div>
+    </div>
+
+    <div class="q-cert">
+      <div class="q-cert-item">red certificada</div>
+      <div class="q-cert-item">transportadores habilitados MinTransporte</div>
+      <div class="q-cert-item">mercancía asegurada</div>
+      <div class="q-cert-item">GPS en tiempo real</div>
+    </div>
+
+    <div class="q-countdown" id="q-countdown-box">
+      <div>
+        <div class="q-countdown-label">Esta propuesta vence en</div>
+      </div>
+      <div class="q-countdown-timer" id="q-timer">
+        <div class="q-cd-block">
+          <span class="q-cd-num" id="cd-h">--</span>
+          <div class="q-cd-lbl">horas</div>
+        </div>
+        <div class="q-cd-sep">:</div>
+        <div class="q-cd-block">
+          <span class="q-cd-num" id="cd-m">--</span>
+          <div class="q-cd-lbl">min</div>
+        </div>
+        <div class="q-cd-sep">:</div>
+        <div class="q-cd-block">
+          <span class="q-cd-num" id="cd-s">--</span>
+          <div class="q-cd-lbl">seg</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="q-ctas">
+      <a class="q-btn-primary" id="q-wa-btn" href="#" target="_blank">Solicitar cotización formal →</a>
+      <button class="q-btn-secondary" onclick="window.print()">Descargar como PDF →</button>
+    </div>
+
+  </div>
+
+  <!-- GENERATOR (sin params) -->
+  <div class="gen-wrap" id="gen-page" style="display:none">
+    <div class="gen-box">
+      <div class="gen-tag">generador de propuestas</div>
+      <h2 class="gen-title">Nueva propuesta</h2>
+      <p class="gen-sub">Completa los datos y envía el link al cliente.</p>
+
+      <div class="gen-grid">
+        <div class="gen-field full">
+          <label class="gen-label">Empresa cliente</label>
+          <input class="gen-input" id="g-cliente" placeholder="Ej: Grupo Nutresa">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Ciudad origen</label>
+          <input class="gen-input" id="g-origen" placeholder="Ej: Bogotá">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Ciudad destino</label>
+          <input class="gen-input" id="g-destino" placeholder="Ej: Medellín">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Distancia (km)</label>
+          <input class="gen-input" id="g-km" type="number" placeholder="380">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Peso (toneladas)</label>
+          <input class="gen-input" id="g-tons" type="number" placeholder="15">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Zona de destino</label>
+          <select class="gen-select" id="g-zona">
+            <option value="CENTRO">Centro</option>
+            <option value="ANTIOQUIA">Antioquia</option>
+            <option value="VALLE">Valle</option>
+            <option value="CUNDINAMARCA">Cundinamarca</option>
+            <option value="EJE CAFETERO">Eje Cafetero</option>
+            <option value="NORTE">Norte</option>
+            <option value="SANTANDERES">Santanderes</option>
+            <option value="SUR">Sur</option>
+            <option value="OCCIDENTE">Occidente</option>
+            <option value="LLANOS">Llanos</option>
+            <option value="BOYACA">Boyacá</option>
+            <option value="ORIENTE">Oriente</option>
+            <option value="TOLHUIL">Tolima / Huila</option>
+            <option value="HUB">Hub</option>
+          </select>
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Paradas</label>
+          <input class="gen-input" id="g-paradas" type="number" placeholder="1" value="1">
+        </div>
+        <div class="gen-field">
+          <label class="gen-label">Vigencia (horas)</label>
+          <input class="gen-input" id="g-validez" type="number" placeholder="48" value="48">
+        </div>
+      </div>
+
+      <button class="q-btn-primary" onclick="generarLink()" style="margin-bottom:1rem">Generar link →</button>
+
+      <div class="gen-result" id="gen-result" onclick="copiarLink(this)"></div>
+      <div class="gen-copy-hint" id="gen-copy-hint" style="display:none">✓ Copiado al portapapeles</div>
+    </div>
+  </div>
+
+  <footer class="q-footer">
+    <strong>NETFLEET</strong> · Marketplace de carga B2B · Colombia ·
+    Logxie Connect S.A.S.
+  </footer>
+
+<script>
+  /* ── FÓRMULA DE PRECIO (mismo modelo que index.html) ── */
+  const ZONA_AJUSTE = {
+    'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,
+    'CUNDINAMARCA':65602,'EJE CAFETERO':-18794,'LLANOS':159210,
+    'NORTE':79189,'OCCIDENTE':10720,'ORIENTE':-176447,
+    'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226
+  };
+
+  function calcularFlete(km, kgTotal, paradas, zona) {
+    const aj = ZONA_AJUSTE[zona?.toUpperCase()] ?? 0;
+    let p = 3097.69*km + 217.94*kgTotal + 0.1215*km*kgTotal
+          - 1.0566*km*km - 0.0034*kgTotal*kgTotal
+          + 63186*paradas + aj - 306248;
+    return Math.max(950000, Math.round(p / 1000) * 1000);
+  }
+
+  function formatCOP(n) {
+    return '$ ' + n.toLocaleString('es-CO');
+  }
+
+  /* ── ANIMACIÓN DE PRECIO ── */
+  function animatePrice(target) {
+    const el = document.getElementById('q-precio');
+    const duration = 1600;
+    const start = Date.now();
+    function tick() {
+      const t = Math.min((Date.now() - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.textContent = formatCOP(Math.round(target * ease));
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ── COUNTDOWN ── */
+  function startCountdown(startMs, validezHours) {
+    const expiry = startMs + validezHours * 3600 * 1000;
+    const pad = n => String(n).padStart(2, '0');
+
+    function tick() {
+      const rem = expiry - Date.now();
+      if (rem <= 0) {
+        document.getElementById('q-timer').innerHTML =
+          '<span class="q-expired">Propuesta vencida</span>';
+        return;
+      }
+      const h = Math.floor(rem / 3600000);
+      const m = Math.floor((rem % 3600000) / 60000);
+      const s = Math.floor((rem % 60000) / 1000);
+      document.getElementById('cd-h').textContent = pad(h);
+      document.getElementById('cd-m').textContent = pad(m);
+      document.getElementById('cd-s').textContent = pad(s);
+      setTimeout(tick, 1000);
+    }
+    tick();
+  }
+
+  /* ── INIT ── */
+  const params  = new URLSearchParams(location.search);
+  const cliente = params.get('cliente');
+
+  if (!cliente) {
+    // Mostrar generador
+    document.getElementById('gen-page').style.display = 'flex';
+    document.getElementById('q-ref').textContent = 'Generador de propuestas';
+  } else {
+    // Mostrar quote
+    document.getElementById('q-page').style.display = 'block';
+
+    const km      = parseFloat(params.get('km'))      || 0;
+    const tons    = parseFloat(params.get('tons'))     || 0;
+    const kg      = tons * 1000;
+    const paradas = parseInt(params.get('paradas'))    || 1;
+    const zona    = params.get('zona')                 || 'CENTRO';
+    const origen  = params.get('origen')               || '—';
+    const destino = params.get('destino')              || '—';
+    const validez = parseInt(params.get('validez'))    || 48;
+    const ref     = params.get('ref')                  || 'NF-' + Date.now().toString(36).toUpperCase().slice(-6);
+
+    // Countdown: usar ts del URL o sessionStorage
+    const storageKey = 'nf_ts_' + ref;
+    let tsMs = sessionStorage.getItem(storageKey);
+    if (!tsMs) {
+      tsMs = params.get('ts') ? parseInt(params.get('ts')) * 1000 : Date.now();
+      sessionStorage.setItem(storageKey, tsMs);
+    } else {
+      tsMs = parseInt(tsMs);
+    }
+
+    // Precio
+    const precio = calcularFlete(km, kg, paradas, zona);
+    const low    = Math.round(precio * 0.95 / 1000) * 1000;
+    const high   = Math.round(precio * 1.08 / 1000) * 1000;
+
+    // Render
+    document.title = `Propuesta NETFLEET — ${cliente}`;
+    document.getElementById('q-ref').textContent     = ref;
+    document.getElementById('q-cliente').textContent = cliente.toUpperCase();
+    document.getElementById('q-origen').textContent  = origen;
+    document.getElementById('q-destino').textContent = destino;
+    document.getElementById('q-rango').textContent   =
+      `Rango estimado: ${formatCOP(low)} – ${formatCOP(high)}`;
+
+    // Detalles
+    const details = [
+      { val: km > 0 ? km + ' km' : '—',      label: 'distancia' },
+      { val: tons > 0 ? tons + ' ton' : '—', label: 'peso' },
+      { val: paradas,                          label: paradas === 1 ? 'parada' : 'paradas' },
+    ];
+    document.getElementById('q-details').innerHTML = details.map(d =>
+      `<div class="q-detail">
+        <div class="q-detail-val">${d.val}</div>
+        <div class="q-detail-label">${d.label}</div>
+      </div>`
+    ).join('');
+
+    // WhatsApp
+    const waMsg = encodeURIComponent(
+      `Hola, vi la propuesta NETFLEET (ref: ${ref}) para ${cliente} y quiero confirmar la cotización formal. Ruta: ${origen} → ${destino}.`
+    );
+    document.getElementById('q-wa-btn').href = `https://wa.me/573214401975?text=${waMsg}`;
+
+    // Animar precio y countdown
+    setTimeout(() => animatePrice(precio), 300);
+    startCountdown(tsMs, validez);
+  }
+
+  /* ── GENERADOR ── */
+  function generarLink() {
+    const cliente = document.getElementById('g-cliente').value.trim();
+    const origen  = document.getElementById('g-origen').value.trim();
+    const destino = document.getElementById('g-destino').value.trim();
+    const km      = document.getElementById('g-km').value;
+    const tons    = document.getElementById('g-tons').value;
+    const zona    = document.getElementById('g-zona').value;
+    const paradas = document.getElementById('g-paradas').value || 1;
+    const validez = document.getElementById('g-validez').value || 48;
+
+    if (!cliente || !km || !tons) {
+      alert('Completa al menos: empresa, km y toneladas.');
+      return;
+    }
+
+    const ts  = Math.floor(Date.now() / 1000);
+    const ref = 'NF-' + ts.toString(36).toUpperCase().slice(-6);
+    const base = location.origin + location.pathname;
+
+    const url = `${base}?cliente=${encodeURIComponent(cliente)}`
+      + `&origen=${encodeURIComponent(origen)}`
+      + `&destino=${encodeURIComponent(destino)}`
+      + `&km=${km}&tons=${tons}&zona=${encodeURIComponent(zona)}`
+      + `&paradas=${paradas}&validez=${validez}`
+      + `&ts=${ts}&ref=${ref}`;
+
+    const el = document.getElementById('gen-result');
+    el.textContent = url;
+    el.style.display = 'block';
+    document.getElementById('gen-copy-hint').style.display = 'none';
+  }
+
+  function copiarLink(el) {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      document.getElementById('gen-copy-hint').style.display = 'block';
+      document.getElementById('gen-copy-hint').textContent = '✓ Copiado al portapapeles';
+    });
+  }
+</script>
+</body>
+</html>

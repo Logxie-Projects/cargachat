@@ -1673,9 +1673,11 @@
       const v = viajesData[idx];
       const km = parseInt(v.km)      || 0;
       const kg = parseInt(v.peso_kg) || 0;
+      const numParadas = (v.destino || '').split(',').filter(d => d.trim()).length || 1;
       if (km > 0) document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
       if (kg > 0) document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
-      if (km > 0 || kg > 0) ccCalc();
+      document.getElementById('cc-paradas').value = Math.min(10, Math.max(1, numParadas));
+      ccCalc();
 
       // Scroll suave al mapa
       document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });

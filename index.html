@@ -1373,11 +1373,12 @@
 
         // ── Pin de ORIGEN — desplazado si hay varios del mismo origen ──
         const coordBase = await getCoords(origen);
+        let coordOrigen = null;
         if (coordBase) {
           const n = origenesConteo[origen] || 0;
           origenesConteo[origen] = n + 1;
           // Pequeño offset para que no se superpongan (0.012° ≈ 1.3 km)
-          const coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.012, coordBase[1] + n * 0.008];
+          coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.012, coordBase[1] + n * 0.008];
 
           todosLosPuntos.push(coordOrigen);
           bounds.push(coordOrigen);
@@ -1395,7 +1396,7 @@
         // Ordenar destinos por vecino más cercano (desde el origen)
         const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
         const destinosOrdenados = [];
-        let puntoActual = coordOrigen;
+        let puntoActual = coordOrigen || (destinosValidos[0]?.coord ?? null);
         const pendientes = [...destinosValidos];
         while (pendientes.length > 0) {
           let minDist = Infinity, minIdx = 0;

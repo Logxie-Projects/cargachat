@@ -1452,8 +1452,10 @@
           destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
         );
 
-        // Ordenar destinos por vecino más cercano (desde el origen)
+        // Ordenar destinos: 1) nearest-neighbor  2) mejora con 2-opt
         const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
+
+        // Paso 1: nearest-neighbor desde el origen
         const destinosOrdenados = [];
         let puntoActual = coordOrigen || (destinosValidos[0]?.coord ?? null);
         const pendientes = [...destinosValidos];
@@ -1466,6 +1468,30 @@
           destinosOrdenados.push(pendientes[minIdx]);
           puntoActual = pendientes[minIdx].coord;
           pendientes.splice(minIdx, 1);
+        }
+
+        // Paso 2: 2-opt — intercambia segmentos si reduce distancia total
+        if (destinosOrdenados.length > 3) {
+          const pts = coordOrigen ? [{ coord: coordOrigen }, ...destinosOrdenados] : destinosOrdenados;
+          const dist2 = (a, b) => Math.hypot(a.coord[0] - b.coord[0], a.coord[1] - b.coord[1]);
+          const offset = coordOrigen ? 1 : 0; // índices de destinosOrdenados dentro de pts
+          let improved = true;
+          while (improved) {
+            improved = false;
+            for (let i = offset; i < pts.length - 1; i++) {
+              for (let j = i + 1; j < pts.length; j++) {
+                const before = dist2(pts[i - 1] ?? pts[0], pts[i]) + dist2(pts[j], pts[j + 1] ?? pts[pts.length - 1]);
+                const after  = dist2(pts[i - 1] ?? pts[0], pts[j]) + dist2(pts[i], pts[j + 1] ?? pts[pts.length - 1]);
+                if (after < before - 1e-10) {
+                  // Invertir el segmento [i..j]
+                  pts.splice(i, j - i + 1, ...pts.slice(i, j + 1).reverse());
+                  improved = true;
+                }
+              }
+            }
+          }
+          // Actualizar destinosOrdenados con el orden optimizado
+          destinosOrdenados.splice(0, destinosOrdenados.length, ...pts.slice(offset));
         }
 
         destinosOrdenados.forEach((dest, i) => {

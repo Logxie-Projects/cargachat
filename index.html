@@ -1893,9 +1893,14 @@
       track.innerHTML = items + items;
       bar.style.display = 'flex';
 
-      // Ajustar velocidad según cantidad de items
-      const duracion = Math.max(20, viajes.length * 6);
-      track.style.animationDuration = duracion + 's';
+      // Velocidad basada en píxeles/segundo — se adapta a cualquier pantalla
+      track.style.animationDuration = '9999s'; // temporal para medir
+      requestAnimationFrame(() => {
+        const contentWidth = track.scrollWidth / 2; // mitad porque está duplicado
+        const pxPerSec = 110; // velocidad cómoda de lectura
+        const duracion = Math.max(8, contentWidth / pxPerSec);
+        track.style.animationDuration = duracion + 's';
+      });
     }
 
     function renderViajes(viajes) {

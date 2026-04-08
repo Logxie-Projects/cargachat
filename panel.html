@@ -250,7 +250,9 @@
           viajesMap[id] = v;
         });
         console.log(`[PANEL] ${viajes.length} viajes cargados, ${Object.keys(viajesMap).length} en mapa`);
-      } catch (e) { console.warn('[PANEL] Error cargando viajes:', e); }
+      } catch (e) {
+        console.warn('[PANEL] Error cargando viajes:', e.message, '— las ofertas se mostrarán sin detalle del viaje');
+      }
     }
 
     async function cargarOfertas() {

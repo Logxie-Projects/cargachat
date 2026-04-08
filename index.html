@@ -804,8 +804,9 @@
       const email    = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       if (!email || !password) return mostrarErrorAuth('Completa todos los campos.');
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return mostrarErrorAuth('Email o contraseña incorrectos.');
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      console.log('[LOGIN] data:', data, 'error:', error);
+      if (error) return mostrarErrorAuth(error.message);
       cerrarAuthModal();
       showToast('¡Bienvenido!');
     }

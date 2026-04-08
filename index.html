@@ -244,6 +244,11 @@
     .viaje-badge   { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; white-space: nowrap; }
     .badge-disponible { background: #e6f9f4; color: #00875a; }
     .badge-nuevo      { background: #fff3e6; color: #cc5500; }
+    .badge-urgente    { background: #ffe6e6; color: #cc0000; }
+    .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
+    .viaje-countdown .cd-icon { font-size: 13px; }
+    .viaje-countdown .cd-text { color: var(--gray-600); }
+    .viaje-countdown.cd-urgente .cd-text { color: #cc0000; }
 
     /* Grid 2x2 para los metadatos del viaje */
     .viaje-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -1358,6 +1363,35 @@
           ? destinos.join(' · ')
           : '';
 
+        // Lógica de countdown: fecha pasada = cargue inmediato, futura = cuenta regresiva
+        const ahora = new Date();
+        ahora.setHours(0,0,0,0);
+        let fechaCargue = null;
+        let esInmediato = false;
+        let countdownHTML = '';
+        if (fecha) {
+          const partes = fecha.split('/');
+          if (partes.length === 3) {
+            fechaCargue = new Date(partes[2], partes[1] - 1, partes[0]);
+            fechaCargue.setHours(0,0,0,0);
+          }
+        }
+        if (fechaCargue && fechaCargue <= ahora) {
+          esInmediato = true;
+          countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⚡</span><span class="cd-text">Cargue inmediato</span></div>`;
+        } else if (fechaCargue) {
+          const diffMs = fechaCargue - ahora;
+          const diffDias = Math.ceil(diffMs / 86400000);
+          if (diffDias <= 2) {
+            countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⏰</span><span class="cd-text">Carga en ${diffDias === 1 ? '1 día' : diffDias + ' días'}</span></div>`;
+          } else {
+            countdownHTML = `<div class="viaje-countdown"><span class="cd-icon">📅</span><span class="cd-text">Carga en ${diffDias} días</span></div>`;
+          }
+        }
+
+        const badgeClass = esInmediato ? 'badge-urgente' : esNuevo ? 'badge-nuevo' : 'badge-disponible';
+        const badgeText = esInmediato ? '⚡ Inmediato' : esNuevo ? '🔥 Nuevo' : '✓ Disponible';
+
         // HTML de la tarjeta
         return `
           <div class="viaje-card" onclick="seleccionarViaje(${idx})">
@@ -1367,16 +1401,17 @@
               <div>
                 <div class="viaje-ruta">${origen} → ${destinoResumen}</div>
                 ${destinoDetalle ? `<div style="font-size:11px;color:#9aa0b8;margin-top:2px;">${destinoDetalle}</div>` : ''}
+                ${countdownHTML}
               </div>
-              <span class="viaje-badge ${esNuevo ? 'badge-nuevo' : 'badge-disponible'}">
-                ${esNuevo ? '🔥 Nuevo' : '✓ Disponible'}
+              <span class="viaje-badge ${badgeClass}">
+                ${badgeText}
               </span>
             </div>
 
             <!-- Metadatos del viaje (2x2 grid) -->
             <div class="viaje-meta">
               <div class="meta-item"><div class="meta-label">Peso total</div><div class="meta-value">${formatPeso(peso)}</div></div>
-              <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${fecha || 'Por confirmar'}</div></div>
+              <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${esInmediato ? 'Hoy' : (fecha || 'Por confirmar')}</div></div>
               <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${tipo}</div></div>
               <div class="meta-item"><div class="meta-label">Unidades</div><div class="meta-value">${unidadesTexto}</div></div>
             </div>

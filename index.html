@@ -350,8 +350,16 @@
     .nuevos-banner:hover { background: var(--navy-dark); }
     .nuevos-banner.visible { display: block; }
     @keyframes banner-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .ofertas-count { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-600); margin-top: 6px; }
-    .ofertas-count .oc-dot { width: 6px; height: 6px; border-radius: 50%; background: #00875a; animation: oc-pulse 2s infinite; }
+    .ofertas-count { margin-top: 8px; }
+    .mob-box {
+      background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: 10px; padding: 8px 12px;
+    }
+    .mob-top  { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+    .mob-dot  { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; animation: oc-pulse 2s infinite; flex-shrink: 0; }
+    .mob-tag  { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #15803d; }
+    .mob-precio { font-size: 14px; font-weight: 800; color: #166534; }
+    .mob-comp   { font-size: 10px; color: #15803d; margin-top: 1px; }
     @keyframes oc-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
     .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
     .viaje-countdown .cd-icon { font-size: 13px; }
@@ -1346,29 +1354,46 @@
     // ================================================================
     // SISTEMA DE OFERTAS — Supabase
     // ================================================================
-    let ofertaViajeIdx = null; // índice del viaje al que se está ofertando
-    let ofertasCounts = {};    // { viaje_rt: count } cache de conteos
+    let ofertaViajeIdx = null;
+    let ofertasCounts = {};   // { viaje_rt: count }
+    let ofertasMinimo = {};   // { viaje_rt: min_precio }
 
-    // Cargar conteo de ofertas para todos los viajes
+    // Cargar conteo + mejor oferta de todos los viajes
     async function cargarConteosOfertas() {
       try {
-        const rts = viajesData.map(v => v.rt_total).filter(Boolean);
-        if (rts.length === 0) return;
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?estado=eq.activa&select=viaje_rt`, {
-          headers: { 'apikey': SUPABASE_KEY }
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?estado=eq.activa&select=viaje_rt,precio_oferta`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
         });
         const rows = await r.json();
+        if (!Array.isArray(rows)) return;
+
         ofertasCounts = {};
+        ofertasMinimo = {};
         rows.forEach(row => {
-          ofertasCounts[row.viaje_rt] = (ofertasCounts[row.viaje_rt] || 0) + 1;
+          const rt = row.viaje_rt;
+          ofertasCounts[rt] = (ofertasCounts[rt] || 0) + 1;
+          const p = parseFloat(row.precio_oferta) || 0;
+          if (p > 0) {
+            ofertasMinimo[rt] = Math.min(ofertasMinimo[rt] ?? Infinity, p);
+          }
         });
+
         // Actualizar badges en las tarjetas
         document.querySelectorAll('[data-ofertas-rt]').forEach(el => {
-          const rt = el.getAttribute('data-ofertas-rt');
-          const count = ofertasCounts[rt] || 0;
-          el.innerHTML = count > 0
-            ? `<span class="oc-dot"></span> ${count} oferta${count > 1 ? 's' : ''} recibida${count > 1 ? 's' : ''}`
-            : '';
+          const rt  = el.getAttribute('data-ofertas-rt');
+          const cnt = ofertasCounts[rt] || 0;
+          const min = ofertasMinimo[rt];
+          if (cnt === 0) { el.innerHTML = ''; return; }
+          const comp = cnt === 1 ? '1 empresa compitiendo' : `${cnt} empresas compitiendo`;
+          el.innerHTML = `
+            <div class="mob-box">
+              <div class="mob-top">
+                <span class="mob-dot"></span>
+                <span class="mob-tag">subasta activa</span>
+              </div>
+              ${min ? `<div class="mob-precio">Mejor oferta: ${formatCOP(min)}</div>` : ''}
+              <div class="mob-comp">${comp}</div>
+            </div>`;
         });
       } catch (e) { /* silencioso */ }
     }

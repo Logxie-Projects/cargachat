@@ -73,6 +73,11 @@
     .btn-editar { padding: 6px 14px; border: 1px solid var(--gray-100); border-radius: 8px; background: white; font-size: 11px; font-weight: 500; cursor: pointer; color: var(--navy); font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
     .btn-editar:hover { background: var(--gray-50); }
 
+    .oferta-viaje-info { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; background: var(--gray-50); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .ovi-item { display: flex; flex-direction: column; gap: 1px; }
+    .ovi-label { font-size: 10px; color: var(--gray-400); }
+    .ovi-val { font-size: 12px; font-weight: 500; color: var(--gray-900); }
+
     /* EMPTY */
     .empty-state { text-align: center; padding: 3rem; color: var(--gray-400); }
     .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
@@ -159,10 +164,13 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
+
     let usuario = null;
     let token = null;
     let perfil = null;
     let todasOfertas = [];
+    let viajesMap = {};  // viaje_rt → datos del viaje
     let tabActual = 'activas';
 
     function showToast(msg) {
@@ -195,8 +203,51 @@
       } catch { return null; }
     }
 
+    // Parser CSV idéntico al de index.html
+    function parseCSV(text) {
+      const lineas = text.trim().split('\n');
+      if (lineas.length < 2) return [];
+      const headers = lineas[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+      return lineas.slice(1).map(linea => {
+        const valores = []; let val = ''; let enComillas = false;
+        for (let i = 0; i < linea.length; i++) {
+          const c = linea[i];
+          if (c === '"') enComillas = !enComillas;
+          else if (c === ',' && !enComillas) { valores.push(val.trim()); val = ''; }
+          else val += c;
+        }
+        valores.push(val.trim());
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = (valores[i] || '').replace(/"/g, '').trim(); });
+        return obj;
+      });
+    }
+
+    // Misma función hash que index.html para generar IDs
+    function generarViajeId(v) {
+      const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
+      let hash = 0;
+      for (let c = 0; c < raw.length; c++) hash = ((hash << 5) - hash + raw.charCodeAt(c)) | 0;
+      return 'v-' + Math.abs(hash).toString(36);
+    }
+
+    async function cargarViajes() {
+      try {
+        const resp = await fetch(CSV_URL);
+        if (!resp.ok) return;
+        const text = await resp.text();
+        const viajes = parseCSV(text);
+        viajesMap = {};
+        viajes.forEach(v => {
+          const id = v.rt_total || generarViajeId(v);
+          viajesMap[id] = v;
+        });
+      } catch (e) { /* silencioso */ }
+    }
+
     async function cargarOfertas() {
       try {
+        await cargarViajes();
         const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?usuario_id=eq.${usuario.id}&select=*&order=created_at.desc`, {
           headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
         });
@@ -241,19 +292,58 @@
       container.innerHTML = '<div class="ofertas-list">' + filtered.map(o => {
         const estadoClass = 'estado-' + o.estado;
         const estadoText = { activa: 'Activa', aceptada: 'Aceptada', rechazada: 'Rechazada', cancelada: 'Cancelada' }[o.estado] || o.estado;
+        const v = viajesMap[o.viaje_rt] || {};
+
+        const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+        const destinoCorto = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (v.destino || '—');
+        const destinoFull = destinos.length > 1 ? destinos.join(' · ') : '';
+
+        const precioBase = parseFloat(v.precio_base || '0') || 0;
+        const pesoKg = parseFloat((v.peso_kg || '0').replace(/\./g, '')) || 0;
+
+        // Unidades
+        const unidades = [];
+        if (parseInt(v.cajas || '0') > 0) unidades.push(`${v.cajas} cajas`);
+        if (parseInt(v.bidones || '0') > 0) unidades.push(`${v.bidones} bidones`);
+        if (parseInt(v.canecas || '0') > 0) unidades.push(`${v.canecas} canecas`);
+        if (parseInt(v.contenedores || '0') > 0) unidades.push(`${v.contenedores} contenedores`);
+        if (parseInt(v.unidades_sueltas || '0') > 0) unidades.push(`${v.unidades_sueltas} uds sueltas`);
+        const unidadesTexto = unidades.join(', ') || '';
 
         return `
           <div class="oferta-card">
             <div class="oferta-header">
               <div>
-                <div class="oferta-ruta">Viaje ${o.viaje_rt}</div>
-                <div class="oferta-fecha">${formatFecha(o.created_at)}${o.comentario ? ' · ' + o.comentario : ''}</div>
+                <div class="oferta-ruta">${v.origen || '—'} → ${destinoCorto}</div>
+                ${destinoFull ? `<div class="oferta-fecha">${destinoFull}</div>` : ''}
+                <div class="oferta-fecha">Ofertado ${formatFecha(o.created_at)}${o.comentario ? ' · "' + o.comentario + '"' : ''}</div>
               </div>
               <span class="oferta-estado ${estadoClass}">${estadoText}</span>
             </div>
-            <div class="oferta-body">
-              <div class="oferta-precio">${formatCOP(o.precio_oferta)}</div>
+
+            <div class="oferta-viaje-info">
+              <div class="ovi-item"><span class="ovi-label">Fecha cargue</span><span class="ovi-val">${v.fecha_cargue || '—'}</span></div>
+              <div class="ovi-item"><span class="ovi-label">Peso</span><span class="ovi-val">${pesoKg > 0 ? pesoKg.toLocaleString('es-CO') + ' kg' : '—'}</span></div>
+              <div class="ovi-item"><span class="ovi-label">Distancia</span><span class="ovi-val">${v.km ? v.km + ' km' : '—'}</span></div>
+              <div class="ovi-item"><span class="ovi-label">Tiempo est.</span><span class="ovi-val">${v.minutos || '—'}</span></div>
+              ${unidadesTexto ? `<div class="ovi-item"><span class="ovi-label">Unidades</span><span class="ovi-val">${unidadesTexto}</span></div>` : ''}
+              ${v.valor_mercancia ? `<div class="ovi-item"><span class="ovi-label">Valor mercancia</span><span class="ovi-val">$${v.valor_mercancia}</span></div>` : ''}
+              <div class="ovi-item"><span class="ovi-label">ID viaje</span><span class="ovi-val" style="font-family:'DM Mono',monospace;font-size:11px;">${o.viaje_rt}</span></div>
             </div>
+
+            <div class="oferta-body">
+              <div>
+                <div style="font-size:11px;color:var(--gray-400);margin-bottom:2px;">Tu oferta</div>
+                <div class="oferta-precio">${formatCOP(o.precio_oferta)}</div>
+              </div>
+              ${precioBase > 0 ? `
+                <div style="text-align:right;">
+                  <div style="font-size:11px;color:var(--gray-400);margin-bottom:2px;">Precio base</div>
+                  <div style="font-size:15px;font-weight:500;color:var(--gray-600);">${formatCOP(precioBase)}</div>
+                </div>
+              ` : ''}
+            </div>
+
             ${o.estado === 'activa' ? `
               <div class="oferta-acciones">
                 <button class="btn-cancelar" onclick="cancelarOferta('${o.id}')">Cancelar oferta</button>

@@ -1151,6 +1151,7 @@
       });
       const onClick = (e) => {
         L.DomEvent.stopPropagation(e);
+        console.log('[PIN] click en viaje', idx);
         seleccionarViaje(idx);
       };
       marker.on('click', onClick);

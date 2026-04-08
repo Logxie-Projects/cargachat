@@ -263,7 +263,7 @@
     .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 6px 24px rgba(0,191,223,0.2); background: #f5fdff; }
 
     /* Pin de precio estilo Airbnb */
-    .leaflet-tooltip.precio-tooltip {
+    .precio-pin {
       background: white;
       border: 2.5px solid var(--navy);
       border-radius: 20px;
@@ -275,9 +275,10 @@
       font-family: 'DM Sans', sans-serif;
       cursor: pointer;
       transition: all 0.15s;
+      display: inline-block;
+      line-height: 1.4;
     }
-    .leaflet-tooltip.precio-tooltip::before { display: none; }
-    .leaflet-tooltip.precio-tooltip.activo {
+    .precio-pin.activo {
       background: var(--navy);
       color: white;
       box-shadow: 0 4px 16px rgba(27,42,107,0.35);
@@ -669,9 +670,9 @@
       <!-- LOGIN -->
       <div id="form-login" class="modal-form">
         <h3>Bienvenido de nuevo</h3>
-        <input type="email"    id="login-email"    class="modal-input" placeholder="Email">
+        <input type="email"    id="login-email"    class="modal-input" placeholder="Email" onkeydown="if(event.key==='Enter')iniciarSesion()">
         <div style="position:relative">
-          <input type="password" id="login-password" class="modal-input" placeholder="Contraseña" style="padding-right:40px;width:100%;box-sizing:border-box">
+          <input type="password" id="login-password" class="modal-input" placeholder="Contraseña" style="padding-right:40px;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')iniciarSesion()">
           <span onclick="togglePass('login-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;color:#9aa0b8">👁</span>
         </div>
         <button class="modal-btn-primary" onclick="iniciarSesion()">Ingresar →</button>
@@ -1141,46 +1142,24 @@
      */
     function crearMarkerOrigen(coord, precioCorto, idx) {
       const texto = precioCorto || 'A convenir';
-      const marker = L.circleMarker(coord, {
-        radius: 7, color: 'white', weight: 2,
-        fillColor: '#00BFDF', fillOpacity: 1
+      const w = texto.length > 7 ? 90 : 68;
+      const icon = L.divIcon({
+        html: `<div class="precio-pin">${texto}</div>`,
+        iconSize: [w, 28],
+        iconAnchor: [w / 2, 36],
+        className: ''
       });
-      marker.bindTooltip(texto, {
-        permanent: true, direction: 'top',
-        className: 'precio-tooltip', offset: [0, -8]
-      });
-      const onClick = (e) => {
+      const marker = L.marker(coord, { icon });
+      marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
-        console.log('[PIN] click en viaje', idx);
         seleccionarViaje(idx);
-      };
-      marker.on('click', onClick);
-      marker.on('add', () => {
-        setTimeout(() => {
-          const el = marker.getTooltip()?.getElement();
-          if (el) {
-            el.style.cursor = 'pointer';
-            el.style.pointerEvents = 'auto';
-            el.addEventListener('click', (e) => {
-              e.stopPropagation();
-              console.log('[PIN] click en viaje', idx);
-              seleccionarViaje(idx);
-            });
-          }
-        }, 50);
       });
       return marker;
     }
 
     function activarMarkerOrigen(marker, activo) {
-      marker.setStyle({
-        fillColor: activo ? '#1B2A6B' : '#00BFDF'
-      });
-      const tooltip = marker.getTooltip();
-      if (tooltip) {
-        const el = tooltip.getElement();
-        if (el) el.classList.toggle('activo', activo);
-      }
+      const el = marker.getElement()?.querySelector('.precio-pin');
+      if (el) el.classList.toggle('activo', activo);
     }
 
     // ================================================================

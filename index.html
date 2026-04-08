@@ -448,6 +448,19 @@
     .nav-user-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:100px; background:var(--cyan-light); color:var(--navy); }
     .nav-user-badge.pendiente { background:#fff3e6; color:#cc5500; }
 
+    /* Ticker en vivo */
+    .ticker-bar { background: var(--navy); height: 34px; display: flex; align-items: center; overflow: hidden; position: relative; }
+    .ticker-label { display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--cyan); color: white; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
+    .ticker-dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse-dot 1s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .ticker-track { display: flex; align-items: center; gap: 0; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
+    .ticker-track:hover { animation-play-state: paused; }
+    @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    .ticker-item { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; padding: 0 28px; cursor: default; }
+    .ticker-item .ti-precio { color: var(--cyan); font-weight: 700; }
+    .ticker-item .ti-sep { color: rgba(255,255,255,0.3); margin: 0 4px; }
+    .ticker-item .ti-badge { font-size: 10px; }
+
     @media (max-width: 640px) {
       .bifurcacion { grid-template-columns: 1fr; }   /* Una columna en móvil */
       .stats       { grid-template-columns: 1fr; }
@@ -485,6 +498,17 @@
       </div>
     </div>
   </nav>
+
+  <!-- TICKER EN VIVO -->
+  <div class="ticker-bar" id="ticker-bar" style="display:none">
+    <div class="ticker-label">
+      <div class="ticker-dot"></div>
+      EN VIVO
+    </div>
+    <div style="overflow:hidden;flex:1">
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+  </div>
 
   <!-- HERO: primera sección visible al entrar -->
   <section class="hero">
@@ -1472,6 +1496,36 @@
      * - Si no hay precio → muestra "A convenir" con botón "Ofertar →"
      * - Los primeros 2 viajes se marcan como "🔥 Nuevo"
      */
+    function actualizarTicker(viajes) {
+      const track = document.getElementById('ticker-track');
+      const bar   = document.getElementById('ticker-bar');
+      if (!viajes || viajes.length === 0) return;
+
+      const items = viajes.map(v => {
+        const origen   = (v.origen  || '').split(',')[0].trim();
+        const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+        const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : destinos[0] || '—';
+        const precio   = parseFloat(v.precio_base || '0') || 0;
+        const precioTxt = precio > 0 ? formatPrecioCorto(precio) : 'A convenir';
+
+        const hoy   = new Date(); hoy.setHours(0,0,0,0);
+        const partes = (v.fecha_cargue || '').split('/');
+        const fecha = partes.length === 3 ? new Date(+partes[2], +partes[1]-1, +partes[0]) : null;
+        const dias  = fecha ? Math.ceil((fecha - hoy) / 86400000) : 99;
+        const badge = dias <= 0 ? '⚡' : dias <= 2 ? '🔥' : '📦';
+
+        return `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
+      }).join('<span class="ticker-item" style="color:rgba(255,255,255,0.2)">|</span>');
+
+      // Duplicar para loop infinito
+      track.innerHTML = items + items;
+      bar.style.display = 'flex';
+
+      // Ajustar velocidad según cantidad de items
+      const duracion = Math.max(20, viajes.length * 6);
+      track.style.animationDuration = duracion + 's';
+    }
+
     function renderViajes(viajes) {
       const grid     = document.getElementById('viajes-grid');
       const subtitle = document.getElementById('viajes-subtitle');
@@ -1857,6 +1911,7 @@
         });
 
         renderViajes(viajesData);
+        actualizarTicker(viajesData);
         await initMapa(viajesData);
         cargarConteosOfertas();
 

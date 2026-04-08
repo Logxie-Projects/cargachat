@@ -1378,7 +1378,7 @@
           const n = origenesConteo[origen] || 0;
           origenesConteo[origen] = n + 1;
           // Pequeño offset para que no se superpongan (0.012° ≈ 1.3 km)
-          coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.012, coordBase[1] + n * 0.008];
+          coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.06, coordBase[1] + n * 0.04];
 
           todosLosPuntos.push(coordOrigen);
           bounds.push(coordOrigen);

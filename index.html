@@ -284,6 +284,21 @@
       box-shadow: 0 4px 16px rgba(27,42,107,0.35);
       transform: scale(1.12);
     }
+    .pin-preview-tooltip {
+      background: white;
+      border: 1.5px solid var(--gray-100);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--navy);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .pin-preview-tooltip::before { display: none; }
+    .pin-preview b { font-weight: 700; }
+    .pin-preview-dest { color: var(--gray-600); margin-top: 2px; font-size: 11px; }
 
     /* Botón "Ver todos" flotante sobre el mapa */
     .mapa-wrap { position: relative; }
@@ -1140,7 +1155,7 @@
      * Crea el divIcon de Leaflet con el pin de precio estilo Airbnb.
      * activo=true → fondo navy (seleccionado), activo=false → fondo blanco
      */
-    function crearMarkerOrigen(coord, precioCorto, idx) {
+    function crearMarkerOrigen(coord, precioCorto, idx, origenLabel, destinosLabel) {
       const texto = precioCorto || 'A convenir';
       const w = texto.length > 7 ? 90 : 68;
       const icon = L.divIcon({
@@ -1150,6 +1165,10 @@
         className: ''
       });
       const marker = L.marker(coord, { icon });
+      if (origenLabel || destinosLabel) {
+        const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
+        marker.bindTooltip(preview, { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' });
+      }
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         seleccionarViaje(idx);
@@ -1394,7 +1413,7 @@
           bounds.push(coordOrigen);
           puntosRuta.push(coordOrigen);
 
-          originMarker = crearMarkerOrigen(coordOrigen, precioCorto, viajeIdx);
+          originMarker = crearMarkerOrigen(coordOrigen, precioCorto, viajeIdx, v.origen, destinos.join(', '));
           grupo.addLayer(originMarker);
         }
 

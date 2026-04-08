@@ -243,8 +243,10 @@
     .viaje-ruta    { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; }
     .viaje-badge   { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; white-space: nowrap; }
     .badge-disponible { background: #e6f9f4; color: #00875a; }
-    .badge-nuevo      { background: #fff3e6; color: #cc5500; }
-    .badge-urgente    { background: #ffe6e6; color: #cc0000; }
+    .badge-pronto     { background: #fff3e6; color: #cc5500; }
+    .badge-subasta    { background: #e6f9f4; color: #00875a; }
+    .badge-urgente    { background: #ffe6e6; color: #cc0000; animation: badge-pulso 2s ease-in-out infinite; }
+    @keyframes badge-pulso { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
     .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
     .viaje-countdown .cd-icon { font-size: 13px; }
     .viaje-countdown .cd-text { color: var(--gray-600); }
@@ -1336,7 +1338,7 @@
         const precioBase = parseFloat(v.precio_base || '0') || 0;
         const kmReales  = v.km      || '';
         const minutos   = v.minutos || '';
-        const esNuevo   = idx < 2; // Los 2 primeros son "Nuevo"
+        // Badge dinámico basado en fecha de cargue
 
         // Conteo de unidades por tipo
         const contenedores = parseInt(v.contenedores       || '0');
@@ -1376,21 +1378,31 @@
             fechaCargue.setHours(0,0,0,0);
           }
         }
+        let diffDias = null;
         if (fechaCargue && fechaCargue <= ahora) {
           esInmediato = true;
-          countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⚡</span><span class="cd-text">Cargue inmediato</span></div>`;
+          countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⚡</span><span class="cd-text">Cargue inmediato — se necesita vehículo ya</span></div>`;
         } else if (fechaCargue) {
-          const diffMs = fechaCargue - ahora;
-          const diffDias = Math.ceil(diffMs / 86400000);
+          diffDias = Math.ceil((fechaCargue - ahora) / 86400000);
           if (diffDias <= 2) {
-            countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⏰</span><span class="cd-text">Carga en ${diffDias === 1 ? '1 día' : diffDias + ' días'}</span></div>`;
+            countdownHTML = `<div class="viaje-countdown cd-urgente"><span class="cd-icon">⏰</span><span class="cd-text">Cierra en ${diffDias === 1 ? '1 día' : diffDias + ' días'}</span></div>`;
+          } else if (diffDias <= 5) {
+            countdownHTML = `<div class="viaje-countdown"><span class="cd-icon">⏳</span><span class="cd-text">Subasta abierta · carga en ${diffDias} días</span></div>`;
           } else {
             countdownHTML = `<div class="viaje-countdown"><span class="cd-icon">📅</span><span class="cd-text">Carga en ${diffDias} días</span></div>`;
           }
         }
 
-        const badgeClass = esInmediato ? 'badge-urgente' : esNuevo ? 'badge-nuevo' : 'badge-disponible';
-        const badgeText = esInmediato ? '⚡ Inmediato' : esNuevo ? '🔥 Nuevo' : '✓ Disponible';
+        let badgeClass, badgeText;
+        if (esInmediato) {
+          badgeClass = 'badge-urgente'; badgeText = '⚡ Urgente';
+        } else if (diffDias !== null && diffDias <= 2) {
+          badgeClass = 'badge-pronto'; badgeText = '🔥 Cierra pronto';
+        } else if (diffDias !== null && diffDias <= 5) {
+          badgeClass = 'badge-subasta'; badgeText = '⏳ Subasta abierta';
+        } else {
+          badgeClass = 'badge-disponible'; badgeText = '✓ Disponible';
+        }
 
         // HTML de la tarjeta
         return `

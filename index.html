@@ -2504,7 +2504,7 @@
 
       // ── Zoom para ver todas las rutas ─────────────────────────
       if (todosLosPuntos.length > 1) {
-        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40] });
+        mapaLeaflet.fitBounds(todosLosPuntos, { padding: [40, 40], maxZoom: 12 });
       }
 
       // ── Leyenda ───────────────────────────────────────────────
@@ -2605,7 +2605,7 @@
           if (capa.originMarker) activarMarkerOrigen(capa.originMarker, false);
         });
         const todos = mapaCapas.flatMap(c => c.bounds);
-        if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40], animate: false });
+        if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40], maxZoom: 12, animate: false });
         return;
       }
 
@@ -2624,7 +2624,7 @@
       });
 
       if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 0) {
-        mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60], animate: false });
+        mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60], maxZoom: 12, animate: false });
       }
 
       // Actualizar calculadora con los valores del viaje seleccionado

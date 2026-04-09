@@ -1965,16 +1965,20 @@
     function crearMarkerOrigen(coord, precioCorto, idx, origenLabel, destinosLabel) {
       const texto = precioCorto || 'A convenir';
       const w = texto.length > 7 ? 90 : 68;
+      // Pin de precio (clickeable para seleccionar el viaje)
       const icon = L.divIcon({
-        html: `<div class="precio-pin">${texto}</div>`,
-        iconSize: [w, 28],
-        iconAnchor: [w / 2, 36],
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>
+          <div class="precio-pin">${texto}</div>
+        </div>`,
+        iconSize: [w, 44],
+        iconAnchor: [w / 2, 44],
         className: ''
       });
       const marker = L.marker(coord, { icon });
       if (origenLabel || destinosLabel) {
-        const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
-        marker.bindTooltip(preview, { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' });
+        const preview = `<div class="pin-preview"><b>⬤ inicio · ${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
+        marker.bindTooltip(preview, { direction: 'top', offset: [0, -48], className: 'pin-preview-tooltip' });
       }
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
@@ -2447,16 +2451,20 @@
         const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
 
         // ── Detectar ruta circular: destino que vuelve al origen ──
+        // Doble chequeo: por nombre Y por proximidad de coordenadas (< 0.05° ≈ 5km)
         const origenKey = normalizarNombre(origen);
         let destinoRetorno = null;
         let destinosParaOptimizar = [...destinosValidos];
 
-        if (coordOrigen) {
-          const idxRet = destinosValidos.findIndex(d =>
-            variantes(d.nombre).some(v =>
+        if (coordBase) {
+          const idxRet = destinosValidos.findIndex(d => {
+            const porNombre = variantes(d.nombre).some(v =>
               v === origenKey || origenKey.includes(v) || v.includes(origenKey)
-            )
-          );
+            );
+            const porCoord = d.coord &&
+              Math.hypot(d.coord[0] - coordBase[0], d.coord[1] - coordBase[1]) < 0.05;
+            return porNombre || porCoord;
+          });
           if (idxRet !== -1) {
             destinoRetorno = destinosValidos[idxRet];
             destinosParaOptimizar = destinosValidos.filter((_, i) => i !== idxRet);
@@ -2503,24 +2511,34 @@
         // Agregar retorno al final (forzado, fuera de la optimización)
         if (destinoRetorno) destinosOrdenados.push(destinoRetorno);
 
+        const totalParadas = destinosOrdenados.length;
         destinosOrdenados.forEach((dest, i) => {
           todosLosPuntos.push(dest.coord);
           bounds.push(dest.coord);
           puntosRuta.push(dest.coord);
 
-          const numParada = destinosOrdenados.length > 1 ? `${i + 1}` : '';
+          const numParada = totalParadas > 1 ? `${i + 1}` : '';
+          const esRetornoPin = destinoRetorno && i === totalParadas - 1;
 
+          // Pin de retorno: cyan con ↩, pin normal: navy numerado
           const iconDest = L.divIcon({
-            html: `<div style="position:relative">
-              <div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
-              ${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}
-            </div>`,
+            html: esRetornoPin
+              ? `<div style="position:relative">
+                   <div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>
+                   <div style="position:absolute;top:-10px;left:12px;background:#00B4D8;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap">↩ ${numParada}</div>
+                 </div>`
+              : `<div style="position:relative">
+                   <div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+                   ${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}
+                 </div>`,
             iconSize: [12, 12], iconAnchor: [6, 6], className: ''
           });
 
           grupo.addLayer(
             L.marker(dest.coord, { icon: iconDest })
-              .bindPopup(`<b style="color:#1B2A6B">Parada${numParada ? ' ' + numParada : ''}:</b> ${dest.nombre}`)
+              .bindPopup(esRetornoPin
+                ? `<b style="color:#00B4D8">↩ Retorno · Parada ${numParada}:</b> ${dest.nombre}`
+                : `<b style="color:#1B2A6B">Parada${numParada ? ' ' + numParada : ''}:</b> ${dest.nombre}`)
           );
         });
 

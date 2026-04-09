@@ -361,7 +361,13 @@
       const texto = await r.text();
       const viajes = parseCSV(texto);
       viajes.forEach(v => {
-        if (v.rt_total) viajesMap[v.rt_total] = v;
+        if (!v.rt_total) {
+          const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
+          let hash = 0;
+          for (let c = 0; c < raw.length; c++) hash = ((hash << 5) - hash + raw.charCodeAt(c)) | 0;
+          v.rt_total = 'v-' + Math.abs(hash).toString(36);
+        }
+        viajesMap[v.rt_total] = v;
       });
     } catch(e) { console.warn('Sheet no disponible', e); }
   }

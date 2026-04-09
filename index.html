@@ -536,19 +536,39 @@
     /* ═══════════════════════════════════════════════════════════
        FOOTER
     ═══════════════════════════════════════════════════════════ */
-    /* SECCIÓN TRANSPORTADORES */
-    .trans-section        { background: var(--navy); padding: 5rem 2rem; text-align: center; }
-    .trans-section-inner  { max-width: 900px; margin: 0 auto; }
-    .trans-section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
-    .trans-section-title  { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; color: white; letter-spacing: -1px; line-height: 1.15; margin-bottom: 1rem; }
-    .trans-section-title span { color: var(--cyan); }
-    .trans-section-sub    { font-size: 1rem; color: rgba(255,255,255,0.65); max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.6; }
-    .trans-section-cards  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
-    .trans-card           { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 24px; }
-    .trans-card-icon      { font-size: 24px; margin-bottom: 12px; }
-    .trans-card-title     { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px; }
-    .trans-card-desc      { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.5; }
-    @media(max-width:700px) { .trans-section-cards { grid-template-columns: 1fr; } }
+    /* BLOQUES UNIFICADOS — Empresas / Cómo funciona / Transportadores */
+    .bloque-claro         { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
+    .bloque-oscuro        { background: var(--navy); padding: 5rem 2rem; text-align: center; }
+    .bloque-inner         { max-width: 1000px; margin: 0 auto; }
+    .bloque-eyebrow       { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
+    .bloque-eyebrow--dark { color: var(--cyan); }
+    .bloque-title         { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; color: var(--navy); letter-spacing: -1px; line-height: 1.15; margin-bottom: 2.5rem; }
+    .bloque-title span    { color: var(--cyan); }
+    .bloque-title--dark   { color: white; }
+    .bloque-cards         { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+
+    /* Card — versión clara */
+    .bloque-card          { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 28px 24px; transition: box-shadow .2s, transform .2s; }
+    .bloque-card:hover    { box-shadow: 0 8px 24px rgba(0,0,0,0.07); transform: translateY(-2px); }
+    .bloque-card-num      { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 12px; }
+    .bloque-card-title    { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); margin-bottom: 10px; }
+    .bloque-card-desc     { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+
+    /* Card — versión oscura */
+    .bloque-card--dark        { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+    .bloque-card--dark:hover  { box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .bloque-card-num--dark    { color: var(--cyan); }
+    .bloque-card-title--dark  { color: white; }
+    .bloque-card-desc--dark   { color: rgba(255,255,255,0.6); }
+
+    /* Chips de sectores */
+    .bloque-sectores      { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 2rem; }
+    .bloque-sector-chip   { background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 5px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gray-600); }
+
+    /* Logos en transportadores */
+    .bloque-logos         { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 2rem; }
+
+    @media(max-width:700px) { .bloque-cards { grid-template-columns: 1fr; } }
 
     /* SECCIÓN CONTACTO */
     .contacto-section     { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
@@ -873,152 +893,97 @@
     </div>
   </div>
 
-  <!-- SECTORES QUE ATENDEMOS -->
-  <div class="sectores" id="empresas">
-    <div class="sectores-inner">
-      <div class="sectores-eyebrow">sectores que atendemos</div>
-      <h2 class="sectores-title">Carga especializada<br>por industria</h2>
-      <div class="sectores-grid">
-
-        <div class="sector-card">
-          <div class="sector-tag">oil &amp; gas</div>
-          <div class="sector-name">Equipos e insumos industriales</div>
-          <p class="sector-desc">Tuberías, válvulas, maquinaria pesada y químicos para operaciones en campo.</p>
-          <div class="sector-req">
-            <div class="sector-req-item">carga sobredimensionada</div>
-            <div class="sector-req-item">transporte especializado</div>
-            <div class="sector-req-item">escolta y permisos</div>
-          </div>
+  <!-- PARA EMPRESAS -->
+  <div class="bloque-claro" id="empresas">
+    <div class="bloque-inner">
+      <div class="bloque-eyebrow">para empresas cargadoras</div>
+      <h2 class="bloque-title">Mueve tu carga al mejor precio.<br><span>Sin intermediarios.</span></h2>
+      <div class="bloque-cards">
+        <div class="bloque-card">
+          <div class="bloque-card-num">01</div>
+          <div class="bloque-card-title">sin rosca</div>
+          <div class="bloque-card-desc">Transportadores pujan directamente. Lo que cotiza es lo que pagas. Cero comisiones ocultas.</div>
         </div>
-
-        <div class="sector-card">
-          <div class="sector-tag">agribusiness</div>
-          <div class="sector-name">Agroinsumos y granel</div>
-          <p class="sector-desc">Fertilizantes, semillas, granel seco y cadena fría para perecederos.</p>
-          <div class="sector-req">
-            <div class="sector-req-item">cadena frío certificada</div>
-            <div class="sector-req-item">granel seco y líquido</div>
-            <div class="sector-req-item">trazabilidad completa</div>
-          </div>
+        <div class="bloque-card">
+          <div class="bloque-card-num">02</div>
+          <div class="bloque-card-title">red certificada</div>
+          <div class="bloque-card-desc">Solo operadores verificados ante el MinTransporte. Pólizas vigentes, GPS y trazabilidad incluida.</div>
         </div>
-
-        <div class="sector-card">
-          <div class="sector-tag">health</div>
-          <div class="sector-name">Dispositivos y equipos médicos</div>
-          <p class="sector-desc">Equipos hospitalarios, dispositivos de diagnóstico y suministros clínicos.</p>
-          <div class="sector-req">
-            <div class="sector-req-item">temperatura controlada</div>
-            <div class="sector-req-item">manipulación certificada</div>
-            <div class="sector-req-item">seguro de carga incluido</div>
-          </div>
+        <div class="bloque-card">
+          <div class="bloque-card-num">03</div>
+          <div class="bloque-card-title">licitación inversa</div>
+          <div class="bloque-card-desc">El mercado compite por tu carga. El mejor precio gana en tiempo real. Sin negociación manual.</div>
         </div>
-
-        <div class="sector-card">
-          <div class="sector-tag">medicals</div>
-          <div class="sector-name">Medicamentos y reactivos</div>
-          <p class="sector-desc">Cadena de frío farmacéutica, reactivos de laboratorio y carga sensible regulada.</p>
-          <div class="sector-req">
-            <div class="sector-req-item">certificación INVIMA</div>
-            <div class="sector-req-item">cold chain 2–8 °C</div>
-            <div class="sector-req-item">GPS en tiempo real</div>
-          </div>
-        </div>
-
       </div>
+      <div class="bloque-sectores">
+        <span class="bloque-sector-chip">oil &amp; gas</span>
+        <span class="bloque-sector-chip">agribusiness</span>
+        <span class="bloque-sector-chip">health</span>
+        <span class="bloque-sector-chip">medicals</span>
+        <span class="bloque-sector-chip">retail</span>
+        <span class="bloque-sector-chip">industrial</span>
+      </div>
+      <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')" style="margin-top:2rem">Publicar mi carga →</button>
     </div>
   </div>
 
-  <!-- SECCIÓN CÓMO FUNCIONA — TABS -->
-  <div class="como-section" id="como-funciona">
-    <div class="como-inner">
-      <div class="section-hdr"><h2>¿Cómo funciona?</h2></div>
-
-      <div class="como-tabs">
-        <button class="como-tab active" onclick="cambiarTab('empresa', this)">Para empresas</button>
-        <button class="como-tab"        onclick="cambiarTab('conductor', this)">Para empresas de transporte</button>
-      </div>
-
-      <!-- Pasos para empresas -->
-      <div class="como-steps active" id="steps-empresa">
-        <div class="step">
-          <div class="step-num">paso 01</div>
-          <div class="step-title">Publica tu operación</div>
-          <div class="step-desc">Carga, ruta, fecha y requisitos especiales. Tu licitación llega a toda la red certificada en minutos.</div>
+  <!-- CÓMO FUNCIONA -->
+  <div class="bloque-oscuro" id="como-funciona">
+    <div class="bloque-inner">
+      <div class="bloque-eyebrow bloque-eyebrow--dark">así funciona</div>
+      <h2 class="bloque-title bloque-title--dark">Simple. Directo.<br><span>Sin rosca.</span></h2>
+      <div class="bloque-cards">
+        <div class="bloque-card bloque-card--dark">
+          <div class="bloque-card-num bloque-card-num--dark">01</div>
+          <div class="bloque-card-title bloque-card-title--dark">se publica la operación</div>
+          <div class="bloque-card-desc bloque-card-desc--dark">Carga, ruta, fecha y requisitos en minutos. La licitación llega a toda la red certificada al instante.</div>
         </div>
-        <div class="step">
-          <div class="step-num">paso 02</div>
-          <div class="step-title">Transportadores certificados pujan</div>
-          <div class="step-desc">Solo operadores verificados ante el MinTransporte ofertan su mejor precio. Sin intermediario, sin comisión oculta.</div>
+        <div class="bloque-card bloque-card--dark">
+          <div class="bloque-card-num bloque-card-num--dark">02</div>
+          <div class="bloque-card-title bloque-card-title--dark">transportadores certificados pujan</div>
+          <div class="bloque-card-desc bloque-card-desc--dark">Licitación inversa en tiempo real. Solo operadores verificados MinTransporte. El mejor precio gana.</div>
         </div>
-        <div class="step">
-          <div class="step-num">paso 03</div>
-          <div class="step-title">Adjudicas y nosotros coordinamos</div>
-          <div class="step-desc">Seleccionas al ganador. NETFLEET gestiona documentos, trazabilidad y confirmación de principio a fin.</div>
-        </div>
-      </div>
-
-      <!-- Pasos para transportadores -->
-      <div class="como-steps" id="steps-conductor">
-        <div class="step">
-          <div class="step-num">paso 01</div>
-          <div class="step-title">Revisa las operaciones disponibles</div>
-          <div class="step-desc">Ruta, carga, fecha y precio objetivo en un solo panel. Sin llamadas, sin WhatsApp, sin intermediarios.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">paso 02</div>
-          <div class="step-title">Presenta tu mejor oferta</div>
-          <div class="step-desc">Pujas tu precio directamente. Sin ver las ofertas de otros. Competencia real y transparente.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">paso 03</div>
-          <div class="step-title">Confirmación y documentos</div>
-          <div class="step-desc">Si eres seleccionado, recibes todo al instante — documentos, contacto de cargue y ruta optimizada.</div>
+        <div class="bloque-card bloque-card--dark">
+          <div class="bloque-card-num bloque-card-num--dark">03</div>
+          <div class="bloque-card-title bloque-card-title--dark">se adjudica y NETFLEET coordina</div>
+          <div class="bloque-card-desc bloque-card-desc--dark">Documentos, trazabilidad y seguimiento GPS de principio a fin. Sin llamadas, sin papelería manual.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- TRANSPORTADORES ALIADOS -->
-  <div class="transportadores">
-    <div class="section-hdr">
-      <h2>Operamos con</h2>
-      <p>Transportadores verificados en nuestra red</p>
-    </div>
-    <div class="trans-logos">
-      <span class="trans-logo">Global Logística</span>
-      <span class="trans-logo">Vigía</span>
-      <span class="trans-logo">Trasamer</span>
-      <span class="trans-logo">Trans Nueva Colombia</span>
-      <span class="trans-logo">JR Logística</span>
-      <span class="trans-logo">Pracargo</span>
-      <span class="trans-logo">Entrapetrol</span>
-    </div>
-  </div>
-
-  <!-- TRANSPORTADORES -->
-  <div class="trans-section" id="transportadores">
-    <div class="trans-section-inner">
-      <div class="trans-section-eyebrow">para empresas de transporte</div>
-      <h2 class="trans-section-title">Mueve más carga.<br><span>Con tu flota.</span></h2>
-      <p class="trans-section-sub">Conectamos tu empresa de transporte con cargadores corporativos que necesitan flota certificada. Sin intermediarios, sin comisiones ocultas. Tú pones el precio.</p>
-      <div class="trans-section-cards">
-        <div class="trans-card">
-          <div class="trans-card-icon">📦</div>
-          <div class="trans-card-title">carga constante</div>
-          <div class="trans-card-desc">Accede a viajes publicados por empresas reales. Sin esperar llamadas ni intermediarios.</div>
+  <!-- PARA TRANSPORTADORES -->
+  <div class="bloque-claro" id="transportadores">
+    <div class="bloque-inner">
+      <div class="bloque-eyebrow">para empresas de transporte</div>
+      <h2 class="bloque-title">Mueve más carga.<br><span>Con tu flota.</span></h2>
+      <div class="bloque-cards">
+        <div class="bloque-card">
+          <div class="bloque-card-num">01</div>
+          <div class="bloque-card-title">carga constante</div>
+          <div class="bloque-card-desc">Accede a operaciones publicadas por empresas reales. Sin esperar llamadas, sin intermediarios.</div>
         </div>
-        <div class="trans-card">
-          <div class="trans-card-icon">💰</div>
-          <div class="trans-card-title">tú defines el precio</div>
-          <div class="trans-card-desc">Oferta por cada viaje. La empresa elige la mejor propuesta. Sin tarifas impuestas.</div>
+        <div class="bloque-card">
+          <div class="bloque-card-num">02</div>
+          <div class="bloque-card-title">tú defines el precio</div>
+          <div class="bloque-card-desc">Oferta directamente. Sin ver las propuestas de otros. Competencia real y transparente.</div>
         </div>
-        <div class="trans-card">
-          <div class="trans-card-icon">✅</div>
-          <div class="trans-card-title">red verificada</div>
-          <div class="trans-card-desc">Solo trabajamos con empresas de transporte habilitadas ante el MinTransporte. Tus clientes lo saben.</div>
+        <div class="bloque-card">
+          <div class="bloque-card-num">03</div>
+          <div class="bloque-card-title">red verificada</div>
+          <div class="bloque-card-desc">Trabajamos solo con empresas habilitadas MinTransporte. Tus clientes lo saben antes de adjudicar.</div>
         </div>
       </div>
-      <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:32px">Vincular mi empresa de transporte →</button>
+      <div class="bloque-logos">
+        <span class="trans-logo">Global Logística</span>
+        <span class="trans-logo">Vigía</span>
+        <span class="trans-logo">Trasamer</span>
+        <span class="trans-logo">Trans Nueva Colombia</span>
+        <span class="trans-logo">JR Logística</span>
+        <span class="trans-logo">Pracargo</span>
+        <span class="trans-logo">Entrapetrol</span>
+      </div>
+      <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:2rem">Vincular mi empresa de transporte →</button>
     </div>
   </div>
 

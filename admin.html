@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NETFLEET — Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1B2A6B;
+      --cyan: #00BFD8;
+      --gray-50: #f8f9fa;
+      --gray-100: #e9ecef;
+      --gray-400: #868e96;
+      --gray-600: #495057;
+      --green: #16a34a;
+      --red: #dc2626;
+      --orange: #ea580c;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: #1a1a2e; min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy); }
+    .login-box  { background: white; border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .login-logo { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.25rem; }
+    .login-logo span { color: var(--cyan); }
+    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 2rem; letter-spacing: 0.5px; }
+    .login-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-600); margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; border: 1.5px solid var(--gray-100); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 1rem; transition: border .2s; }
+    .login-input:focus { border-color: var(--cyan); }
+    .login-btn  { width: 100%; background: var(--navy); color: white; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+    .login-btn:hover { background: var(--cyan); color: var(--navy); }
+    .login-error { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; min-height: 18px; }
+
+    /* ── ADMIN LAYOUT ── */
+    .admin-wrap { display: none; min-height: 100vh; }
+    .admin-nav  { background: var(--navy); padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .admin-nav-logo { font-size: 16px; font-weight: 800; color: white; letter-spacing: -0.5px; }
+    .admin-nav-logo span { color: var(--cyan); }
+    .admin-nav-right { display: flex; align-items: center; gap: 12px; }
+    .admin-nav-user { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .admin-nav-out  { font-size: 12px; color: var(--cyan); cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+
+    .admin-body { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    /* ── STATS ── */
+    .stats-bar  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 2rem; }
+    .stat-card  { background: white; border-radius: 14px; padding: 1.25rem 1.5rem; border: 1px solid var(--gray-100); }
+    .stat-num   { font-size: 2rem; font-weight: 800; color: var(--navy); letter-spacing: -1px; }
+    .stat-lbl   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin-top: 2px; }
+    .stat-card.pendiente .stat-num { color: var(--orange); }
+    .stat-card.aprobado  .stat-num { color: var(--green); }
+    .stat-card.rechazado .stat-num { color: var(--red); }
+
+    /* ── FILTROS ── */
+    .filtros    { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+    .filtro-btn { padding: 7px 16px; border-radius: 100px; border: 1.5px solid var(--gray-100); background: white; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--gray-600); transition: all .2s; }
+    .filtro-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .filtros-sep { width: 1px; height: 24px; background: var(--gray-100); }
+
+    /* ── TABLA ── */
+    .tabla-wrap  { background: white; border-radius: 16px; border: 1px solid var(--gray-100); overflow: hidden; }
+    .tabla-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }
+    .tabla-title  { font-size: 14px; font-weight: 700; color: var(--navy); }
+    .tabla-count  { font-size: 12px; color: var(--gray-400); }
+
+    .user-row   { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 140px; gap: 12px; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-100); transition: background .15s; }
+    .user-row:last-child { border-bottom: none; }
+    .user-row:hover { background: #f8f9fa; }
+    .user-row.header { background: var(--gray-50); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); padding: 0.75rem 1.5rem; }
+
+    .user-nombre  { font-size: 14px; font-weight: 600; color: var(--navy); }
+    .user-empresa { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
+    .user-email   { font-size: 12px; color: var(--gray-600); }
+    .user-nit     { font-size: 12px; color: var(--gray-600); }
+    .user-fecha   { font-size: 11px; color: var(--gray-400); }
+
+    .tipo-badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+    .tipo-badge.empresa       { background: #eff6ff; color: #1d4ed8; }
+    .tipo-badge.transportador { background: #f0fdf4; color: #15803d; }
+
+    .estado-badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .estado-badge.pendiente  { background: #fff7ed; color: var(--orange); }
+    .estado-badge.aprobado   { background: #f0fdf4; color: var(--green); }
+    .estado-badge.rechazado  { background: #fef2f2; color: var(--red); }
+
+    .user-acciones { display: flex; gap: 6px; }
+    .btn-aprobar   { background: var(--green); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity .2s; }
+    .btn-aprobar:hover { opacity: 0.85; }
+    .btn-rechazar  { background: white; color: var(--red); border: 1.5px solid var(--red); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s; }
+    .btn-rechazar:hover { background: var(--red); color: white; }
+    .btn-wa        { background: #25D366; color: white; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: none; display: inline-flex; align-items: center; }
+
+    .empty-msg  { padding: 3rem; text-align: center; color: var(--gray-400); font-size: 14px; }
+    .loading-msg { padding: 2rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+    @media(max-width: 800px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .user-row  { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .user-row.header { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">NET<span>FLEET</span></div>
+    <div class="login-sub">panel de administración</div>
+    <label class="login-label">email</label>
+    <input class="login-input" id="login-email" type="email" placeholder="tu@email.com">
+    <label class="login-label">contraseña</label>
+    <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') iniciarSesion()">
+    <button class="login-btn" onclick="iniciarSesion()">Entrar →</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="admin-wrap" id="admin-wrap">
+  <nav class="admin-nav">
+    <div class="admin-nav-logo">NET<span>FLEET</span> <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:8px">admin</span></div>
+    <div class="admin-nav-right">
+      <span class="admin-nav-user" id="admin-user-email"></span>
+      <button class="admin-nav-out" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="admin-body">
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">—</div>
+        <div class="stat-lbl">total usuarios</div>
+      </div>
+      <div class="stat-card pendiente">
+        <div class="stat-num" id="stat-pendiente">—</div>
+        <div class="stat-lbl">pendientes</div>
+      </div>
+      <div class="stat-card aprobado">
+        <div class="stat-num" id="stat-aprobado">—</div>
+        <div class="stat-lbl">aprobados</div>
+      </div>
+      <div class="stat-card rechazado">
+        <div class="stat-num" id="stat-rechazado">—</div>
+        <div class="stat-lbl">rechazados</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros">
+      <button class="filtro-btn active" onclick="setFiltroEstado('todos', this)">Todos</button>
+      <button class="filtro-btn" onclick="setFiltroEstado('pendiente', this)">Pendientes</button>
+      <button class="filtro-btn" onclick="setFiltroEstado('aprobado', this)">Aprobados</button>
+      <button class="filtro-btn" onclick="setFiltroEstado('rechazado', this)">Rechazados</button>
+      <div class="filtros-sep"></div>
+      <button class="filtro-btn active" onclick="setFiltroTipo('todos', this)">Todos</button>
+      <button class="filtro-btn" onclick="setFiltroTipo('empresa', this)">Empresas</button>
+      <button class="filtro-btn" onclick="setFiltroTipo('transportador', this)">Transportadores</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tabla-wrap">
+      <div class="tabla-header">
+        <div class="tabla-title">Usuarios registrados</div>
+        <div class="tabla-count" id="tabla-count"></div>
+      </div>
+      <div class="user-row header">
+        <div>nombre / empresa</div>
+        <div>email</div>
+        <div>nit</div>
+        <div>tipo</div>
+        <div>estado</div>
+        <div>acciones</div>
+      </div>
+      <div id="usuarios-lista">
+        <div class="loading-msg">Cargando usuarios...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const ADMIN_EMAILS = ['bernardoaristizabal@logxie.com'];
+  const ADMIN_WA     = '573214401975';
+
+  let todosUsuarios = [];
+  let filtroEstado  = 'todos';
+  let filtroTipo    = 'todos';
+
+  // ── AUTH ──────────────────────────────────────────────────────
+  async function iniciarSesion() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
+      errEl.textContent = 'Acceso no autorizado.';
+      return;
+    }
+
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = 'Email o contraseña incorrectos.'; return; }
+
+    mostrarAdmin(email);
+  }
+
+  async function cerrarSesion() {
+    await sb.auth.signOut();
+    location.reload();
+  }
+
+  function mostrarAdmin(email) {
+    document.getElementById('login-wrap').style.display   = 'none';
+    document.getElementById('admin-wrap').style.display   = 'block';
+    document.getElementById('admin-user-email').textContent = email;
+    cargarUsuarios();
+  }
+
+  // Verificar sesión activa al cargar
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
+      mostrarAdmin(session.user.email);
+    }
+  });
+
+  // ── DATOS ─────────────────────────────────────────────────────
+  async function cargarUsuarios() {
+    const { data, error } = await sb
+      .from('perfiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      document.getElementById('usuarios-lista').innerHTML =
+        '<div class="empty-msg">Error al cargar usuarios. Verifica los permisos RLS.</div>';
+      return;
+    }
+
+    todosUsuarios = data || [];
+    actualizarStats();
+    renderUsuarios();
+  }
+
+  function actualizarStats() {
+    document.getElementById('stat-total').textContent     = todosUsuarios.length;
+    document.getElementById('stat-pendiente').textContent = todosUsuarios.filter(u => u.estado === 'pendiente').length;
+    document.getElementById('stat-aprobado').textContent  = todosUsuarios.filter(u => u.estado === 'aprobado').length;
+    document.getElementById('stat-rechazado').textContent = todosUsuarios.filter(u => u.estado === 'rechazado').length;
+  }
+
+  function renderUsuarios() {
+    let lista = todosUsuarios;
+    if (filtroEstado !== 'todos') lista = lista.filter(u => u.estado === filtroEstado);
+    if (filtroTipo   !== 'todos') lista = lista.filter(u => u.tipo   === filtroTipo);
+
+    document.getElementById('tabla-count').textContent = `${lista.length} usuario${lista.length !== 1 ? 's' : ''}`;
+
+    if (!lista.length) {
+      document.getElementById('usuarios-lista').innerHTML =
+        '<div class="empty-msg">No hay usuarios con estos filtros.</div>';
+      return;
+    }
+
+    document.getElementById('usuarios-lista').innerHTML = lista.map(u => {
+      const fecha = u.created_at
+        ? new Date(u.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' })
+        : '—';
+      const esPendiente = u.estado === 'pendiente';
+      const waMsg = encodeURIComponent(
+        `Hola ${u.nombre}, tu cuenta en NETFLEET ha sido aprobada. Ya puedes acceder en https://netfleet.app`
+      );
+
+      return `
+        <div class="user-row">
+          <div>
+            <div class="user-nombre">${u.nombre || '—'}</div>
+            <div class="user-empresa">${u.empresa || '—'} · ${fecha}</div>
+          </div>
+          <div class="user-email">${u.email || '—'}</div>
+          <div class="user-nit">${u.nit || '—'}</div>
+          <div><span class="tipo-badge ${u.tipo || ''}">${u.tipo || '—'}</span></div>
+          <div><span class="estado-badge ${u.estado || 'pendiente'}">${u.estado || 'pendiente'}</span></div>
+          <div class="user-acciones">
+            ${esPendiente ? `
+              <button class="btn-aprobar"  onclick="cambiarEstado('${u.id}', 'aprobado',  '${u.telefono || ''}', '${u.nombre || ''}')">✓</button>
+              <button class="btn-rechazar" onclick="cambiarEstado('${u.id}', 'rechazado', '', '')">✕</button>
+            ` : ''}
+            ${u.telefono ? `
+              <a class="btn-wa" href="https://wa.me/${u.telefono.replace(/\D/g,'')}?text=${waMsg}" target="_blank">WA</a>
+            ` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function cambiarEstado(id, nuevoEstado, telefono, nombre) {
+    const { error } = await sb
+      .from('perfiles')
+      .update({ estado: nuevoEstado })
+      .eq('id', id);
+
+    if (error) { alert('Error al actualizar: ' + error.message); return; }
+
+    // Actualizar local
+    const u = todosUsuarios.find(x => x.id === id);
+    if (u) u.estado = nuevoEstado;
+    actualizarStats();
+    renderUsuarios();
+
+    // Abrir WhatsApp si fue aprobado y tiene teléfono
+    if (nuevoEstado === 'aprobado' && telefono) {
+      const msg = encodeURIComponent(
+        `Hola ${nombre}, tu cuenta en NETFLEET ha sido aprobada. Ya puedes acceder en https://netfleet.app`
+      );
+      window.open(`https://wa.me/${telefono.replace(/\D/g,'')}?text=${msg}`, '_blank');
+    }
+  }
+
+  // ── FILTROS ───────────────────────────────────────────────────
+  function setFiltroEstado(val, btn) {
+    filtroEstado = val;
+    document.querySelectorAll('.filtros .filtro-btn').forEach((b, i) => {
+      if (i < 4) b.classList.toggle('active', b === btn);
+    });
+    renderUsuarios();
+  }
+
+  function setFiltroTipo(val, btn) {
+    filtroTipo = val;
+    const btns = document.querySelectorAll('.filtros .filtro-btn');
+    [btns[4], btns[5], btns[6]].forEach(b => b.classList.toggle('active', b === btn));
+    renderUsuarios();
+  }
+</script>
+</body>
+</html>

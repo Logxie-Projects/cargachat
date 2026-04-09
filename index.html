@@ -330,24 +330,32 @@
        SECCIONES GENÉRICAS
     ═══════════════════════════════════════════════════════════ */
     /* BUSCADOR */
-    .buscador-wrap   { background: white; border-bottom: 1px solid var(--gray-100); padding: 1.25rem 2rem; position: sticky; top: 60px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    .buscador-bar    { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
-    .buscador-field  { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
+    .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 1rem 2rem 1.25rem; position: sticky; top: 60px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .buscador-intro   { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); text-align: center; margin-bottom: 10px; }
+    .buscador-bar     { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
+    .buscador-field   { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
     .buscador-field--fecha { flex: 0.8; }
-    .buscador-label  { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 3px; }
-    .buscador-input  { background: transparent; border: none; outline: none; font-size: 14px; font-weight: 500; color: var(--navy); font-family: 'DM Sans', sans-serif; width: 100%; }
+    .buscador-label   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 3px; }
+    .buscador-input   { background: transparent; border: none; outline: none; font-size: 14px; font-weight: 500; color: var(--navy); font-family: 'DM Sans', sans-serif; width: 100%; }
     .buscador-input::placeholder { color: var(--gray-400); font-weight: 400; }
-    .buscador-sep    { color: var(--gray-300); font-size: 14px; padding: 0 4px; flex-shrink: 0; }
+    .buscador-sep     { color: var(--gray-300); font-size: 14px; padding: 0 4px; flex-shrink: 0; }
     .buscador-sep--cal { font-size: 16px; }
-    .buscador-btn    { background: var(--navy); color: white; border: none; padding: 0 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: stretch; transition: background .2s; flex-shrink: 0; }
+    .buscador-btn     { background: var(--navy); color: white; border: none; padding: 0 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: stretch; transition: background .2s; flex-shrink: 0; }
     .buscador-btn:hover { background: var(--cyan); color: var(--navy); }
-    .buscador-reset  { text-align: center; margin-top: 8px; font-size: 12px; color: var(--gray-400); cursor: pointer; }
-    .buscador-reset span:hover { color: var(--navy); }
+    .buscador-reset   { text-align: center; margin-top: 8px; font-size: 12px; color: var(--cyan); cursor: pointer; font-weight: 600; }
+    .buscador-reset span:hover { text-decoration: underline; }
+
+    /* RETORNOS */
+    .retornos-section { border-top: 2px dashed var(--gray-100); }
+    .retornos-hdr     { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .retornos-badge   { background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; flex-shrink: 0; }
+    .viaje-retorno-tag { display: inline-block; background: #dcfce7; color: #15803d; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 100px; margin-bottom: 8px; }
+
     @media(max-width:700px) {
-      .buscador-bar  { flex-direction: column; border-radius: 12px; }
+      .buscador-bar   { flex-direction: column; border-radius: 12px; }
       .buscador-field { border-bottom: 1px solid var(--gray-100); width: 100%; }
-      .buscador-sep  { display: none; }
-      .buscador-btn  { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
+      .buscador-sep   { display: none; }
+      .buscador-btn   { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
     }
 
     .section     { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
@@ -792,46 +800,55 @@
 
   <!-- BUSCADOR DE VIAJES -->
   <div class="buscador-wrap">
+    <div class="buscador-intro">¿A dónde vas?</div>
     <div class="buscador-bar">
       <div class="buscador-field">
-        <label class="buscador-label">origen</label>
-        <input class="buscador-input" id="b-origen" type="text" placeholder="Ej: Funza, Yumbo..." autocomplete="off" list="list-origen">
+        <label class="buscador-label">salgo desde</label>
+        <input class="buscador-input" id="b-origen" type="text" placeholder="Ciudad de origen..." autocomplete="off" list="list-origen">
         <datalist id="list-origen"></datalist>
       </div>
       <div class="buscador-sep">→</div>
       <div class="buscador-field">
-        <label class="buscador-label">destino</label>
-        <input class="buscador-input" id="b-destino" type="text" placeholder="Ej: Bogotá, Medellín..." autocomplete="off" list="list-destino">
+        <label class="buscador-label">voy hacia</label>
+        <input class="buscador-input" id="b-destino" type="text" placeholder="Ciudad destino..." autocomplete="off" list="list-destino">
         <datalist id="list-destino"></datalist>
       </div>
       <div class="buscador-sep buscador-sep--cal">📅</div>
       <div class="buscador-field buscador-field--fecha">
-        <label class="buscador-label">fecha de cargue</label>
+        <label class="buscador-label">fecha de salida</label>
         <select class="buscador-input" id="b-fecha">
           <option value="">Cualquier fecha</option>
         </select>
       </div>
-      <button class="buscador-btn" onclick="buscarViajes()">Buscar</button>
+      <button class="buscador-btn" onclick="buscarViajes()">Buscar →</button>
     </div>
     <div class="buscador-reset" id="buscador-reset" style="display:none">
-      <span onclick="resetBuscador()">✕ Limpiar filtros — mostrar todos los viajes</span>
+      <span onclick="resetBuscador()">✕ Ver todos los viajes disponibles</span>
     </div>
   </div>
 
-  <!-- SECCIÓN DE VIAJES DISPONIBLES (se llena dinámicamente con JS) -->
+  <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2>Viajes disponibles ahora</h2>
+      <h2 id="viajes-titulo">Viajes disponibles ahora</h2>
       <p id="viajes-subtitle">Cargando viajes en tiempo real...</p>
     </div>
-    <!-- Banner de nuevos viajes (oculto por defecto) -->
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
       🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
     </div>
-    <!-- Este div se llena con las tarjetas de viaje por renderViajes() -->
     <div class="viajes-grid" id="viajes-grid">
       <div class="loading-msg">Cargando viajes disponibles...</div>
     </div>
+  </div>
+
+  <!-- SECCIÓN DE RETORNOS (aparece solo al buscar) -->
+  <div class="section retornos-section" id="retornos-section" style="display:none">
+    <div class="section-hdr retornos-hdr">
+      <div class="retornos-badge">retorno</div>
+      <h2 id="retornos-titulo">Retornos disponibles</h2>
+      <p id="retornos-subtitle">Carga disponible para el viaje de vuelta</p>
+    </div>
+    <div class="viajes-grid" id="retornos-grid"></div>
   </div>
 
   <!-- MAPA + CALCULADORA LADO A LADO -->
@@ -2063,20 +2080,85 @@
         fechas.map(f => `<option value="${f}">${f}</option>`).join('');
     }
 
-    function buscarViajes() {
-      const origen  = document.getElementById('b-origen').value.trim().toLowerCase();
-      const destino = document.getElementById('b-destino').value.trim().toLowerCase();
-      const fecha   = document.getElementById('b-fecha').value.trim();
+    // Parsear fecha DD/MM/YYYY → Date
+    function parseFecha(str) {
+      if (!str) return null;
+      const p = str.split('/');
+      if (p.length !== 3) return null;
+      return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+    }
 
-      const filtrados = viajesData.filter(v => {
-        const matchOrigen  = !origen  || (v.origen  || '').toLowerCase().includes(origen);
-        const matchDestino = !destino || (v.destino || '').toLowerCase().includes(destino);
-        const matchFecha   = !fecha   || (v.fecha_cargue || '') === fecha;
+    function buscarViajes() {
+      const origenVal  = document.getElementById('b-origen').value.trim();
+      const destinoVal = document.getElementById('b-destino').value.trim();
+      const fechaVal   = document.getElementById('b-fecha').value.trim();
+      const origenQ    = origenVal.toLowerCase();
+      const destinoQ   = destinoVal.toLowerCase();
+
+      const hayFiltro = origenQ || destinoQ || fechaVal;
+      if (!hayFiltro) { resetBuscador(); return; }
+
+      // ── Viajes de IDA ─────────────────────────────────────
+      const ida = viajesData.filter(v => {
+        const matchOrigen  = !origenQ  || (v.origen  || '').toLowerCase().includes(origenQ);
+        const matchDestino = !destinoQ || (v.destino || '').toLowerCase().includes(destinoQ);
+        const matchFecha   = !fechaVal || (v.fecha_cargue || '') === fechaVal;
         return matchOrigen && matchDestino && matchFecha;
       });
 
-      renderViajes(filtrados);
-      document.getElementById('buscador-reset').style.display = (origen || destino || fecha) ? 'block' : 'none';
+      // ── Viajes de RETORNO ─────────────────────────────────
+      // Origen del retorno = ciudad destino buscada (o destino del viaje de ida si no hay destinoQ)
+      // Fecha del retorno = misma fecha o hasta 3 días después
+      let retornos = [];
+      if (destinoQ) {
+        const fechaBase = fechaVal ? parseFecha(fechaVal) : new Date();
+        const fechaLimite = new Date(fechaBase);
+        fechaLimite.setDate(fechaLimite.getDate() + 3);
+
+        retornos = viajesData.filter(v => {
+          // Excluir los que ya salieron en ida
+          const esIda = ida.some(i => i.rt_total === v.rt_total);
+          if (esIda) return false;
+          // El origen del retorno debe ser la ciudad destino buscada
+          const origenRetorno = (v.origen || '').toLowerCase();
+          if (!origenRetorno.includes(destinoQ)) return false;
+          // Fecha dentro del rango
+          const fv = parseFecha(v.fecha_cargue);
+          if (!fv) return true; // sin fecha = incluir
+          return fv >= fechaBase && fv <= fechaLimite;
+        });
+      }
+
+      // ── Renderizar ────────────────────────────────────────
+      const tituloIda = origenVal && destinoVal
+        ? `${origenVal} → ${destinoVal}`
+        : origenVal || destinoVal || 'Búsqueda';
+
+      document.getElementById('viajes-titulo').textContent = `Viajes · ${tituloIda}`;
+      document.getElementById('viajes-subtitle').textContent =
+        ida.length ? `${ida.length} viaje${ida.length !== 1 ? 's' : ''} encontrado${ida.length !== 1 ? 's' : ''}` : 'Sin resultados para esta búsqueda';
+
+      renderViajes(ida);
+
+      // Retornos
+      const secRetornos = document.getElementById('retornos-section');
+      if (retornos.length > 0) {
+        secRetornos.style.display = 'block';
+        document.getElementById('retornos-titulo').textContent = `Retornos desde ${destinoVal}`;
+        document.getElementById('retornos-subtitle').textContent =
+          `${retornos.length} viaje${retornos.length !== 1 ? 's' : ''} disponible${retornos.length !== 1 ? 's' : ''} para el regreso (próximos 3 días)`;
+        renderViajes(retornos, 'retornos-grid', true);
+      } else {
+        secRetornos.style.display = destinoQ ? 'block' : 'none';
+        if (destinoQ) {
+          document.getElementById('retornos-titulo').textContent = `Retornos desde ${destinoVal}`;
+          document.getElementById('retornos-subtitle').textContent = 'No hay retornos disponibles en los próximos 3 días';
+          document.getElementById('retornos-grid').innerHTML =
+            '<div class="loading-msg">Sin retornos disponibles para esta ruta en los próximos 3 días.</div>';
+        }
+      }
+
+      document.getElementById('buscador-reset').style.display = 'block';
       document.getElementById('viajes').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -2085,6 +2167,8 @@
       document.getElementById('b-destino').value = '';
       document.getElementById('b-fecha').value   = '';
       document.getElementById('buscador-reset').style.display = 'none';
+      document.getElementById('viajes-titulo').textContent = 'Viajes disponibles ahora';
+      document.getElementById('retornos-section').style.display = 'none';
       renderViajes(viajesData);
     }
 
@@ -2094,9 +2178,9 @@
     });
     // ─────────────────────────────────────────────────────────────
 
-    function renderViajes(viajes) {
-      const grid     = document.getElementById('viajes-grid');
-      const subtitle = document.getElementById('viajes-subtitle');
+    function renderViajes(viajes, gridId = 'viajes-grid', esRetorno = false) {
+      const grid     = document.getElementById(gridId);
+      const subtitle = gridId === 'viajes-grid' ? document.getElementById('viajes-subtitle') : null;
 
       if (!viajes.length) {
         grid.innerHTML = '<div class="loading-msg">No hay viajes disponibles en este momento. Vuelve pronto.</div>';
@@ -2104,10 +2188,11 @@
         return;
       }
 
-      subtitle.textContent = `${viajes.length} viaje${viajes.length !== 1 ? 's' : ''} disponible${viajes.length !== 1 ? 's' : ''} ahora mismo`;
+      if (subtitle) subtitle.textContent = `${viajes.length} viaje${viajes.length !== 1 ? 's' : ''} disponible${viajes.length !== 1 ? 's' : ''} ahora mismo`;
 
       // ── Generar HTML de cada tarjeta ─────────────────────────
       grid.innerHTML = viajes.map((v, idx) => {
+        const retornoTag = esRetorno ? '<div class="viaje-retorno-tag">↩ retorno disponible</div>' : '';
 
         // Datos básicos del viaje
         const origen    = v.origen     || '';
@@ -2187,7 +2272,7 @@
         // HTML de la tarjeta
         return `
           <div class="viaje-card" onclick="seleccionarViaje(${idx})">
-
+            ${retornoTag}
             <!-- Ruta + badge de estado -->
             <div class="viaje-header">
               <div>

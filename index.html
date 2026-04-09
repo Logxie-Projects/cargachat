@@ -1251,8 +1251,8 @@
       userArea.style.display = 'flex';
       document.getElementById('nav-user-name').textContent = perfil.nombre || perfil.email;
       const badge = document.getElementById('nav-user-badge');
-      badge.textContent = perfil.estado === 'activo' ? '✓ Activo' : '⏳ Pendiente';
-      badge.className   = 'nav-user-badge' + (perfil.estado !== 'activo' ? ' pendiente' : '');
+      badge.textContent = perfil.estado === 'aprobado' ? '✓ Activo' : '⏳ Pendiente';
+      badge.className   = 'nav-user-badge' + (perfil.estado !== 'aprobado' ? ' pendiente' : '');
     }
 
     // ── Modal de autenticación ──────────────────────────────────────
@@ -1642,8 +1642,8 @@
       if (!usuarioActual) { abrirAuthModal('registro'); return; }
 
       if (perfilActual) {
-        if (perfilActual.estado !== 'activo') {
-          showToast('⏳ Tu cuenta está en revisión. Te avisamos por email cuando esté aprobada.');
+        if (perfilActual.estado !== 'aprobado') {
+          showToast('⏳ Cuenta en revisión — el proceso tarda unos minutos. ¿No has sido aprobado? <a href="https://wa.me/573214401975" target="_blank" style="color:#00BFD8;font-weight:700">Contáctanos por WhatsApp</a>');
           return;
         }
         abrirOfertaModal(idx, accion);
@@ -1655,7 +1655,7 @@
           perfilActual = data;
           actualizarNav(perfilActual);
           if (!data) { showToast('No encontramos tu cuenta. Cerrá sesión e ingresá de nuevo.'); return; }
-          if (data.estado !== 'activo') { showToast('⏳ Tu cuenta está en revisión.'); return; }
+          if (data.estado !== 'aprobado') { showToast('⏳ Tu cuenta está en revisión.'); return; }
           abrirOfertaModal(idx, accion);
         });
     }
@@ -2720,9 +2720,9 @@
      */
     function showToast(mensaje) {
       const toast = document.getElementById('toast');
-      toast.textContent = mensaje;
+      toast.innerHTML = mensaje;
       toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
+      setTimeout(() => toast.classList.remove('show'), 5000);
     }
 
     /**

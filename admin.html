@@ -18,6 +18,7 @@
       --green: #16a34a;
       --red: #dc2626;
       --orange: #ea580c;
+      --gold: #b45309;
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: #1a1a2e; min-height: 100vh; }
 
@@ -45,6 +46,13 @@
 
     .admin-body { max-width: 1100px; margin: 0 auto; padding: 2rem; }
 
+    /* ── TABS ── */
+    .tabs-nav { display: flex; gap: 4px; margin-bottom: 1.75rem; background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 4px; width: fit-content; }
+    .tab-btn  { padding: 8px 20px; border-radius: 9px; border: none; background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--gray-400); transition: all .2s; }
+    .tab-btn.active { background: var(--navy); color: white; }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
     /* ── STATS ── */
     .stats-bar  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 2rem; }
     .stat-card  { background: white; border-radius: 14px; padding: 1.25rem 1.5rem; border: 1px solid var(--gray-100); }
@@ -53,6 +61,7 @@
     .stat-card.pendiente .stat-num { color: var(--orange); }
     .stat-card.aprobado  .stat-num { color: var(--green); }
     .stat-card.rechazado .stat-num { color: var(--red); }
+    .stat-card.ofertas-act .stat-num { color: var(--cyan); }
 
     /* ── FILTROS ── */
     .filtros    { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
@@ -60,7 +69,7 @@
     .filtro-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
     .filtros-sep { width: 1px; height: 24px; background: var(--gray-100); }
 
-    /* ── TABLA ── */
+    /* ── TABLA USUARIOS ── */
     .tabla-wrap  { background: white; border-radius: 16px; border: 1px solid var(--gray-100); overflow: hidden; }
     .tabla-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }
     .tabla-title  { font-size: 14px; font-weight: 700; color: var(--navy); }
@@ -96,10 +105,99 @@
     .empty-msg  { padding: 3rem; text-align: center; color: var(--gray-400); font-size: 14px; }
     .loading-msg { padding: 2rem; text-align: center; color: var(--gray-400); font-size: 13px; }
 
+    /* ── OFERTAS ── */
+    .ofertas-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 2rem; }
+
+    .ofertas-lista { display: flex; flex-direction: column; gap: 12px; }
+
+    .oferta-card { background: white; border-radius: 16px; border: 1px solid var(--gray-100); overflow: hidden; transition: box-shadow .2s; }
+    .oferta-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .oferta-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.5rem; cursor: pointer; gap: 16px;
+    }
+    .oferta-card-head:hover { background: var(--gray-50); }
+
+    .oferta-rt { font-size: 13px; font-weight: 800; color: var(--navy); letter-spacing: 0.3px; }
+    .oferta-ruta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    .oferta-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .oferta-count-badge {
+      background: #eff6ff; color: #1d4ed8;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 100px;
+    }
+    .oferta-min-precio {
+      font-size: 15px; font-weight: 800; color: var(--green);
+      white-space: nowrap;
+    }
+    .oferta-min-label { font-size: 10px; color: var(--gray-400); text-align: right; }
+
+    .oferta-chevron { font-size: 14px; color: var(--gray-400); transition: transform .25s; flex-shrink: 0; }
+    .oferta-card.open .oferta-chevron { transform: rotate(180deg); }
+
+    .oferta-card-body { display: none; border-top: 1px solid var(--gray-100); }
+    .oferta-card.open .oferta-card-body { display: block; }
+
+    .ofertas-table { width: 100%; border-collapse: collapse; }
+    .ofertas-table th {
+      background: var(--gray-50); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400);
+      padding: 10px 16px; text-align: left;
+    }
+    .ofertas-table td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--gray-100); }
+    .ofertas-table tr:last-child td { border-bottom: none; }
+    .ofertas-table tr.mejor-oferta td { background: #f0fdf4; }
+
+    .rank-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      font-size: 11px; font-weight: 800;
+      background: var(--gray-100); color: var(--gray-600);
+    }
+    .rank-badge.rank-1 { background: #fef9c3; color: var(--gold); }
+
+    .precio-cell { font-weight: 800; font-size: 14px; color: var(--navy); }
+    .precio-cell.mejor { color: var(--green); }
+
+    .comentario-cell { font-size: 12px; color: var(--gray-600); max-width: 200px; }
+
+    .btn-adjudicar {
+      background: var(--navy); color: white; border: none; border-radius: 8px;
+      padding: 7px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; transition: background .2s; white-space: nowrap;
+    }
+    .btn-adjudicar:hover { background: var(--cyan); color: var(--navy); }
+    .btn-adjudicar:disabled { background: var(--gray-100); color: var(--gray-400); cursor: default; }
+
+    .adjudicado-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #f0fdf4; color: var(--green);
+      font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 8px;
+    }
+
+    .oferta-actions-row {
+      padding: 1rem 1.5rem; background: var(--gray-50);
+      border-top: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .oferta-actions-hint { font-size: 12px; color: var(--gray-400); }
+
+    .btn-reload-ofertas {
+      padding: 7px 16px; border-radius: 8px; border: 1.5px solid var(--gray-100);
+      background: white; font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; color: var(--gray-600); transition: all .2s;
+    }
+    .btn-reload-ofertas:hover { border-color: var(--navy); color: var(--navy); }
+
     @media(max-width: 800px) {
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .ofertas-stats { grid-template-columns: repeat(2, 1fr); }
       .user-row  { grid-template-columns: 1fr 1fr; gap: 8px; }
       .user-row.header { display: none; }
+      .ofertas-table th:nth-child(5),
+      .ofertas-table td:nth-child(5) { display: none; }
     }
   </style>
 </head>
@@ -132,63 +230,100 @@
 
   <div class="admin-body">
 
-    <!-- Stats -->
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-num" id="stat-total">—</div>
-        <div class="stat-lbl">total usuarios</div>
-      </div>
-      <div class="stat-card pendiente">
-        <div class="stat-num" id="stat-pendiente">—</div>
-        <div class="stat-lbl">pendientes</div>
-      </div>
-      <div class="stat-card aprobado">
-        <div class="stat-num" id="stat-aprobado">—</div>
-        <div class="stat-lbl">aprobados</div>
-      </div>
-      <div class="stat-card rechazado">
-        <div class="stat-num" id="stat-rechazado">—</div>
-        <div class="stat-lbl">rechazados</div>
-      </div>
+    <!-- Tabs nav -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="cambiarTab('usuarios', this)">Usuarios</button>
+      <button class="tab-btn" onclick="cambiarTab('ofertas', this)">Ofertas &amp; Subastas</button>
     </div>
 
-    <!-- Filtros -->
-    <div class="filtros">
-      <button class="filtro-btn active" onclick="setFiltroEstado('todos', this)">Todos</button>
-      <button class="filtro-btn" onclick="setFiltroEstado('pendiente', this)">Pendientes</button>
-      <button class="filtro-btn" onclick="setFiltroEstado('aprobado', this)">Aprobados</button>
-      <button class="filtro-btn" onclick="setFiltroEstado('rechazado', this)">Rechazados</button>
-      <div class="filtros-sep"></div>
-      <button class="filtro-btn active" onclick="setFiltroTipo('todos', this)">Todos</button>
-      <button class="filtro-btn" onclick="setFiltroTipo('empresa', this)">Empresas</button>
-      <button class="filtro-btn" onclick="setFiltroTipo('transportador', this)">Transportadores</button>
-    </div>
+    <!-- ══ TAB: USUARIOS ══════════════════════════════════════════ -->
+    <div class="tab-section active" id="tab-usuarios">
 
-    <!-- Tabla -->
-    <div class="tabla-wrap">
-      <div class="tabla-header">
-        <div class="tabla-title">Usuarios registrados</div>
-        <div class="tabla-count" id="tabla-count"></div>
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-total">—</div>
+          <div class="stat-lbl">total usuarios</div>
+        </div>
+        <div class="stat-card pendiente">
+          <div class="stat-num" id="stat-pendiente">—</div>
+          <div class="stat-lbl">pendientes</div>
+        </div>
+        <div class="stat-card aprobado">
+          <div class="stat-num" id="stat-aprobado">—</div>
+          <div class="stat-lbl">aprobados</div>
+        </div>
+        <div class="stat-card rechazado">
+          <div class="stat-num" id="stat-rechazado">—</div>
+          <div class="stat-lbl">rechazados</div>
+        </div>
       </div>
-      <div class="user-row header">
-        <div>nombre / empresa</div>
-        <div>email</div>
-        <div>nit</div>
-        <div>tipo</div>
-        <div>estado</div>
-        <div>acciones</div>
+
+      <div class="filtros">
+        <button class="filtro-btn active" onclick="setFiltroEstado('todos', this)">Todos</button>
+        <button class="filtro-btn" onclick="setFiltroEstado('pendiente', this)">Pendientes</button>
+        <button class="filtro-btn" onclick="setFiltroEstado('aprobado', this)">Aprobados</button>
+        <button class="filtro-btn" onclick="setFiltroEstado('rechazado', this)">Rechazados</button>
+        <div class="filtros-sep"></div>
+        <button class="filtro-btn active" onclick="setFiltroTipo('todos', this)">Todos</button>
+        <button class="filtro-btn" onclick="setFiltroTipo('empresa', this)">Empresas</button>
+        <button class="filtro-btn" onclick="setFiltroTipo('transportador', this)">Transportadores</button>
       </div>
-      <div id="usuarios-lista">
-        <div class="loading-msg">Cargando usuarios...</div>
+
+      <div class="tabla-wrap">
+        <div class="tabla-header">
+          <div class="tabla-title">Usuarios registrados</div>
+          <div class="tabla-count" id="tabla-count"></div>
+        </div>
+        <div class="user-row header">
+          <div>nombre / empresa</div>
+          <div>email</div>
+          <div>nit</div>
+          <div>tipo</div>
+          <div>estado</div>
+          <div>acciones</div>
+        </div>
+        <div id="usuarios-lista">
+          <div class="loading-msg">Cargando usuarios...</div>
+        </div>
       </div>
-    </div>
+
+    </div><!-- /tab-usuarios -->
+
+    <!-- ══ TAB: OFERTAS ═══════════════════════════════════════════ -->
+    <div class="tab-section" id="tab-ofertas">
+
+      <div class="ofertas-stats">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-viajes-con-ofertas">—</div>
+          <div class="stat-lbl">viajes con ofertas</div>
+        </div>
+        <div class="stat-card ofertas-act">
+          <div class="stat-num" id="stat-ofertas-activas">—</div>
+          <div class="stat-lbl">ofertas activas</div>
+        </div>
+        <div class="stat-card aprobado">
+          <div class="stat-num" id="stat-adjudicadas">—</div>
+          <div class="stat-lbl">adjudicadas</div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+        <div style="font-size:13px; font-weight:700; color:var(--navy);">Subastas activas</div>
+        <button class="btn-reload-ofertas" onclick="cargarOfertas()">↻ Actualizar</button>
+      </div>
+
+      <div class="ofertas-lista" id="ofertas-lista">
+        <div class="loading-msg">Cargando ofertas...</div>
+      </div>
+
+    </div><!-- /tab-ofertas -->
 
   </div>
 </div>
 
 <script>
   const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const ADMIN_EMAILS = ['bernardoaristizabal@logxie.com'];
@@ -197,6 +332,15 @@
   let todosUsuarios = [];
   let filtroEstado  = 'todos';
   let filtroTipo    = 'todos';
+
+  // ── TABS ──────────────────────────────────────────────────────
+  function cambiarTab(nombre, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + nombre).classList.add('active');
+    if (nombre === 'ofertas') cargarOfertas();
+  }
 
   // ── AUTH ──────────────────────────────────────────────────────
   async function iniciarSesion() {
@@ -228,14 +372,13 @@
     cargarUsuarios();
   }
 
-  // Verificar sesión activa al cargar
   sb.auth.getSession().then(({ data: { session } }) => {
     if (session && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
       mostrarAdmin(session.user.email);
     }
   });
 
-  // ── DATOS ─────────────────────────────────────────────────────
+  // ── USUARIOS ──────────────────────────────────────────────────
   async function cargarUsuarios() {
     const { data, error } = await sb
       .from('perfiles')
@@ -313,13 +456,11 @@
 
     if (error) { alert('Error al actualizar: ' + error.message); return; }
 
-    // Actualizar local
     const u = todosUsuarios.find(x => x.id === id);
     if (u) u.estado = nuevoEstado;
     actualizarStats();
     renderUsuarios();
 
-    // Abrir WhatsApp si fue aprobado y tiene teléfono
     if (nuevoEstado === 'aprobado' && telefono) {
       const msg = encodeURIComponent(
         `Hola ${nombre}, tu cuenta en NETFLEET ha sido aprobada. Ya puedes acceder en https://netfleet.app`
@@ -328,7 +469,6 @@
     }
   }
 
-  // ── FILTROS ───────────────────────────────────────────────────
   function setFiltroEstado(val, btn) {
     filtroEstado = val;
     document.querySelectorAll('.filtros .filtro-btn').forEach((b, i) => {
@@ -342,6 +482,204 @@
     const btns = document.querySelectorAll('.filtros .filtro-btn');
     [btns[4], btns[5], btns[6]].forEach(b => b.classList.toggle('active', b === btn));
     renderUsuarios();
+  }
+
+  // ── OFERTAS ───────────────────────────────────────────────────
+  let ofertasData = []; // raw rows from DB
+
+  async function cargarOfertas() {
+    const listaEl = document.getElementById('ofertas-lista');
+    listaEl.innerHTML = '<div class="loading-msg">Cargando ofertas...</div>';
+
+    const { data, error } = await sb
+      .from('ofertas')
+      .select('*')
+      .order('precio_oferta', { ascending: true });
+
+    if (error) {
+      listaEl.innerHTML = '<div class="empty-msg">Error al cargar ofertas: ' + error.message + '</div>';
+      return;
+    }
+
+    ofertasData = data || [];
+    renderOfertas();
+  }
+
+  function renderOfertas() {
+    const listaEl = document.getElementById('ofertas-lista');
+
+    // Agrupar por viaje_rt
+    const grupos = {};
+    ofertasData.forEach(o => {
+      if (!grupos[o.viaje_rt]) grupos[o.viaje_rt] = [];
+      grupos[o.viaje_rt].push(o);
+    });
+
+    // Stats
+    const activas     = ofertasData.filter(o => o.estado === 'activa').length;
+    const adjudicadas = Object.values(grupos).filter(g => g.some(o => o.estado === 'aceptada')).length;
+    const viajesConAct = Object.values(grupos).filter(g => g.some(o => o.estado === 'activa')).length;
+
+    document.getElementById('stat-viajes-con-ofertas').textContent = Object.keys(grupos).length;
+    document.getElementById('stat-ofertas-activas').textContent    = activas;
+    document.getElementById('stat-adjudicadas').textContent        = adjudicadas;
+
+    if (!Object.keys(grupos).length) {
+      listaEl.innerHTML = '<div class="empty-msg">No hay ofertas registradas todavía.</div>';
+      return;
+    }
+
+    // Ordenar: viajes con más ofertas activas primero
+    const viajes = Object.entries(grupos).sort((a, b) => {
+      const actA = a[1].filter(o => o.estado === 'activa').length;
+      const actB = b[1].filter(o => o.estado === 'activa').length;
+      return actB - actA;
+    });
+
+    listaEl.innerHTML = viajes.map(([rt, ofertas]) => {
+      const activas   = ofertas.filter(o => o.estado === 'activa');
+      const aceptada  = ofertas.find(o => o.estado === 'aceptada');
+      const yaAdj     = !!aceptada;
+
+      // Ordenar: activas primero (por precio asc), luego el resto
+      const ordenadas = [
+        ...activas.sort((a, b) => a.precio_oferta - b.precio_oferta),
+        ...ofertas.filter(o => o.estado !== 'activa').sort((a, b) => a.precio_oferta - b.precio_oferta)
+      ];
+
+      const minPrecio = activas.length ? activas[0].precio_oferta : null;
+
+      const rtSafe = rt.replace(/'/g, "\\'");
+
+      return `
+        <div class="oferta-card" id="card-${sanitizeId(rt)}">
+          <div class="oferta-card-head" onclick="toggleOferta('${sanitizeId(rt)}')">
+            <div>
+              <div class="oferta-rt">${rt}</div>
+              <div class="oferta-ruta">${ofertas.length} oferta${ofertas.length !== 1 ? 's' : ''} · ${yaAdj ? '<span style="color:var(--green);font-weight:700">adjudicado</span>' : activas.length + ' activa' + (activas.length !== 1 ? 's' : '')}</div>
+            </div>
+            <div class="oferta-meta">
+              ${minPrecio !== null ? `
+                <div>
+                  <div class="oferta-min-precio">${fmtCOP(minPrecio)}</div>
+                  <div class="oferta-min-label">mejor oferta</div>
+                </div>
+              ` : ''}
+              <span class="oferta-count-badge">${ofertas.length}</span>
+              <span class="oferta-chevron">▼</span>
+            </div>
+          </div>
+          <div class="oferta-card-body">
+            <table class="ofertas-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>transportador</th>
+                  <th>precio ofertado</th>
+                  <th>contacto</th>
+                  <th>comentario</th>
+                  <th>acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ordenadas.map((o, i) => {
+                  const esMejor  = o.estado === 'activa' && i === 0 && !yaAdj;
+                  const esAcept  = o.estado === 'aceptada';
+                  const esCancel = o.estado === 'cancelada' || o.estado === 'rechazada';
+                  return `
+                  <tr class="${esMejor ? 'mejor-oferta' : ''}">
+                    <td><span class="rank-badge ${i === 0 && o.estado === 'activa' ? 'rank-1' : ''}">${i + 1}</span></td>
+                    <td>
+                      <div style="font-weight:600;font-size:13px">${o.nombre || '—'}</div>
+                      <div style="font-size:11px;color:var(--gray-400)">${o.empresa || ''}</div>
+                    </td>
+                    <td><span class="precio-cell ${esMejor ? 'mejor' : ''}">${fmtCOP(o.precio_oferta)}</span></td>
+                    <td style="font-size:12px;color:var(--gray-600)">${o.telefono || '—'}</td>
+                    <td class="comentario-cell">${o.comentario || '—'}</td>
+                    <td>
+                      ${esAcept ? `<span class="adjudicado-badge">✓ Adjudicado</span>` : ''}
+                      ${esCancel ? `<span style="font-size:11px;color:var(--gray-400);font-weight:600">${o.estado}</span>` : ''}
+                      ${o.estado === 'activa' && !yaAdj ? `
+                        <button class="btn-adjudicar"
+                          onclick="adjudicar('${rtSafe}', '${o.id}', '${(o.telefono||'').replace(/\D/g,'')}', '${(o.nombre||'').replace(/'/g,"\\'")}', '${fmtCOP(o.precio_oferta)}')">
+                          Adjudicar
+                        </button>
+                      ` : ''}
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+            ${!yaAdj && activas.length > 0 ? `
+            <div class="oferta-actions-row">
+              <div class="oferta-actions-hint">La adjudicación marca al ganador y cierra las demás ofertas de este viaje.</div>
+              <button class="btn-adjudicar" style="background:var(--green)"
+                onclick="adjudicar('${rtSafe}', '${ordenadas[0].id}', '${(ordenadas[0].telefono||'').replace(/\D/g,'')}', '${(ordenadas[0].nombre||'').replace(/'/g,"\\'")}', '${fmtCOP(ordenadas[0].precio_oferta)}')">
+                ✓ Adjudicar mejor oferta
+              </button>
+            </div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleOferta(id) {
+    const card = document.getElementById('card-' + id);
+    if (card) card.classList.toggle('open');
+  }
+
+  function sanitizeId(str) {
+    return str.replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
+
+  function fmtCOP(n) {
+    if (!n && n !== 0) return '—';
+    return '$' + Number(n).toLocaleString('es-CO');
+  }
+
+  async function adjudicar(viajeRt, ofertaGanadoraId, telefono, nombre, precio) {
+    const ok = confirm(
+      `¿Adjudicar viaje ${viajeRt} a ${nombre} por ${precio}?\n\nSe rechazarán las demás ofertas y se abrirá WhatsApp para notificar al ganador.`
+    );
+    if (!ok) return;
+
+    // 1. Marcar ganadora como 'aceptada'
+    const { error: e1 } = await sb
+      .from('ofertas')
+      .update({ estado: 'aceptada' })
+      .eq('id', ofertaGanadoraId);
+
+    if (e1) { alert('Error al adjudicar: ' + e1.message); return; }
+
+    // 2. Rechazar el resto de ofertas activas del mismo viaje
+    const { error: e2 } = await sb
+      .from('ofertas')
+      .update({ estado: 'rechazada' })
+      .eq('viaje_rt', viajeRt)
+      .eq('estado', 'activa');
+
+    if (e2) { alert('Adjudicado pero error al rechazar otras: ' + e2.message); }
+
+    // 3. Actualizar local y re-render
+    ofertasData.forEach(o => {
+      if (o.id === ofertaGanadoraId) o.estado = 'aceptada';
+      else if (o.viaje_rt === viajeRt && o.estado === 'activa') o.estado = 'rechazada';
+    });
+    renderOfertas();
+
+    // Reabrir la card
+    setTimeout(() => {
+      const card = document.getElementById('card-' + sanitizeId(viajeRt));
+      if (card && !card.classList.contains('open')) card.classList.add('open');
+    }, 50);
+
+    // 4. Abrir WhatsApp con el ganador
+    if (telefono) {
+      const msg = encodeURIComponent(
+        `Hola ${nombre}, ¡felicitaciones! Tu oferta de ${precio} para el viaje ${viajeRt} ha sido seleccionada en NETFLEET. El coordinador se pondrá en contacto contigo pronto.`
+      );
+      window.open(`https://wa.me/${telefono}?text=${msg}`, '_blank');
+    }
   }
 </script>
 </body>

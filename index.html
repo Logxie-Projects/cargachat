@@ -566,6 +566,22 @@
     /* ═══════════════════════════════════════════════════════════
        FOOTER
     ═══════════════════════════════════════════════════════════ */
+    /* CÓMO FUNCIONA — dos columnas */
+    .como-cols         { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0 40px; margin-top: 2.5rem; text-align: left; }
+    .como-col          { display: flex; flex-direction: column; }
+    .como-col-divider  { background: rgba(255,255,255,0.1); align-self: stretch; }
+    .como-col-tag      { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.75rem; }
+    .como-col-title    { font-size: clamp(1.3rem, 2.5vw, 1.7rem); font-weight: 800; color: white; line-height: 1.2; letter-spacing: -0.5px; margin-bottom: 1.75rem; }
+    .como-col-title span { color: var(--cyan); }
+    .como-col-steps    { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+    .como-col-step     { display: flex; gap: 14px; align-items: flex-start; }
+    .como-col-num      { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--cyan); flex-shrink: 0; margin-top: 2px; min-width: 20px; }
+    .como-col-desc     { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+    @media(max-width:700px) {
+      .como-cols       { grid-template-columns: 1fr; gap: 40px 0; }
+      .como-col-divider { height: 1px; width: 100%; }
+    }
+
     /* BLOQUES UNIFICADOS — Empresas / Cómo funciona / Transportadores */
     .bloque-claro         { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
     .bloque-oscuro        { background: var(--navy); padding: 5rem 2rem; text-align: center; }
@@ -740,10 +756,9 @@
       <!-- COLUMNA IZQUIERDA: copy + CTAs -->
       <div class="hero-content">
         <div class="hero-badge">marketplace de carga b2b · colombia</div>
-        <h1>la carga<br>va directo.<br><span>sin rosca.</span></h1>
-        <p class="hero-sub">Sin intermediarios, sin comisiones ocultas.</p>
-        <p class="hero-sub"><strong>Transportadores certificados pujan. El mejor precio gana.</strong></p>
-        <p class="hero-proof">licitación inversa en tiempo real · red verificada · todo el país</p>
+        <h1>deja de pagar<br>de más por<br><span>tu logística.</span></h1>
+        <p class="hero-sub">Transportadores certificados compiten por tu carga. El mejor precio gana.</p>
+        <p class="hero-proof">subasta inversa · red verificada MinTransporte · todo el país</p>
         <div class="hero-ctas">
           <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')">Publicar mi carga →</button>
           <button class="btn-secondary-cta" onclick="abrirVinculacionModal('transportador')">Vincular mi empresa de transporte →</button>
@@ -960,97 +975,59 @@
     </div>
   </div>
 
-  <!-- PARA EMPRESAS -->
-  <div class="bloque-claro" id="empresas">
-    <div class="bloque-inner">
-      <div class="bloque-eyebrow">para empresas cargadoras</div>
-      <h2 class="bloque-title">Mueve tu carga al mejor precio.<br><span>Sin intermediarios.</span></h2>
-      <div class="bloque-cards">
-        <div class="bloque-card">
-          <div class="bloque-card-num">01</div>
-          <div class="bloque-card-title">sin rosca</div>
-          <div class="bloque-card-desc">Transportadores pujan directamente. Lo que cotiza es lo que pagas. Cero comisiones ocultas.</div>
-        </div>
-        <div class="bloque-card">
-          <div class="bloque-card-num">02</div>
-          <div class="bloque-card-title">red certificada</div>
-          <div class="bloque-card-desc">Solo operadores verificados ante el MinTransporte. Pólizas vigentes, GPS y trazabilidad incluida.</div>
-        </div>
-        <div class="bloque-card">
-          <div class="bloque-card-num">03</div>
-          <div class="bloque-card-title">licitación inversa</div>
-          <div class="bloque-card-desc">El mercado compite por tu carga. El mejor precio gana en tiempo real. Sin negociación manual.</div>
-        </div>
-      </div>
-      <div class="bloque-sectores">
-        <span class="bloque-sector-chip">oil &amp; gas</span>
-        <span class="bloque-sector-chip">agribusiness</span>
-        <span class="bloque-sector-chip">health</span>
-        <span class="bloque-sector-chip">medicals</span>
-        <span class="bloque-sector-chip">retail</span>
-        <span class="bloque-sector-chip">industrial</span>
-      </div>
-      <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')" style="margin-top:2rem">Publicar mi carga →</button>
-    </div>
-  </div>
-
-  <!-- CÓMO FUNCIONA -->
+  <!-- CÓMO FUNCIONA — dos columnas -->
   <div class="bloque-oscuro" id="como-funciona">
     <div class="bloque-inner">
-      <div class="bloque-eyebrow bloque-eyebrow--dark">así funciona</div>
-      <h2 class="bloque-title bloque-title--dark">Simple. Directo.<br><span>Sin rosca.</span></h2>
-      <div class="bloque-cards">
-        <div class="bloque-card bloque-card--dark">
-          <div class="bloque-card-num bloque-card-num--dark">01</div>
-          <div class="bloque-card-title bloque-card-title--dark">se publica la operación</div>
-          <div class="bloque-card-desc bloque-card-desc--dark">Carga, ruta, fecha y requisitos en minutos. La licitación llega a toda la red certificada al instante.</div>
-        </div>
-        <div class="bloque-card bloque-card--dark">
-          <div class="bloque-card-num bloque-card-num--dark">02</div>
-          <div class="bloque-card-title bloque-card-title--dark">transportadores certificados pujan</div>
-          <div class="bloque-card-desc bloque-card-desc--dark">Licitación inversa en tiempo real. Solo operadores verificados MinTransporte. El mejor precio gana.</div>
-        </div>
-        <div class="bloque-card bloque-card--dark">
-          <div class="bloque-card-num bloque-card-num--dark">03</div>
-          <div class="bloque-card-title bloque-card-title--dark">se adjudica y NETFLEET coordina</div>
-          <div class="bloque-card-desc bloque-card-desc--dark">Documentos, trazabilidad y seguimiento GPS de principio a fin. Sin llamadas, sin papelería manual.</div>
-        </div>
-      </div>
-    </div>
-  </div>
+      <div class="bloque-eyebrow bloque-eyebrow--dark">cómo funciona</div>
+      <div class="como-cols">
 
-  <!-- PARA TRANSPORTADORES -->
-  <div class="bloque-claro" id="transportadores">
-    <div class="bloque-inner">
-      <div class="bloque-eyebrow">para empresas de transporte</div>
-      <h2 class="bloque-title">Mueve más carga.<br><span>Con tu flota.</span></h2>
-      <div class="bloque-cards">
-        <div class="bloque-card">
-          <div class="bloque-card-num">01</div>
-          <div class="bloque-card-title">carga constante</div>
-          <div class="bloque-card-desc">Accede a operaciones publicadas por empresas reales. Sin esperar llamadas, sin intermediarios.</div>
+        <div class="como-col">
+          <div class="como-col-header">
+            <div class="como-col-tag">si tienes carga</div>
+            <h3 class="como-col-title">Publica.<br>Recibe ofertas.<br><span>El mejor precio gana.</span></h3>
+          </div>
+          <div class="como-col-steps">
+            <div class="como-col-step">
+              <div class="como-col-num">01</div>
+              <div class="como-col-desc">Publicas tu operación — ruta, carga y fecha en minutos.</div>
+            </div>
+            <div class="como-col-step">
+              <div class="como-col-num">02</div>
+              <div class="como-col-desc">Transportadores certificados pujan por tu carga. Sin favoritismos.</div>
+            </div>
+            <div class="como-col-step">
+              <div class="como-col-num">03</div>
+              <div class="como-col-desc">Eliges la mejor oferta. NETFLEET coordina todo lo demás.</div>
+            </div>
+          </div>
+          <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')" style="margin-top:1.5rem">Publicar mi carga →</button>
         </div>
-        <div class="bloque-card">
-          <div class="bloque-card-num">02</div>
-          <div class="bloque-card-title">tú defines el precio</div>
-          <div class="bloque-card-desc">Oferta directamente. Sin ver las propuestas de otros. Competencia real y transparente.</div>
+
+        <div class="como-col-divider"></div>
+
+        <div class="como-col">
+          <div class="como-col-header">
+            <div class="como-col-tag">si eres transportador</div>
+            <h3 class="como-col-title">Carga constante.<br>Clientes que<br><span>sí pagan.</span></h3>
+          </div>
+          <div class="como-col-steps">
+            <div class="como-col-step">
+              <div class="como-col-num">01</div>
+              <div class="como-col-desc">Accedes a operaciones reales publicadas cada día. Sin llamadas, sin intermediarios.</div>
+            </div>
+            <div class="como-col-step">
+              <div class="como-col-num">02</div>
+              <div class="como-col-desc">Ofertas tu precio directamente. Tú decides cuánto vale el viaje.</div>
+            </div>
+            <div class="como-col-step">
+              <div class="como-col-num">03</div>
+              <div class="como-col-desc">Si te eligen, recibes documentos y contacto al instante. A mover.</div>
+            </div>
+          </div>
+          <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:1.5rem">Vincular mi flota →</button>
         </div>
-        <div class="bloque-card">
-          <div class="bloque-card-num">03</div>
-          <div class="bloque-card-title">red verificada</div>
-          <div class="bloque-card-desc">Trabajamos solo con empresas habilitadas MinTransporte. Tus clientes lo saben antes de adjudicar.</div>
-        </div>
+
       </div>
-      <div class="bloque-logos">
-        <span class="trans-logo">Global Logística</span>
-        <span class="trans-logo">Vigía</span>
-        <span class="trans-logo">Trasamer</span>
-        <span class="trans-logo">Trans Nueva Colombia</span>
-        <span class="trans-logo">JR Logística</span>
-        <span class="trans-logo">Pracargo</span>
-        <span class="trans-logo">Entrapetrol</span>
-      </div>
-      <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:2rem">Vincular mi empresa de transporte →</button>
     </div>
   </div>
 

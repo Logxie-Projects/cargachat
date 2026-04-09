@@ -380,18 +380,16 @@
 
   // ── USUARIOS ──────────────────────────────────────────────────
   async function cargarUsuarios() {
-    const { data, error } = await sb
-      .from('perfiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?select=*&order=created_at.desc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}` }
+    });
+    if (!r.ok) {
       document.getElementById('usuarios-lista').innerHTML =
-        '<div class="empty-msg">Error al cargar usuarios. Verifica los permisos RLS.</div>';
+        '<div class="empty-msg">Error al cargar usuarios: ' + r.status + '. Verifica los permisos RLS.</div>';
       return;
     }
-
-    todosUsuarios = data || [];
+    todosUsuarios = await r.json() || [];
     actualizarStats();
     renderUsuarios();
   }
@@ -449,12 +447,13 @@
   }
 
   async function cambiarEstado(id, nuevoEstado, telefono, nombre) {
-    const { error } = await sb
-      .from('perfiles')
-      .update({ estado: nuevoEstado })
-      .eq('id', id);
-
-    if (error) { alert('Error al actualizar: ' + error.message); return; }
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ estado: nuevoEstado })
+    });
+    if (!r.ok) { alert('Error al actualizar: ' + r.status); return; }
 
     const u = todosUsuarios.find(x => x.id === id);
     if (u) u.estado = nuevoEstado;
@@ -491,17 +490,15 @@
     const listaEl = document.getElementById('ofertas-lista');
     listaEl.innerHTML = '<div class="loading-msg">Cargando ofertas...</div>';
 
-    const { data, error } = await sb
-      .from('ofertas')
-      .select('*')
-      .order('precio_oferta', { ascending: true });
-
-    if (error) {
-      listaEl.innerHTML = '<div class="empty-msg">Error al cargar ofertas: ' + error.message + '</div>';
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?select=*&order=precio_oferta.asc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}` }
+    });
+    if (!r.ok) {
+      listaEl.innerHTML = '<div class="empty-msg">Error al cargar ofertas: ' + r.status + '</div>';
       return;
     }
-
-    ofertasData = data || [];
+    ofertasData = await r.json() || [];
     renderOfertas();
   }
 
@@ -643,22 +640,20 @@
     );
     if (!ok) return;
 
-    // 1. Marcar ganadora como 'aceptada'
-    const { error: e1 } = await sb
-      .from('ofertas')
-      .update({ estado: 'aceptada' })
-      .eq('id', ofertaGanadoraId);
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
 
-    if (e1) { alert('Error al adjudicar: ' + e1.message); return; }
+    // 1. Marcar ganadora como 'aceptada'
+    const r1 = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?id=eq.${ofertaGanadoraId}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ estado: 'aceptada' })
+    });
+    if (!r1.ok) { alert('Error al adjudicar: ' + r1.status); return; }
 
     // 2. Rechazar el resto de ofertas activas del mismo viaje
-    const { error: e2 } = await sb
-      .from('ofertas')
-      .update({ estado: 'rechazada' })
-      .eq('viaje_rt', viajeRt)
-      .eq('estado', 'activa');
-
-    if (e2) { alert('Adjudicado pero error al rechazar otras: ' + e2.message); }
+    const r2 = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?viaje_rt=eq.${encodeURIComponent(viajeRt)}&estado=eq.activa`, {
+      method: 'PATCH', headers, body: JSON.stringify({ estado: 'rechazada' })
+    });
+    if (!r2.ok) { alert('Adjudicado pero error al rechazar otras: ' + r2.status); }
 
     // 3. Actualizar local y re-render
     ofertasData.forEach(o => {

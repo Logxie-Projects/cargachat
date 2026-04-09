@@ -639,8 +639,17 @@
                     <td style="font-size:12px;color:var(--gray-600)">${o.telefono || '—'}</td>
                     <td class="comentario-cell">${o.comentario || '—'}</td>
                     <td>
-                      ${esAcept ? `<span class="adjudicado-badge">✓ Adjudicado</span>` : ''}
-                      ${esCancel ? `<span style="font-size:11px;color:var(--gray-400);font-weight:600">${o.estado}</span>` : ''}
+                      ${esAcept ? `
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                          <span class="adjudicado-badge">✓ Adjudicado</span>
+                          ${o.telefono ? `<a class="btn-wa" href="https://wa.me/${o.telefono.replace(/\D/g,'')}?text=${encodeURIComponent('Hola ' + (o.nombre||'') + ', ¡felicitaciones! Tu oferta de ' + fmtCOP(o.precio_oferta) + ' para el viaje ' + rt + ' fue seleccionada en NETFLEET. El coordinador se pondrá en contacto pronto.')}" target="_blank">WA</a>` : ''}
+                        </div>` : ''}
+                      ${o.estado === 'rechazada' ? `
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                          <span style="font-size:11px;color:var(--gray-400);font-weight:600">Rechazada</span>
+                          ${o.telefono ? `<a class="btn-wa" style="background:#868e96" href="https://wa.me/${o.telefono.replace(/\D/g,'')}?text=${encodeURIComponent('Hola ' + (o.nombre||'') + ', gracias por tu oferta en NETFLEET para el viaje ' + rt + '. En esta ocasión fue seleccionado otro transportador. ¡Seguimos contando contigo!')}" target="_blank">WA</a>` : ''}
+                        </div>` : ''}
+                      ${o.estado === 'cancelada' ? `<span style="font-size:11px;color:var(--gray-400);font-weight:600">Cancelada</span>` : ''}
                       ${o.estado === 'activa' && !yaAdj ? `
                         <button class="btn-adjudicar"
                           onclick="adjudicar('${rtSafe}', '${o.id}', '${(o.telefono||'').replace(/\D/g,'')}', '${(o.nombre||'').replace(/'/g,"\\'")}', '${fmtCOP(o.precio_oferta)}')">

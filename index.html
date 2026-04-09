@@ -536,10 +536,41 @@
     /* ═══════════════════════════════════════════════════════════
        FOOTER
     ═══════════════════════════════════════════════════════════ */
-    footer      { background: var(--navy-dark); padding: 2rem; text-align: center; }
-    .footer-logo { font-size: 18px; font-weight: 600; color: white; letter-spacing: -0.5px; }
+    /* SECCIÓN TRANSPORTADORES */
+    .trans-section        { background: var(--navy); padding: 5rem 2rem; text-align: center; }
+    .trans-section-inner  { max-width: 900px; margin: 0 auto; }
+    .trans-section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
+    .trans-section-title  { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; color: white; letter-spacing: -1px; line-height: 1.15; margin-bottom: 1rem; }
+    .trans-section-title span { color: var(--cyan); }
+    .trans-section-sub    { font-size: 1rem; color: rgba(255,255,255,0.65); max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.6; }
+    .trans-section-cards  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+    .trans-card           { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 24px; }
+    .trans-card-icon      { font-size: 24px; margin-bottom: 12px; }
+    .trans-card-title     { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px; }
+    .trans-card-desc      { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.5; }
+    @media(max-width:700px) { .trans-section-cards { grid-template-columns: 1fr; } }
+
+    /* SECCIÓN CONTACTO */
+    .contacto-section     { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
+    .contacto-inner       { max-width: 600px; margin: 0 auto; }
+    .contacto-eyebrow     { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
+    .contacto-title       { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.75rem; }
+    .contacto-sub         { font-size: 0.95rem; color: var(--gray-600); margin-bottom: 2rem; }
+    .contacto-opciones    { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .contacto-card        { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 28px 36px; text-decoration: none; transition: box-shadow .2s, transform .2s; min-width: 160px; }
+    .contacto-card:hover  { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .contacto-card-icon   { font-size: 28px; margin-bottom: 10px; }
+    .contacto-card-label  { font-size: 14px; font-weight: 700; color: var(--navy); }
+    .contacto-card-desc   { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    /* FOOTER */
+    footer        { background: var(--navy-dark); padding: 2.5rem 2rem; text-align: center; }
+    .footer-logo  { font-size: 18px; font-weight: 600; color: white; letter-spacing: -0.5px; }
     .footer-logo span { color: var(--cyan); }
-    .footer-sub  { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+    .footer-links { display: flex; gap: 24px; justify-content: center; margin: 14px 0 10px; flex-wrap: wrap; }
+    .footer-links a { font-size: 12px; color: rgba(255,255,255,0.4); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: rgba(255,255,255,0.8); }
+    .footer-sub   { font-size: 11px; color: rgba(255,255,255,0.25); }
 
     /* ═══════════════════════════════════════════════════════════
        TOAST — Mensaje temporal de confirmación
@@ -964,10 +995,64 @@
     </div>
   </div>
 
+  <!-- TRANSPORTADORES -->
+  <div class="trans-section" id="transportadores">
+    <div class="trans-section-inner">
+      <div class="trans-section-eyebrow">para empresas de transporte</div>
+      <h2 class="trans-section-title">Mueve más carga.<br><span>Con tu flota.</span></h2>
+      <p class="trans-section-sub">Conectamos tu empresa de transporte con cargadores corporativos que necesitan flota certificada. Sin intermediarios, sin comisiones ocultas. Tú pones el precio.</p>
+      <div class="trans-section-cards">
+        <div class="trans-card">
+          <div class="trans-card-icon">📦</div>
+          <div class="trans-card-title">carga constante</div>
+          <div class="trans-card-desc">Accede a viajes publicados por empresas reales. Sin esperar llamadas ni intermediarios.</div>
+        </div>
+        <div class="trans-card">
+          <div class="trans-card-icon">💰</div>
+          <div class="trans-card-title">tú defines el precio</div>
+          <div class="trans-card-desc">Oferta por cada viaje. La empresa elige la mejor propuesta. Sin tarifas impuestas.</div>
+        </div>
+        <div class="trans-card">
+          <div class="trans-card-icon">✅</div>
+          <div class="trans-card-title">red verificada</div>
+          <div class="trans-card-desc">Solo trabajamos con empresas de transporte habilitadas ante el MinTransporte. Tus clientes lo saben.</div>
+        </div>
+      </div>
+      <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:32px">Vincular mi empresa de transporte →</button>
+    </div>
+  </div>
+
+  <!-- CONTACTO -->
+  <div class="contacto-section" id="contacto">
+    <div class="contacto-inner">
+      <div class="contacto-eyebrow">contacto</div>
+      <h2 class="contacto-title">¿Hablamos?</h2>
+      <p class="contacto-sub">Nuestro equipo responde en menos de 2 horas en días hábiles.</p>
+      <div class="contacto-opciones">
+        <a class="contacto-card" href="https://wa.me/573000000000?text=Hola%2C+quiero+saber+más+sobre+NETFLEET" target="_blank">
+          <div class="contacto-card-icon">💬</div>
+          <div class="contacto-card-label">WhatsApp</div>
+          <div class="contacto-card-desc">Respuesta inmediata</div>
+        </a>
+        <a class="contacto-card" href="mailto:hola@netfleet.app">
+          <div class="contacto-card-icon">✉️</div>
+          <div class="contacto-card-label">Email</div>
+          <div class="contacto-card-desc">hola@netfleet.app</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer>
     <div class="footer-logo">NET<span>FLEET</span></div>
-    <div class="footer-sub">NETFLEET · Marketplace de carga · Colombia</div>
+    <div class="footer-links">
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#empresas">Empresas</a>
+      <a href="#transportadores">Transportadores</a>
+      <a href="#contacto">Contacto</a>
+    </div>
+    <div class="footer-sub">© 2026 NETFLEET · Marketplace de carga B2B · Colombia</div>
   </footer>
 
   <!-- MODAL LEAD CALCULADORA -->

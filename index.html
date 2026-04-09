@@ -1514,7 +1514,7 @@
 
     function abrirOfertaModal(idx, accion) {
       const v = viajesData[idx];
-      const precioBase = parseFloat(v.precio_base || '0') || 0;
+      const precioBase = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
       ofertaViajeIdx = idx;
 
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
@@ -2040,7 +2040,7 @@
         const origen   = (v.origen  || '').split(',')[0].trim();
         const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
         const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : destinos[0] || '—';
-        const precio   = parseFloat(v.precio_base || '0') || 0;
+        const precio   = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
         const precioTxt = precio > 0 ? formatPrecioCorto(precio) : 'A convenir';
 
         const hoy   = new Date(); hoy.setHours(0,0,0,0);
@@ -2208,7 +2208,7 @@
         const peso      = v.peso_kg    || '0';
         const fecha     = v.fecha_cargue || '';
         const tipo      = v.tipo_mercancia || 'General';
-        const precioBase = parseFloat(v.precio_base || '0') || 0;
+        const precioBase = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
         const kmReales  = v.km      || '';
         const minutos   = v.minutos || '';
         // Badge dinámico basado en fecha de cargue
@@ -2392,7 +2392,7 @@
         const v = viajes[viajeIdx];
         const origen      = (v.origen || '').split(',')[0].trim();
         const destinos    = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-        const precioBase  = parseFloat(v.precio_base || '0') || 0;
+        const precioBase  = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
         const precioCorto = formatPrecioCorto(precioBase);
 
         const grupo      = L.layerGroup();
@@ -2835,6 +2835,21 @@
     // Bodegas hub — misma lista que n8n v2
     const CC_HUB = ['funza','yumbo','espinal'];
     const CC_PRECIO_MINIMO = 950000;
+
+    // Calcula el precio estimado usando la misma fórmula del slider
+    // Usado en tarjetas, mapa y ticker para consistencia con la calculadora
+    function estimarPrecio(km, kg, paradas, destino, origen) {
+      km      = parseInt(km)      || 0;
+      kg      = parseInt(kg)      || 0;
+      paradas = parseInt(paradas) || 1;
+      if (!km || !kg) return 0;
+      const zona        = ccDetectarZona(destino || '', origen || '');
+      const ajusteZona  = CC_ZONA_AJUSTE[zona] || 0;
+      if (km < 50) {
+        return Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
+      }
+      return Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+    }
 
     // Detectar zona automáticamente a partir de origen y destino
     function ccDetectarZona(destinoTexto, origenTexto) {

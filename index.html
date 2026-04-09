@@ -675,9 +675,9 @@
     .nav-user-badge.pendiente { background:#fff3e6; color:#cc5500; }
 
     /* Ticker en vivo */
-    .ticker-bar { background: var(--navy); height: 34px; display: flex; align-items: center; overflow: hidden; position: relative; }
-    .ticker-label { display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--cyan); color: white; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
-    .ticker-dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse-dot 1s infinite; }
+    .ticker-bar { background: #0a0f1e; height: 36px; display: flex; align-items: center; overflow: hidden; position: relative; border-bottom: 1px solid rgba(0,191,223,0.2); }
+    .ticker-label { display: flex; align-items: center; gap: 7px; padding: 0 16px; background: var(--cyan); color: #0a0f1e; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
+    .ticker-dot { width: 7px; height: 7px; background: #0a0f1e; border-radius: 50%; animation: pulse-dot 1s infinite; }
     @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
     .ticker-track { display: flex; align-items: center; gap: 0; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
     .ticker-track:hover { animation-play-state: paused; }
@@ -742,7 +742,7 @@
   <div class="ticker-bar" id="ticker-bar" style="display:none">
     <div class="ticker-label">
       <div class="ticker-dot"></div>
-      operaciones activas
+      subastas en vivo
     </div>
     <div style="overflow:hidden;flex:1">
       <div class="ticker-track" id="ticker-track"></div>

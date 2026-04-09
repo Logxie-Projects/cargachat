@@ -728,13 +728,26 @@
       if (card && !card.classList.contains('open')) card.classList.add('open');
     }, 50);
 
-    // 4. Abrir WhatsApp con el ganador
+    // 4. Abrir WhatsApp — ganador primero, rechazados con delay
     if (telefono) {
       const msg = encodeURIComponent(
         `Hola ${nombre}, ¡felicitaciones! Tu oferta de ${precio} para el viaje ${viajeRt} ha sido seleccionada en NETFLEET. El coordinador se pondrá en contacto contigo pronto.`
       );
       window.open(`https://wa.me/${telefono}?text=${msg}`, '_blank');
     }
+
+    // Notificar rechazados automáticamente con delay entre cada uno
+    const rechazados = ofertasData.filter(o =>
+      o.viaje_rt === viajeRt && o.estado === 'rechazada' && o.id !== ofertaGanadoraId && o.telefono
+    );
+    rechazados.forEach((o, i) => {
+      setTimeout(() => {
+        const msg = encodeURIComponent(
+          `Hola ${o.nombre || ''}, gracias por tu oferta en NETFLEET para el viaje ${viajeRt}. En esta ocasión fue seleccionado otro transportador. ¡Seguimos contando contigo!`
+        );
+        window.open(`https://wa.me/${o.telefono.replace(/\D/g,'')}?text=${msg}`, '_blank');
+      }, (i + 1) * 800);
+    });
   }
 </script>
 </body>

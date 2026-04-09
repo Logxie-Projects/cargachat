@@ -675,6 +675,14 @@
                 ✓ Adjudicar mejor oferta
               </button>
             </div>` : ''}
+            ${yaAdj ? `
+            <div class="oferta-actions-row">
+              <div class="oferta-actions-hint">¿El transportador se retractó? Puedes revertir y re-adjudicar.</div>
+              <button class="btn-adjudicar" style="background:var(--orange)"
+                onclick="revertirAdjudicacion('${rtSafe}')">
+                ↩ Revertir adjudicación
+              </button>
+            </div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -728,26 +736,36 @@
       if (card && !card.classList.contains('open')) card.classList.add('open');
     }, 50);
 
-    // 4. Abrir WhatsApp — ganador primero, rechazados con delay
+    // 4. Abrir WhatsApp solo con el ganador
     if (telefono) {
       const msg = encodeURIComponent(
         `Hola ${nombre}, ¡felicitaciones! Tu oferta de ${precio} para el viaje ${viajeRt} ha sido seleccionada en NETFLEET. El coordinador se pondrá en contacto contigo pronto.`
       );
       window.open(`https://wa.me/${telefono}?text=${msg}`, '_blank');
     }
+  }
 
-    // Notificar rechazados automáticamente con delay entre cada uno
-    const rechazados = ofertasData.filter(o =>
-      o.viaje_rt === viajeRt && o.estado === 'rechazada' && o.id !== ofertaGanadoraId && o.telefono
-    );
-    rechazados.forEach((o, i) => {
-      setTimeout(() => {
-        const msg = encodeURIComponent(
-          `Hola ${o.nombre || ''}, gracias por tu oferta en NETFLEET para el viaje ${viajeRt}. En esta ocasión fue seleccionado otro transportador. ¡Seguimos contando contigo!`
-        );
-        window.open(`https://wa.me/${o.telefono.replace(/\D/g,'')}?text=${msg}`, '_blank');
-      }, (i + 1) * 800);
+  async function revertirAdjudicacion(viajeRt) {
+    const ok = confirm(`¿Revertir la adjudicación del viaje ${viajeRt}? Todas las ofertas volverán a estado activo.`);
+    if (!ok) return;
+
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+
+    // Reactivar aceptada y rechazadas del viaje
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?viaje_rt=eq.${encodeURIComponent(viajeRt)}&estado=in.(aceptada,rechazada)`, {
+      method: 'PATCH', headers, body: JSON.stringify({ estado: 'activa' })
     });
+    if (!r.ok) { alert('Error al revertir: ' + r.status); return; }
+
+    ofertasData.forEach(o => {
+      if (o.viaje_rt === viajeRt && (o.estado === 'aceptada' || o.estado === 'rechazada')) o.estado = 'activa';
+    });
+    renderOfertas();
+    setTimeout(() => {
+      const card = document.getElementById('card-' + sanitizeId(viajeRt));
+      if (card && !card.classList.contains('open')) card.classList.add('open');
+    }, 50);
   }
 </script>
 </body>

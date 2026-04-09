@@ -2199,6 +2199,8 @@
 
       // ── Generar HTML de cada tarjeta ─────────────────────────
       grid.innerHTML = viajes.map((v, idx) => {
+        // idxReal apunta al índice en viajesData completo para que seleccionarViaje() use el mapa correcto
+        const idxReal = viajesData.indexOf(v);
         const retornoTag = esRetorno ? '<div class="viaje-retorno-tag">↩ retorno disponible</div>' : '';
 
         // Datos básicos del viaje
@@ -2278,7 +2280,7 @@
 
         // HTML de la tarjeta
         return `
-          <div class="viaje-card" onclick="seleccionarViaje(${idx})">
+          <div class="viaje-card" onclick="seleccionarViaje(${idxReal})">
             ${retornoTag}
             <!-- Ruta + badge de estado -->
             <div class="viaje-header">
@@ -2314,8 +2316,8 @@
                 <div class="ofertas-count" data-ofertas-rt="${v.rt_total || ''}"></div>
               </div>
               <div style="display:flex; gap:8px;">
-                <button class="btn-aceptar" onclick="event.stopPropagation(); abrirForm(${idx}, 'aceptar')">Aceptar →</button>
-                <button class="btn-menor"   onclick="event.stopPropagation(); abrirForm(${idx}, 'oferta')">Hacer oferta</button>
+                <button class="btn-aceptar" onclick="event.stopPropagation(); abrirForm(${idxReal}, 'aceptar')">Aceptar →</button>
+                <button class="btn-menor"   onclick="event.stopPropagation(); abrirForm(${idxReal}, 'oferta')">Hacer oferta</button>
               </div>
             ` : `
               <!-- SIN PRECIO: viajes anteriores al sistema de cálculo automático -->
@@ -2324,7 +2326,7 @@
                   <div class="precio-label">Precio subasta</div>
                   <div class="precio-value">A convenir</div>
                 </div>
-                <button class="btn-ofertar" onclick="event.stopPropagation(); abrirForm(${idx}, 'oferta')">Ofertar →</button>
+                <button class="btn-ofertar" onclick="event.stopPropagation(); abrirForm(${idxReal}, 'oferta')">Ofertar →</button>
               </div>
               <div class="ofertas-count" data-ofertas-rt="${v.rt_total || ''}"></div>
             `}

@@ -422,7 +422,7 @@
 
         document.getElementById('nav-name').textContent = perfil?.nombre || usuario.email;
         const badge = document.getElementById('nav-badge');
-        if (perfil?.estado === 'activo') {
+        if (perfil?.estado === 'aprobado') {
           badge.textContent = 'Activo';
           badge.className = 'nav-badge badge-activo';
         } else {

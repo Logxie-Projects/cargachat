@@ -1735,8 +1735,10 @@
       'buenavista':   [5.7167, -73.9667],
       'ventaquemada': [5.4167, -73.5167],
       'sachica':      [5.6667, -73.6833],
-      'jenesano':     [5.3833, -73.4167],
-      'jenessano':    [5.3833, -73.4167],
+      'jenesano':              [5.3833, -73.4167],
+      'jenessano':             [5.3833, -73.4167],
+      'jenesano de boyaca':    [5.3833, -73.4167],
+      'jenesano boyaca':       [5.3833, -73.4167],
       'tuta':         [5.6667, -73.2000],
       'toca':         [5.5667, -73.1667],
       'tibana':       [5.3167, -73.3833],
@@ -2623,8 +2625,10 @@
         }
       });
 
-      if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 0) {
+      if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 1) {
         mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60], maxZoom: 12, animate: false });
+      } else if (mapaCapas[idx] && mapaCapas[idx].bounds.length === 1) {
+        mapaLeaflet.setView(mapaCapas[idx].bounds[0], 9, { animate: false });
       }
 
       // Actualizar calculadora con los valores del viaje seleccionado

@@ -1730,6 +1730,8 @@
       'duitama':      [5.8281, -73.0297],
       'sogamoso':     [5.7150, -72.9267],
       'paipa':        [5.7833, -73.1167],
+      'ramiriqui':    [5.4000, -73.3333],
+      'ramiriquí':    [5.4000, -73.3333],
       'chiquinquira': [5.6167, -73.8167],
       'chiquinquirá': [5.6167, -73.8167],
       'buenavista':   [5.7167, -73.9667],
@@ -2442,13 +2444,29 @@
           destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
         );
 
-        // Ordenar destinos: 1) nearest-neighbor  2) mejora con 2-opt
         const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
 
-        // Paso 1: nearest-neighbor desde el origen
+        // ── Detectar ruta circular: destino que vuelve al origen ──
+        const origenKey = normalizarNombre(origen);
+        let destinoRetorno = null;
+        let destinosParaOptimizar = [...destinosValidos];
+
+        if (coordOrigen) {
+          const idxRet = destinosValidos.findIndex(d =>
+            variantes(d.nombre).some(v =>
+              v === origenKey || origenKey.includes(v) || v.includes(origenKey)
+            )
+          );
+          if (idxRet !== -1) {
+            destinoRetorno = destinosValidos[idxRet];
+            destinosParaOptimizar = destinosValidos.filter((_, i) => i !== idxRet);
+          }
+        }
+
+        // Paso 1: nearest-neighbor (sin el destino de retorno)
         const destinosOrdenados = [];
-        let puntoActual = coordOrigen || (destinosValidos[0]?.coord ?? null);
-        const pendientes = [...destinosValidos];
+        let puntoActual = coordOrigen || (destinosParaOptimizar[0]?.coord ?? null);
+        const pendientes = [...destinosParaOptimizar];
         while (pendientes.length > 0) {
           let minDist = Infinity, minIdx = 0;
           pendientes.forEach((d, i) => {
@@ -2460,11 +2478,11 @@
           pendientes.splice(minIdx, 1);
         }
 
-        // Paso 2: 2-opt — intercambia segmentos si reduce distancia total
+        // Paso 2: 2-opt
         if (destinosOrdenados.length > 3) {
           const pts = coordOrigen ? [{ coord: coordOrigen }, ...destinosOrdenados] : destinosOrdenados;
           const dist2 = (a, b) => Math.hypot(a.coord[0] - b.coord[0], a.coord[1] - b.coord[1]);
-          const offset = coordOrigen ? 1 : 0; // índices de destinosOrdenados dentro de pts
+          const offset = coordOrigen ? 1 : 0;
           let improved = true;
           while (improved) {
             improved = false;
@@ -2473,16 +2491,17 @@
                 const before = dist2(pts[i - 1] ?? pts[0], pts[i]) + dist2(pts[j], pts[j + 1] ?? pts[pts.length - 1]);
                 const after  = dist2(pts[i - 1] ?? pts[0], pts[j]) + dist2(pts[i], pts[j + 1] ?? pts[pts.length - 1]);
                 if (after < before - 1e-10) {
-                  // Invertir el segmento [i..j]
                   pts.splice(i, j - i + 1, ...pts.slice(i, j + 1).reverse());
                   improved = true;
                 }
               }
             }
           }
-          // Actualizar destinosOrdenados con el orden optimizado
           destinosOrdenados.splice(0, destinosOrdenados.length, ...pts.slice(offset));
         }
+
+        // Agregar retorno al final (forzado, fuera de la optimización)
+        if (destinoRetorno) destinosOrdenados.push(destinoRetorno);
 
         destinosOrdenados.forEach((dest, i) => {
           todosLosPuntos.push(dest.coord);
@@ -2504,6 +2523,11 @@
               .bindPopup(`<b style="color:#1B2A6B">Parada${numParada ? ' ' + numParada : ''}:</b> ${dest.nombre}`)
           );
         });
+
+        // ── Si es circular, cerrar el loop agregando el origen al final de la ruta ──
+        if (destinoRetorno && coordOrigen) {
+          puntosRuta.push(coordOrigen);
+        }
 
         // ── Ruta real por carretera (OSRM) con fallback a línea recta ──
         if (puntosRuta.length > 1) {

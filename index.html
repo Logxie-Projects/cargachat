@@ -1841,18 +1841,43 @@
      * Busca coordenadas en el diccionario local.
      * Normaliza para manejar tildes y mayúsculas.
      */
+    function normalizarNombre(str) {
+      return str.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // sin tildes
+        .replace(/[.\-_()]/g, ' ')                         // puntuación → espacio
+        .replace(/\s+/g, ' ').trim();
+    }
+
+    // Genera variantes del nombre para buscar en el diccionario:
+    // "Jenesano de Boyacá" → ["jenesano de boyaca", "jenesano", "de boyaca"]
+    // "San Gil (Santander)" → ["san gil santander", "san gil", "santander"]
+    function variantes(nombre) {
+      const base = normalizarNombre(nombre);
+      const partes = base.split(' ');
+      const vs = [base];
+      // Quitar sufijos tipo "de X", "del X" al final
+      const stopwords = ['de','del','la','el','los','las','y'];
+      for (let i = 1; i < partes.length; i++) {
+        if (stopwords.includes(partes[i - 1]) || stopwords.includes(partes[i])) {
+          vs.push(partes.slice(0, i).join(' '));
+          vs.push(partes.slice(i + 1).join(' '));
+        }
+      }
+      // Primera palabra sola (si tiene más de 4 letras para evitar falsos positivos)
+      if (partes[0].length > 4) vs.push(partes[0]);
+      return [...new Set(vs.filter(Boolean))];
+    }
+
     function getCoordenadas(ciudad) {
       if (!ciudad) return null;
-      const key = ciudad
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')  // Eliminar tildes
-        .trim();
+      const candidatos = variantes(ciudad);
 
       for (const [nombre, coords] of Object.entries(CIUDADES)) {
-        const nombreNorm = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        if (nombreNorm === key || key.includes(nombreNorm) || nombreNorm.includes(key)) {
-          return coords;
+        const nombreNorm = normalizarNombre(nombre);
+        for (const cand of candidatos) {
+          if (nombreNorm === cand || cand.includes(nombreNorm) || nombreNorm.includes(cand)) {
+            return coords;
+          }
         }
       }
       return null;

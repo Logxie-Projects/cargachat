@@ -1965,20 +1965,16 @@
     function crearMarkerOrigen(coord, precioCorto, idx, origenLabel, destinosLabel) {
       const texto = precioCorto || 'A convenir';
       const w = texto.length > 7 ? 90 : 68;
-      // Pin de precio (clickeable para seleccionar el viaje)
       const icon = L.divIcon({
-        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>
-          <div class="precio-pin">${texto}</div>
-        </div>`,
-        iconSize: [w, 44],
-        iconAnchor: [w / 2, 44],
+        html: `<div class="precio-pin">${texto}</div>`,
+        iconSize: [w, 28],
+        iconAnchor: [w / 2, 36],
         className: ''
       });
       const marker = L.marker(coord, { icon });
       if (origenLabel || destinosLabel) {
-        const preview = `<div class="pin-preview"><b>⬤ inicio · ${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
-        marker.bindTooltip(preview, { direction: 'top', offset: [0, -48], className: 'pin-preview-tooltip' });
+        const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
+        marker.bindTooltip(preview, { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' });
       }
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);

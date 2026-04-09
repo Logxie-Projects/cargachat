@@ -329,6 +329,27 @@
     /* ═══════════════════════════════════════════════════════════
        SECCIONES GENÉRICAS
     ═══════════════════════════════════════════════════════════ */
+    /* BUSCADOR */
+    .buscador-wrap   { background: white; border-bottom: 1px solid var(--gray-100); padding: 1.25rem 2rem; position: sticky; top: 60px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .buscador-bar    { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
+    .buscador-field  { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
+    .buscador-field--fecha { flex: 0.8; }
+    .buscador-label  { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 3px; }
+    .buscador-input  { background: transparent; border: none; outline: none; font-size: 14px; font-weight: 500; color: var(--navy); font-family: 'DM Sans', sans-serif; width: 100%; }
+    .buscador-input::placeholder { color: var(--gray-400); font-weight: 400; }
+    .buscador-sep    { color: var(--gray-300); font-size: 14px; padding: 0 4px; flex-shrink: 0; }
+    .buscador-sep--cal { font-size: 16px; }
+    .buscador-btn    { background: var(--navy); color: white; border: none; padding: 0 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: stretch; transition: background .2s; flex-shrink: 0; }
+    .buscador-btn:hover { background: var(--cyan); color: var(--navy); }
+    .buscador-reset  { text-align: center; margin-top: 8px; font-size: 12px; color: var(--gray-400); cursor: pointer; }
+    .buscador-reset span:hover { color: var(--navy); }
+    @media(max-width:700px) {
+      .buscador-bar  { flex-direction: column; border-radius: 12px; }
+      .buscador-field { border-bottom: 1px solid var(--gray-100); width: 100%; }
+      .buscador-sep  { display: none; }
+      .buscador-btn  { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
+    }
+
     .section     { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
     .section-hdr { margin-bottom: 1.5rem; }
     .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
@@ -767,6 +788,34 @@
     <div class="stat"><div class="stat-val">2.000+</div><div class="stat-lbl">viajes gestionados</div></div>
     <div class="stat"><div class="stat-val">9.9M kg</div><div class="stat-lbl">carga transportada</div></div>
     <div class="stat"><div class="stat-val">4PL/5PL</div><div class="stat-lbl">modelo de gestión</div></div>
+  </div>
+
+  <!-- BUSCADOR DE VIAJES -->
+  <div class="buscador-wrap">
+    <div class="buscador-bar">
+      <div class="buscador-field">
+        <label class="buscador-label">origen</label>
+        <input class="buscador-input" id="b-origen" type="text" placeholder="Ej: Funza, Yumbo..." autocomplete="off" list="list-origen">
+        <datalist id="list-origen"></datalist>
+      </div>
+      <div class="buscador-sep">→</div>
+      <div class="buscador-field">
+        <label class="buscador-label">destino</label>
+        <input class="buscador-input" id="b-destino" type="text" placeholder="Ej: Bogotá, Medellín..." autocomplete="off" list="list-destino">
+        <datalist id="list-destino"></datalist>
+      </div>
+      <div class="buscador-sep buscador-sep--cal">📅</div>
+      <div class="buscador-field buscador-field--fecha">
+        <label class="buscador-label">fecha de cargue</label>
+        <select class="buscador-input" id="b-fecha">
+          <option value="">Cualquier fecha</option>
+        </select>
+      </div>
+      <button class="buscador-btn" onclick="buscarViajes()">Buscar</button>
+    </div>
+    <div class="buscador-reset" id="buscador-reset" style="display:none">
+      <span onclick="resetBuscador()">✕ Limpiar filtros — mostrar todos los viajes</span>
+    </div>
   </div>
 
   <!-- SECCIÓN DE VIAJES DISPONIBLES (se llena dinámicamente con JS) -->
@@ -1994,6 +2043,57 @@
       });
     }
 
+    // ── BUSCADOR ──────────────────────────────────────────────────
+    function poblarBuscador(viajes) {
+      // Orígenes únicos
+      const origenes = [...new Set(viajes.map(v => (v.origen || '').trim()).filter(Boolean))].sort();
+      const listOrig = document.getElementById('list-origen');
+      listOrig.innerHTML = origenes.map(o => `<option value="${o}">`).join('');
+
+      // Destinos únicos (cada viaje puede tener varios separados por coma)
+      const destSet = new Set();
+      viajes.forEach(v => (v.destino || '').split(',').forEach(d => { const t = d.trim(); if (t) destSet.add(t); }));
+      const listDest = document.getElementById('list-destino');
+      listDest.innerHTML = [...destSet].sort().map(d => `<option value="${d}">`).join('');
+
+      // Fechas únicas
+      const fechas = [...new Set(viajes.map(v => (v.fecha_cargue || '').trim()).filter(Boolean))].sort();
+      const sel = document.getElementById('b-fecha');
+      sel.innerHTML = '<option value="">Cualquier fecha</option>' +
+        fechas.map(f => `<option value="${f}">${f}</option>`).join('');
+    }
+
+    function buscarViajes() {
+      const origen  = document.getElementById('b-origen').value.trim().toLowerCase();
+      const destino = document.getElementById('b-destino').value.trim().toLowerCase();
+      const fecha   = document.getElementById('b-fecha').value.trim();
+
+      const filtrados = viajesData.filter(v => {
+        const matchOrigen  = !origen  || (v.origen  || '').toLowerCase().includes(origen);
+        const matchDestino = !destino || (v.destino || '').toLowerCase().includes(destino);
+        const matchFecha   = !fecha   || (v.fecha_cargue || '') === fecha;
+        return matchOrigen && matchDestino && matchFecha;
+      });
+
+      renderViajes(filtrados);
+      document.getElementById('buscador-reset').style.display = (origen || destino || fecha) ? 'block' : 'none';
+      document.getElementById('viajes').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function resetBuscador() {
+      document.getElementById('b-origen').value  = '';
+      document.getElementById('b-destino').value = '';
+      document.getElementById('b-fecha').value   = '';
+      document.getElementById('buscador-reset').style.display = 'none';
+      renderViajes(viajesData);
+    }
+
+    // Buscar con Enter en los inputs
+    ['b-origen','b-destino'].forEach(id => {
+      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarViajes(); });
+    });
+    // ─────────────────────────────────────────────────────────────
+
     function renderViajes(viajes) {
       const grid     = document.getElementById('viajes-grid');
       const subtitle = document.getElementById('viajes-subtitle');
@@ -2379,6 +2479,7 @@
         });
 
         renderViajes(viajesData);
+        poblarBuscador(viajesData);
         actualizarTicker(viajesData);
         await initMapa(viajesData);
         cargarConteosOfertas();

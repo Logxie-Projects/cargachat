@@ -950,8 +950,8 @@
   <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2 id="viajes-titulo" id="viajes-title">Viajes disponibles ahora</h2>
-      <p id="viajes-subtitle">Cargando viajes en tiempo real...</p>
+      <h2 id="viajes-titulo">Viajes disponibles ahora</h2>
+      <p id="viajes-subtitle">Precios reales · Pujas en tiempo real · Sin intermediarios</p>
     </div>
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
       🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
@@ -1390,7 +1390,7 @@
         generador:    { title: 'Así se ven las cargas en la red de transportadores', sub: 'Precios reales · Pujas en tiempo real · Sin intermediarios' },
         transportador:{ title: 'Viajes disponibles ahora para tu flota',                  sub: 'Carga real · Pago garantizado · Tú pones el precio' }
       };
-      const titleEl = document.getElementById('viajes-title');
+      const titleEl = document.getElementById('viajes-titulo');
       const subEl   = document.getElementById('viajes-subtitle');
       if (titleEl && viajesTitles[rol]) titleEl.textContent = viajesTitles[rol].title;
       if (subEl   && viajesTitles[rol]) subEl.textContent   = viajesTitles[rol].sub;
@@ -3201,7 +3201,7 @@
   </script>
 
   <script>
-    // ── MINI-MAPA HERO ─────────────────────────────────────────────
+    // ── MINI-MAPA HERO — lee viajes reales del DOM ─────────────────
     function initHeroMap() {
       const heroMap = L.map('hero-map', {
         zoomControl: false, attributionControl: false,
@@ -3211,43 +3211,95 @@
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(heroMap);
 
-      const ciudades = {
-        'Yumbo':[3.5959,-76.4957],'Armenia':[4.5339,-75.6811],
-        'Funza':[4.7149,-74.2146],'Paipa':[5.7833,-73.1167],
-        'Espinal':[4.1533,-74.8867],'Ibague':[4.4389,-75.2322],
-        'Giron':[7.0667,-73.1667],'Cucuta':[7.8939,-72.5078],
-        'Bucaramanga':[7.1193,-73.1227],'Monteria':[8.7575,-75.8814],
-        'Manizales':[5.0703,-75.5138]
+      const coords = {
+        'yumbo':[3.5959,-76.4957],'armenia':[4.5339,-75.6811],
+        'funza':[4.7149,-74.2146],'paipa':[5.7833,-73.1167],
+        'espinal':[4.1533,-74.8867],'ibague':[4.4389,-75.2322],
+        'ibague':[4.4389,-75.2322],'giron':[7.0667,-73.1667],
+        'cucuta':[7.8939,-72.5078],'bucaramanga':[7.1193,-73.1227],
+        'monteria':[8.7575,-75.8814],'manizales':[5.0703,-75.5138],
+        'bogota':[4.7110,-74.0721],'medellin':[6.2442,-75.5812],
+        'ventaquemada':[5.3833,-73.5167],'duitama':[5.8319,-73.0278],
+        'sogamoso':[5.7167,-72.9333],'granada':[3.5383,-73.7072],
+        'floridablanca':[7.0667,-73.0833],'cali':[3.4516,-76.5320],
+        'palmira':[3.5394,-76.3036],'pasto':[1.2136,-77.2811],
+        'barranquilla':[10.9685,-74.7813],'cartagena':[10.3932,-75.4832]
       };
-      const rutas = [
-        ['Yumbo','Armenia'],['Yumbo','Manizales'],
-        ['Funza','Paipa'],['Funza','Bucaramanga'],
-        ['Funza','Monteria'],['Espinal','Ibague'],
-        ['Espinal','Funza'],['Giron','Cucuta']
-      ];
-      rutas.forEach(([o,d]) => {
-        const oc = ciudades[o], dc = ciudades[d];
-        if (!oc || !dc) return;
-        L.polyline([oc,dc],{color:'#00bfdf',weight:1.5,opacity:0.6,dashArray:'4 6'}).addTo(heroMap);
-        L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
-        L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
-      });
 
-      const viajesHero = [
-        {route:'Yumbo → Armenia +3',   price:'$1.462.613'},
-        {route:'Funza → Paipa +11',     price:'$2.500.000'},
-        {route:'Yumbo → Espinal +1',    price:'$3.100.000'},
-        {route:'Funza → Montería',      price:'$5.500.000'},
-        {route:'Espinal → Ibagué +1',   price:'$950.000'},
-        {route:'Girón → Cúcuta +2',     price:'$950.000'},
-        {route:'Funza → Bucaramanga +3',price:'$1.800.000'}
-      ];
-      let idx = 0;
-      setInterval(() => {
-        idx = (idx + 1) % viajesHero.length;
-        document.getElementById('hero-card-route').textContent = viajesHero[idx].route;
-        document.getElementById('hero-card-price').textContent = viajesHero[idx].price;
-      }, 3000);
+      function norm(s) {
+        return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      }
+      function getCoord(nombre) { return coords[norm(nombre)] || null; }
+
+      function drawRutasReales() {
+        const cards = document.querySelectorAll('.viaje-card');
+        const rutasDrawn = [];
+        const viajesHero = [];
+
+        cards.forEach(card => {
+          // Leer origen y destino desde los atributos de datos del card
+          const origenEl  = card.querySelector('.viaje-origen, [data-origen]');
+          const destinoEl = card.querySelector('.viaje-destino, [data-destino]');
+          const precioEl  = card.querySelector('[class*="precio"], [class*="price"], .viaje-precio');
+
+          // Fallback: leer del texto del header
+          const headerEl = card.querySelector('h3, .viaje-header, .viaje-ruta');
+          let origen = origenEl?.textContent?.trim() || origenEl?.dataset?.origen || '';
+          let destino = destinoEl?.textContent?.trim() || destinoEl?.dataset?.destino || '';
+
+          if ((!origen || !destino) && headerEl) {
+            const txt = headerEl.textContent || '';
+            const partes = txt.split('→');
+            if (partes.length >= 2) {
+              const origParts = partes[0].split(',').map(s => s.trim());
+              origen  = origParts[origParts.length - 1];
+              destino = partes[1].split('+')[0].split(' destinos')[0].trim().split(',')[0].trim();
+            }
+          }
+
+          if (!origen || !destino) return;
+          const oc = getCoord(origen);
+          const dc = getCoord(destino);
+          if (!oc || !dc) return;
+
+          const key = norm(origen) + '-' + norm(destino);
+          if (rutasDrawn.includes(key)) return;
+          rutasDrawn.push(key);
+
+          L.polyline([oc,dc],{color:'#00bfdf',weight:1.5,opacity:0.6,dashArray:'4 6'}).addTo(heroMap);
+          L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
+          L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
+
+          const precioText = precioEl?.textContent?.match(/\$[\d\.,]+/)?.[0] || '';
+          const rutaCorta  = `${origen} → ${destino.split(' ')[0]}`;
+          if (precioText) viajesHero.push({ route: rutaCorta, price: precioText });
+        });
+
+        if (viajesHero.length > 0) {
+          let idx = 0;
+          const routeEl = document.getElementById('hero-card-route');
+          const priceEl = document.getElementById('hero-card-price');
+          if (routeEl) routeEl.textContent = viajesHero[0].route;
+          if (priceEl) priceEl.textContent = viajesHero[0].price;
+          setInterval(() => {
+            idx = (idx + 1) % viajesHero.length;
+            if (routeEl) routeEl.textContent = viajesHero[idx].route;
+            if (priceEl) priceEl.textContent = viajesHero[idx].price;
+          }, 3000);
+        }
+      }
+
+      // Esperar a que cargarViajes() renderice los .viaje-card
+      if (document.querySelectorAll('.viaje-card').length > 0) {
+        drawRutasReales();
+      } else {
+        const wait = setInterval(() => {
+          if (document.querySelectorAll('.viaje-card').length > 0) {
+            clearInterval(wait);
+            drawRutasReales();
+          }
+        }, 500);
+      }
     }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initHeroMap);

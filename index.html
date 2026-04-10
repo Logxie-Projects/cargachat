@@ -673,6 +673,17 @@
     .modal-link a { color:var(--cyan); cursor:pointer; font-weight:500; }
     .modal-error { background:#fff0f0; color:#cc0000; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
     .modal-success { background:#f0fff8; color:#00875a; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
+    /* Selector modal — empresa / transportadora */
+    .selector-card { display:flex; align-items:center; gap:1rem; background:var(--gray-50); border:2px solid var(--gray-100); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.75rem; text-decoration:none; color:inherit; transition:border-color 0.2s,background 0.2s; text-align:left; }
+    .selector-card:hover { border-color:var(--navy); background:var(--cyan-light); }
+    .selector-icon { font-size:2rem; flex-shrink:0; }
+    .selector-text { display:flex; flex-direction:column; flex:1; gap:2px; }
+    .selector-title { font-size:0.95rem; font-weight:700; color:var(--navy); }
+    .selector-sub { font-size:0.75rem; color:var(--gray-400); }
+    .selector-arrow { font-size:1.2rem; color:var(--gray-400); flex-shrink:0; transition:transform 0.2s; }
+    .selector-card:hover .selector-arrow { transform:translateX(4px); color:var(--navy); }
+    .selector-login { width:100%; background:none; border:none; color:var(--gray-400); font-size:0.82rem; font-family:'DM Sans',sans-serif; cursor:pointer; padding:0.5rem; margin-top:0.25rem; transition:color 0.2s; }
+    .selector-login:hover { color:var(--navy); }
     /* Nav usuario logueado */
     .nav-user { display:flex; align-items:center; gap:10px; }
     .nav-user-name { font-size:13px; font-weight:500; color:var(--navy); }
@@ -732,7 +743,7 @@
     </nav-menu>
     <div class="nav-links">
       <div id="nav-auth-buttons">
-        <button class="btn-nav-access" onclick="abrirAuthModal('registro')">Solicitar acceso</button>
+        <button class="btn-nav-access" onclick="abrirSelectorModal()">Solicitar acceso</button>
       </div>
       <div id="nav-user-info" class="nav-user" style="display:none">
         <span class="nav-user-name" id="nav-user-name"></span>
@@ -1172,6 +1183,38 @@
     </div>
   </div>
 
+  <!-- MODAL SELECTOR — ¿Empresa o Transportadora? -->
+  <div class="modal-overlay" id="selector-modal" onclick="if(event.target===this)cerrarSelectorModal()">
+    <div class="modal-box" style="max-width:380px;text-align:center">
+      <button class="modal-close" onclick="cerrarSelectorModal()">×</button>
+      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;color:var(--cyan);text-transform:uppercase;margin-bottom:0.5rem">NETFLEET</p>
+      <h3 style="font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:0.35rem">¿Cómo quieres usar la plataforma?</h3>
+      <p style="font-size:0.85rem;color:var(--gray-400);margin-bottom:1.5rem">Elige tu perfil para comenzar</p>
+
+      <a href="empresa.html" class="selector-card" onclick="cerrarSelectorModal()">
+        <span class="selector-icon">📦</span>
+        <span class="selector-text">
+          <span class="selector-title">Tengo carga para mover</span>
+          <span class="selector-sub">Publica viajes · recibe ofertas · elige el mejor precio</span>
+        </span>
+        <span class="selector-arrow">→</span>
+      </a>
+
+      <a href="transportador.html" class="selector-card" onclick="cerrarSelectorModal()">
+        <span class="selector-icon">🚛</span>
+        <span class="selector-text">
+          <span class="selector-title">Soy transportadora</span>
+          <span class="selector-sub">Explora viajes disponibles · haz tu oferta · gana contratos</span>
+        </span>
+        <span class="selector-arrow">→</span>
+      </a>
+
+      <button class="selector-login" onclick="cerrarSelectorModal();abrirAuthModal('login')">
+        Ya tengo cuenta — Ingresar →
+      </button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="auth-modal" onclick="cerrarModalOverlay(event)">
     <div class="modal-box">
       <button class="modal-close" onclick="cerrarAuthModal()">×</button>
@@ -1271,6 +1314,14 @@
       const badge = document.getElementById('nav-user-badge');
       badge.textContent = perfil.estado === 'aprobado' ? '✓ Activo' : '⏳ Pendiente';
       badge.className   = 'nav-user-badge' + (perfil.estado !== 'aprobado' ? ' pendiente' : '');
+    }
+
+    // ── Modal selector (empresa / transportadora) ───────────────────
+    function abrirSelectorModal() {
+      document.getElementById('selector-modal').classList.add('open');
+    }
+    function cerrarSelectorModal() {
+      document.getElementById('selector-modal').classList.remove('open');
     }
 
     // ── Modal de autenticación ──────────────────────────────────────

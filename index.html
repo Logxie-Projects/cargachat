@@ -10,7 +10,7 @@
   <meta property="og:type"        content="website">
   <meta property="og:url"         content="https://netfleet.app/">
   <meta property="og:title"       content="NETFLEET — Deja de pagar de más por tu logística">
-  <meta property="og:description" content="Transportadores certificados compiten por tu carga. El mejor precio gana. Subasta inversa · red verificada MinTransporte · cumplimiento normativo · cobertura nacional.">
+  <meta property="og:description" content="Conecta tu carga con transportadores verificados o encuentra viajes disponibles hoy. Pago garantizado, sin intermediarios. Red verificada MinTransporte · Colombia.">
   <meta property="og:image"       content="https://netfleet.app/og-image.png">
   <meta property="og:site_name"   content="NETFLEET">
   <meta property="og:locale"      content="es_CO">
@@ -18,7 +18,7 @@
   <!-- Twitter / X -->
   <meta name="twitter:card"        content="summary_large_image">
   <meta name="twitter:title"       content="NETFLEET — Deja de pagar de más por tu logística">
-  <meta name="twitter:description" content="Transportadores certificados compiten por tu carga. El mejor precio gana. Subasta inversa · red verificada MinTransporte · cumplimiento normativo · cobertura nacional.">
+  <meta name="twitter:description" content="Conecta tu carga con transportadores verificados o encuentra viajes disponibles hoy. Pago garantizado, sin intermediarios. Red verificada MinTransporte · Colombia.">
   <meta name="twitter:image"       content="https://netfleet.app/og-image.png">
 
   <!--
@@ -143,7 +143,7 @@
     ═══════════════════════════════════════════════════════════ */
     .hero {
       background: var(--navy);
-      padding: 5rem 2rem 4rem;
+      padding: 5rem 2rem 0;
       position: relative;
       overflow: hidden;
     }
@@ -196,6 +196,24 @@
       text-transform: uppercase; color: rgba(255,255,255,0.3);
       margin-bottom: 2.25rem;
     }
+
+    /* CTA row del hero */
+    .hero-cta-row { display: flex; gap: 12px; margin-top: 2rem; flex-wrap: wrap; }
+    .hero-cta-primary { background: var(--cyan); color: #0A1628; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 14px; text-decoration: none; transition: filter 0.2s; }
+    .hero-cta-primary:hover { filter: brightness(1.08); }
+    .hero-cta-secondary { border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); padding: 12px 24px; border-radius: 8px; font-size: 14px; text-decoration: none; transition: border-color 0.2s, color 0.2s; }
+    .hero-cta-secondary:hover { border-color: rgba(255,255,255,0.6); color: white; }
+    @media (max-width: 768px) { .hero-cta-row { flex-direction: column; } }
+    /* Mini-mapa hero */
+    .hero-visual { flex: 0 0 420px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); }
+    #hero-map { width: 100%; height: 300px; border-radius: 16px; z-index: 1; }
+    .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(10,22,40,0.92); border: 1px solid rgba(0,191,223,0.35); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
+    .hero-map-card-route { font-size: 13px; font-weight: 600; color: #fff; }
+    .hero-map-card-price { font-size: 16px; font-weight: 700; color: var(--cyan); font-family: monospace; }
+    .hero-map-card-badge { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
+    .hero-map-caption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(255,255,255,0.4); padding: 6px; background: rgba(10,22,40,0.7); letter-spacing: 0.06em; text-transform: uppercase; }
+    @media (max-width: 768px) { .hero-visual { display: none; } .hero-inner { text-align: center; } }
 
     /* Pasos del hero */
     .hero-steps { display: flex; align-items: center; gap: 10px; margin: 1.5rem 0 1rem; flex-wrap: wrap; }
@@ -739,7 +757,7 @@
     }
 
     /* ── BIFURCACIÓN ── */
-    .bifurcacion-section { padding: 64px 48px 56px; text-align: center; background: var(--navy); border-bottom: none; margin-bottom: 0; }
+    .bifurcacion-section { padding: 64px 48px 56px; text-align: center; background: var(--navy); border-bottom: none; margin-bottom: 0; margin-top: 0; border-radius: 0; }
     .bifurcacion-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 32px; }
     .bifurcacion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto; }
     .bifurcacion-card { padding: 36px 32px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; display: block; text-align: left; }
@@ -823,11 +841,29 @@
         <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
 
         <!-- SOLUCIÓN -->
-        <p class="hero-sub">En NETFLEET los transportadores compiten por tu carga. Tú pones las condiciones y escoges la mejor oferta. Sin intermediarios, sin comisiones ocultas.</p>
+        <p class="hero-sub" id="hero-sub-text">En NETFLEET los transportadores compiten por tu carga. Tú pones las condiciones y escoges la mejor oferta. Sin intermediarios, sin comisiones ocultas.</p>
 
         <!-- PRUEBA -->
         <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
 
+        <!-- CTA -->
+        <div class="hero-cta-row">
+          <a href="#bifurcacion" class="hero-cta-primary">Publicar mi carga →</a>
+          <a href="#bifurcacion" class="hero-cta-secondary">Soy transportador →</a>
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA: mini-mapa de rutas activas -->
+      <div class="hero-visual" id="hero-visual">
+        <div class="hero-map-card" id="hero-live-card">
+          <span class="hero-map-card-pulse"></span>
+          <span class="hero-map-card-route" id="hero-card-route">Yumbo → Armenia</span>
+          <span class="hero-map-card-price" id="hero-card-price">$1.462.613</span>
+          <span class="hero-map-card-badge" id="hero-card-badge">⚡ en subasta</span>
+        </div>
+        <div id="hero-map"></div>
+        <p class="hero-map-caption">Rutas activas ahora mismo · Colombia</p>
       </div>
 
     </div>
@@ -835,18 +871,18 @@
 
   <!-- BIFURCACIÓN — ¿Empresa o Transportador? -->
   <div class="bifurcacion-section" id="bifurcacion">
-    <div class="bifurcacion-eyebrow">¿Qué te describe mejor?</div>
+    <div class="bifurcacion-eyebrow">¿Cómo llegaste a NETFLEET?</div>
     <div class="bifurcacion-grid">
       <a href="#viajes" class="bifurcacion-card" id="card-generador" onclick="setRol('generador')">
         <span class="bifurcacion-card-icon">📦</span>
         <div class="bifurcacion-card-title">Tengo carga para mover</div>
-        <div class="bifurcacion-card-desc">Publica tu carga, recibe ofertas de transportadores certificados y elige la mejor.</div>
+        <div class="bifurcacion-card-desc">Así compiten los transportadores por cargas como la tuya. Tú pones condiciones, tú eliges.</div>
         <div class="bifurcacion-card-cta">Publicar mi carga →</div>
       </a>
       <a href="#viajes" class="bifurcacion-card" id="card-transportador" onclick="setRol('transportador')">
         <span class="bifurcacion-card-icon">🚛</span>
-        <div class="bifurcacion-card-title">Soy transportador certificado</div>
-        <div class="bifurcacion-card-desc">Explora viajes disponibles, oferta en tiempo real y llena tu flota sin intermediarios.</div>
+        <div class="bifurcacion-card-title">Soy transportador</div>
+        <div class="bifurcacion-card-desc">Viajes disponibles ahora. Pago garantizado. Tú pones el precio, sin intermediarios que se queden con tu margen.</div>
         <div class="bifurcacion-card-cta">Ver viajes disponibles →</div>
       </a>
     </div>
@@ -914,7 +950,7 @@
   <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2 id="viajes-titulo">Viajes disponibles ahora</h2>
+      <h2 id="viajes-titulo" id="viajes-title">Viajes disponibles ahora</h2>
       <p id="viajes-subtitle">Cargando viajes en tiempo real...</p>
     </div>
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
@@ -1349,6 +1385,22 @@
       document.querySelectorAll('.bifurcacion-card').forEach(c => c.classList.remove('activa'));
       document.getElementById('card-' + rol)?.classList.add('activa');
       aplicarRol();
+      // Cambio 4 — título dinámico en #viajes
+      const viajesTitles = {
+        generador:    { title: 'Así compiten los transportadores por cargas como la tuya', sub: 'Precios reales · Pujas en tiempo real · Sin intermediarios' },
+        transportador:{ title: 'Viajes disponibles ahora para tu flota',                  sub: 'Carga real · Pago garantizado · Tú pones el precio' }
+      };
+      const titleEl = document.getElementById('viajes-title');
+      const subEl   = document.getElementById('viajes-subtitle');
+      if (titleEl && viajesTitles[rol]) titleEl.textContent = viajesTitles[rol].title;
+      if (subEl   && viajesTitles[rol]) subEl.textContent   = viajesTitles[rol].sub;
+      // Cambio 5d — precios condicionales en mapa hero
+      const priceEl = document.getElementById('hero-card-price');
+      const badgeEl = document.getElementById('hero-card-badge');
+      if (priceEl && badgeEl) {
+        if (rol === 'generador') { priceEl.style.display = 'none'; badgeEl.textContent = '🏆 con ofertas activas'; }
+        else if (rol === 'transportador') { priceEl.style.display = 'block'; badgeEl.textContent = '⚡ en subasta ahora'; }
+      }
     }
 
     function aplicarRol() {
@@ -3146,6 +3198,60 @@
     document.getElementById('cc-paradas').addEventListener('input', ccCalc);
     document.getElementById('cc-zona').addEventListener('change', ccCalc);
     ccCalc();
+  </script>
+
+  <script>
+    // ── MINI-MAPA HERO ─────────────────────────────────────────────
+    function initHeroMap() {
+      const heroMap = L.map('hero-map', {
+        zoomControl: false, attributionControl: false,
+        dragging: false, touchZoom: false,
+        scrollWheelZoom: false, doubleClickZoom: false
+      }).setView([4.5709, -74.2973], 6);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(heroMap);
+
+      const ciudades = {
+        'Yumbo':[3.5959,-76.4957],'Armenia':[4.5339,-75.6811],
+        'Funza':[4.7149,-74.2146],'Paipa':[5.7833,-73.1167],
+        'Espinal':[4.1533,-74.8867],'Ibague':[4.4389,-75.2322],
+        'Giron':[7.0667,-73.1667],'Cucuta':[7.8939,-72.5078],
+        'Bucaramanga':[7.1193,-73.1227],'Monteria':[8.7575,-75.8814],
+        'Manizales':[5.0703,-75.5138]
+      };
+      const rutas = [
+        ['Yumbo','Armenia'],['Yumbo','Manizales'],
+        ['Funza','Paipa'],['Funza','Bucaramanga'],
+        ['Funza','Monteria'],['Espinal','Ibague'],
+        ['Espinal','Funza'],['Giron','Cucuta']
+      ];
+      rutas.forEach(([o,d]) => {
+        const oc = ciudades[o], dc = ciudades[d];
+        if (!oc || !dc) return;
+        L.polyline([oc,dc],{color:'#00bfdf',weight:1.5,opacity:0.6,dashArray:'4 6'}).addTo(heroMap);
+        L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
+        L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
+      });
+
+      const viajesHero = [
+        {route:'Yumbo → Armenia +3',   price:'$1.462.613'},
+        {route:'Funza → Paipa +11',     price:'$2.500.000'},
+        {route:'Yumbo → Espinal +1',    price:'$3.100.000'},
+        {route:'Funza → Montería',      price:'$5.500.000'},
+        {route:'Espinal → Ibagué +1',   price:'$950.000'},
+        {route:'Girón → Cúcuta +2',     price:'$950.000'},
+        {route:'Funza → Bucaramanga +3',price:'$1.800.000'}
+      ];
+      let idx = 0;
+      setInterval(() => {
+        idx = (idx + 1) % viajesHero.length;
+        document.getElementById('hero-card-route').textContent = viajesHero[idx].route;
+        document.getElementById('hero-card-price').textContent = viajesHero[idx].price;
+      }, 3000);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initHeroMap);
+    } else { initHeroMap(); }
   </script>
 
   <!-- BOTONES FLOTANTES -->

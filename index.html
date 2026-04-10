@@ -682,8 +682,14 @@
     .selector-sub { font-size:0.75rem; color:var(--gray-400); }
     .selector-arrow { font-size:1.2rem; color:var(--gray-400); flex-shrink:0; transition:transform 0.2s; }
     .selector-card:hover .selector-arrow { transform:translateX(4px); color:var(--navy); }
-    .selector-login { width:100%; background:none; border:none; color:var(--gray-400); font-size:0.82rem; font-family:'DM Sans',sans-serif; cursor:pointer; padding:0.5rem; margin-top:0.25rem; transition:color 0.2s; }
-    .selector-login:hover { color:var(--navy); }
+    .selector-login { display:flex; align-items:center; gap:1rem; width:100%; background:var(--gray-50); border:2px solid var(--gray-100); border-radius:14px; padding:1rem 1.1rem; margin-top:0; font-family:'DM Sans',sans-serif; cursor:pointer; transition:border-color 0.2s,background 0.2s; text-align:left; }
+    .selector-login:hover { border-color:var(--navy); background:var(--cyan-light); }
+    .selector-login-icon { font-size:2rem; flex-shrink:0; }
+    .selector-login-text { display:flex; flex-direction:column; flex:1; gap:2px; }
+    .selector-login-title { font-size:0.95rem; font-weight:700; color:var(--navy); }
+    .selector-login-sub { font-size:0.75rem; color:var(--gray-400); }
+    .selector-login-arrow { font-size:1.2rem; color:var(--gray-400); flex-shrink:0; transition:transform 0.2s; }
+    .selector-login:hover .selector-login-arrow { transform:translateX(4px); color:var(--navy); }
     /* Nav usuario logueado */
     .nav-user { display:flex; align-items:center; gap:10px; }
     .nav-user-name { font-size:13px; font-weight:500; color:var(--navy); }
@@ -1210,7 +1216,12 @@
       </a>
 
       <button class="selector-login" onclick="cerrarSelectorModal();abrirAuthModal('login')">
-        Ya tengo cuenta — Ingresar →
+        <span class="selector-login-icon">🔑</span>
+        <span class="selector-login-text">
+          <span class="selector-login-title">Ya tengo cuenta</span>
+          <span class="selector-login-sub">Ingresar a mi panel</span>
+        </span>
+        <span class="selector-login-arrow">→</span>
       </button>
     </div>
   </div>

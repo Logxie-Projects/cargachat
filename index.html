@@ -647,7 +647,7 @@
        TOAST — Mensaje temporal de confirmación
        Aparece en la esquina inferior derecha por 2.5 segundos.
     ═══════════════════════════════════════════════════════════ */
-    .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--navy); color: white; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s; z-index: 3000; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25); text-align: center; }
+    .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--navy); color: white; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s; z-index: 3000; white-space: normal; max-width: calc(100vw - 2rem); box-shadow: 0 8px 32px rgba(0,0,0,0.25); text-align: center; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     /* ═══════════════════════════════════════════════════════════
@@ -726,6 +726,14 @@
       .como-steps.active { grid-template-columns: 1fr; }
       nav            { padding: 0 1rem; }
       .hero          { padding: 3rem 1rem 2.5rem; }
+    }
+
+    /* ── PREVENIR DESBORDAMIENTO HORIZONTAL EN MÓVIL ── */
+    @media (max-width: 768px) {
+      body, html { max-width: 100vw; }
+      section, .section, .bloque-oscuro, .hero, .ticker-bar,
+      .contacto-section, .buscador-wrap, .mapa-calc-section,
+      .stats-trust, .sectores-section, .bifurcacion-section { overflow-x: hidden; }
     }
   </style>
 </head>

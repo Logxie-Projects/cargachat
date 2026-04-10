@@ -2102,6 +2102,7 @@
       const headers = lineas[0]
         .split(',')
         .map(h => h.trim().replace(/"/g, '').toLowerCase());
+      console.log('[CSV headers]', headers); // debug — ver nombres reales de columnas
 
       // Resto de líneas = datos
       return lineas.slice(1).map(linea => {
@@ -2321,7 +2322,7 @@
         const destino   = v.destino    || '';
         const peso      = v.peso_kg    || '0';
         const fecha     = v.fecha_cargue || '';
-        const tipo      = v.tipo_mercancia || 'General';
+        const tipo      = v.tipo_mercancia || v['tipo mercancia'] || v.tipo_carga || v['tipo de carga'] || v.mercancia || v.tipo || 'General';
         const precioBase = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
         const kmReales  = v.km      || '';
         const minutos   = v.minutos || '';

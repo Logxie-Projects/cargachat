@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NETFLEET — Mi empresa</title>
+  <script src="./supabase.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1B2A6B;
+      --cyan: #00BFD8;
+      --gray-50: #f8f9fa;
+      --gray-100: #e9ecef;
+      --gray-400: #868e96;
+      --gray-600: #495057;
+      --green: #16a34a;
+      --red: #dc2626;
+      --orange: #ea580c;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: #1a1a2e; min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy); }
+    .login-box  { background: white; border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .login-logo { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.25rem; }
+    .login-logo span { color: var(--cyan); }
+    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 2rem; }
+    .login-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-600); margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; border: 1.5px solid var(--gray-100); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 1rem; transition: border .2s; }
+    .login-input:focus { border-color: var(--cyan); }
+    .login-btn  { width: 100%; background: var(--navy); color: white; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+    .login-btn:hover { background: var(--cyan); color: var(--navy); }
+    .login-error { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; min-height: 18px; }
+    .login-link { font-size: 12px; color: var(--gray-400); margin-top: 1rem; text-align: center; }
+    .login-link a { color: var(--cyan); cursor: pointer; font-weight: 600; text-decoration: none; }
+
+    /* ── PANEL ── */
+    .panel-wrap { display: none; min-height: 100vh; }
+
+    /* ── NAV ── */
+    .panel-nav { background: var(--navy); padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .nav-logo   { font-size: 16px; font-weight: 800; color: white; letter-spacing: -0.5px; }
+    .nav-logo span { color: var(--cyan); }
+    .nav-right  { display: flex; align-items: center; gap: 12px; }
+    .nav-user   { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .nav-out    { font-size: 12px; color: var(--cyan); cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+
+    /* ── BODY ── */
+    .panel-body { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+    /* ── HEADER ── */
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .panel-title  { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
+    .panel-sub    { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
+
+    /* ── BTN PUBLICAR ── */
+    .btn-publicar { background: var(--navy); color: white; border: none; border-radius: 12px; padding: 12px 24px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; white-space: nowrap; }
+    .btn-publicar:hover { background: var(--cyan); color: var(--navy); }
+
+    /* ── STATS ── */
+    .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 2rem; }
+    .stat-card { background: white; border-radius: 14px; padding: 1.1rem 1.4rem; border: 1px solid var(--gray-100); }
+    .stat-num  { font-size: 1.75rem; font-weight: 800; color: var(--navy); letter-spacing: -1px; }
+    .stat-lbl  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin-top: 2px; }
+    .stat-card.subasta   .stat-num { color: var(--cyan); }
+    .stat-card.adjudicado .stat-num { color: var(--green); }
+    .stat-card.borrador  .stat-num { color: var(--orange); }
+
+    /* ── VIAJES GRID ── */
+    .viajes-grid { display: flex; flex-direction: column; gap: 12px; }
+
+    .viaje-card { background: white; border-radius: 16px; border: 1px solid var(--gray-100); overflow: hidden; transition: box-shadow .2s; }
+    .viaje-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .viaje-head { padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; cursor: pointer; }
+    .viaje-head:hover { background: var(--gray-50); }
+
+    .viaje-ruta  { font-size: 15px; font-weight: 800; color: var(--navy); }
+    .viaje-meta  { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    .viaje-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .estado-badge { padding: 4px 12px; border-radius: 100px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .estado-badge.borrador    { background: #fff7ed; color: var(--orange); }
+    .estado-badge.activo      { background: #eff6ff; color: #1d4ed8; }
+    .estado-badge.en_subasta  { background: #ecfdf5; color: var(--green); }
+    .estado-badge.adjudicado  { background: #f0fdf4; color: var(--green); }
+    .estado-badge.en_transito { background: #eff6ff; color: #1d4ed8; }
+    .estado-badge.completado  { background: var(--gray-100); color: var(--gray-600); }
+    .estado-badge.cancelado   { background: #fef2f2; color: var(--red); }
+
+    .btn-ver-ofertas { background: var(--cyan); color: var(--navy); border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .ofertas-count-badge { background: var(--navy); color: white; border-radius: 100px; font-size: 11px; font-weight: 700; padding: 2px 8px; }
+
+    /* ── OFERTAS EXPANDIDO ── */
+    .ofertas-panel { border-top: 1px solid var(--gray-100); display: none; }
+    .viaje-card.open .ofertas-panel { display: block; }
+
+    .ofertas-panel-head { padding: 1rem 1.5rem; background: var(--gray-50); border-bottom: 1px solid var(--gray-100); font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+    .ofertas-panel-hint { font-size: 11px; font-weight: 400; color: var(--gray-400); text-transform: none; letter-spacing: 0; }
+
+    .oferta-row { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-100); }
+    .oferta-row:last-child { border-bottom: none; }
+    .oferta-row.mejor { background: #f0fdf4; }
+
+    .oferta-rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; background: var(--gray-100); color: var(--gray-600); }
+    .oferta-rank.rank-1 { background: #fef9c3; color: #b45309; }
+
+    .oferta-precio { font-size: 16px; font-weight: 800; color: var(--navy); }
+    .oferta-precio.mejor { color: var(--green); }
+    .oferta-fecha-small { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .btn-seleccionar { background: var(--green); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity .2s; white-space: nowrap; }
+    .btn-seleccionar:hover { opacity: 0.85; }
+    .btn-seleccionar:disabled { background: var(--gray-100); color: var(--gray-400); cursor: default; }
+
+    .seleccionado-badge { display: inline-flex; align-items: center; gap: 5px; background: #f0fdf4; color: var(--green); font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; }
+
+    .empty-ofertas { padding: 2rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+    /* ── VIAJE DETALLES (body expandido) ── */
+    .viaje-detalles { padding: 1rem 1.5rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; border-bottom: 1px solid var(--gray-100); background: #fafbff; }
+    .det-item .det-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); }
+    .det-item .det-value { font-size: 13px; font-weight: 600; color: var(--navy); margin-top: 2px; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--gray-400); }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state-title { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+    .empty-state-sub { font-size: 13px; margin-bottom: 1.5rem; }
+
+    .loading-msg { padding: 2rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+    /* ── MODAL PUBLICAR ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: white; border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 80px rgba(0,0,0,0.3); }
+    .modal-head { padding: 1.5rem 1.75rem 1rem; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: white; z-index: 1; border-radius: 20px 20px 0 0; }
+    .modal-head-title { font-size: 17px; font-weight: 800; color: var(--navy); }
+    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray-400); line-height: 1; }
+    .modal-body { padding: 1.5rem 1.75rem; }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-600); margin-bottom: 6px; display: block; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; border: 1.5px solid var(--gray-100); border-radius: 10px;
+      padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+      outline: none; transition: border .2s; background: white;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--cyan); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .form-section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin: 1.5rem 0 1rem; padding-bottom: 6px; border-bottom: 1px solid var(--gray-100); }
+
+    .modal-footer { padding: 1rem 1.75rem 1.5rem; border-top: 1px solid var(--gray-100); display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancelar { background: white; color: var(--gray-600); border: 1.5px solid var(--gray-100); border-radius: 10px; padding: 11px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .btn-enviar   { background: var(--navy); color: white; border: none; border-radius: 10px; padding: 11px 24px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+    .btn-enviar:hover { background: var(--cyan); color: var(--navy); }
+    .btn-enviar:disabled { background: var(--gray-100); color: var(--gray-400); cursor: default; }
+
+    .form-error   { font-size: 12px; color: var(--red); margin-top: 8px; }
+    .form-success { font-size: 12px; color: var(--green); margin-top: 8px; font-weight: 600; }
+
+    @media(max-width: 700px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .viaje-detalles { grid-template-columns: repeat(2, 1fr); }
+      .panel-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">NET<span>FLEET</span></div>
+    <div class="login-sub">Portal de empresa generadora de carga</div>
+    <label class="login-label">email</label>
+    <input class="login-input" id="login-email" type="email" placeholder="tu@empresa.com">
+    <label class="login-label">contraseña</label>
+    <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') iniciarSesion()">
+    <button class="login-btn" onclick="iniciarSesion()">Entrar →</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-link">¿No tienes cuenta? <a href="index.html">Regístrate en netfleet.app</a></div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="panel-wrap" id="panel-wrap">
+  <nav class="panel-nav">
+    <div class="nav-logo">NET<span>FLEET</span> <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:8px">empresa</span></div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-empresa-nombre"></span>
+      <button class="nav-out" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="panel-body">
+
+    <!-- Header -->
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Mis viajes</div>
+        <div class="panel-sub">Gestiona tu carga — NETFLEET coordina el transporte</div>
+      </div>
+      <button class="btn-publicar" onclick="abrirModal()">+ Publicar carga</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card borrador">
+        <div class="stat-num" id="stat-borrador">—</div>
+        <div class="stat-lbl">En revisión</div>
+      </div>
+      <div class="stat-card subasta">
+        <div class="stat-num" id="stat-subasta">—</div>
+        <div class="stat-lbl">En subasta</div>
+      </div>
+      <div class="stat-card adjudicado">
+        <div class="stat-num" id="stat-adjudicado">—</div>
+        <div class="stat-lbl">Adjudicados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-completado">—</div>
+        <div class="stat-lbl">Completados</div>
+      </div>
+    </div>
+
+    <!-- Viajes -->
+    <div id="viajes-lista">
+      <div class="loading-msg">Cargando viajes...</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL PUBLICAR CARGA -->
+<div class="modal-overlay" id="modal-publicar">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title">Publicar carga</div>
+      <button class="modal-close" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">Ruta</div>
+      <div class="form-group">
+        <label class="form-label">Ciudad de origen</label>
+        <input class="form-input" id="f-origen" placeholder="Ej: Funza, Cundinamarca">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ciudad(es) de destino</label>
+        <input class="form-input" id="f-destinos" placeholder="Ej: Bogotá, Medellín, Cali (separadas por coma)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de cargue</label>
+        <input class="form-input" id="f-fecha" type="date">
+      </div>
+
+      <div class="form-section">Carga</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Peso total (kg)</label>
+          <input class="form-input" id="f-peso" type="number" placeholder="Ej: 5000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor de la mercancía</label>
+          <input class="form-input" id="f-valor" type="number" placeholder="Ej: 50000000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de mercancía</label>
+        <select class="form-select" id="f-tipo">
+          <option value="">Seleccionar...</option>
+          <option>Alimentos y bebidas</option>
+          <option>Productos químicos</option>
+          <option>Materiales de construcción</option>
+          <option>Textiles y confección</option>
+          <option>Electrodomésticos y electrónica</option>
+          <option>Farmacéuticos</option>
+          <option>Maquinaria y equipos</option>
+          <option>Materias primas</option>
+          <option>General / Varios</option>
+        </select>
+      </div>
+
+      <div class="form-section">Unidades (opcional)</div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Cajas</label>
+          <input class="form-input" id="f-cajas" type="number" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contenedores</label>
+          <input class="form-input" id="f-contenedores" type="number" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estibas</label>
+          <input class="form-input" id="f-bidones" type="number" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Canecas / Bidones</label>
+          <input class="form-input" id="f-canecas" type="number" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Otros / No sé el tipo</label>
+          <input class="form-input" id="f-otros" type="number" placeholder="Cantidad aproximada" min="0">
+        </div>
+      </div>
+
+      <div class="form-section">Instrucciones</div>
+      <div class="form-group">
+        <label class="form-label">Observaciones especiales (opcional)</label>
+        <textarea class="form-textarea" id="f-instrucciones" placeholder="Ej: Carga frágil, requiere vehículo cubierto, acceso restringido..."></textarea>
+      </div>
+
+      <div id="form-error"   class="form-error"   style="display:none"></div>
+      <div id="form-success" class="form-success" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-enviar" id="btn-enviar" onclick="publicarViaje()">Publicar carga →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const ADMIN_WA = '573214401975';
+
+  let usuarioActual = null;
+  let perfilActual  = null;
+  let tokenActual   = null;
+  let viajesData    = [];
+
+  // ── AUTH ──────────────────────────────────────────────────────
+  async function iniciarSesion() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = 'Email o contraseña incorrectos.'; return; }
+
+    tokenActual   = data.access_token;
+    usuarioActual = data.user;
+
+    // Verificar que sea empresa
+    const perfil = await fetchPerfil(data.user.id);
+    if (!perfil) { errEl.textContent = 'No encontramos tu cuenta.'; return; }
+    if (perfil.tipo !== 'empresa') {
+      errEl.textContent = 'Esta plataforma es solo para empresas generadoras de carga.';
+      await sb.auth.signOut();
+      return;
+    }
+
+    perfilActual = perfil;
+    mostrarPanel();
+  }
+
+  async function cerrarSesion() {
+    await sb.auth.signOut();
+    location.reload();
+  }
+
+  async function fetchPerfil(userId) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?id=eq.${userId}&select=*`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual || SUPABASE_KEY}` }
+      });
+      const rows = await r.json();
+      return rows[0] || null;
+    } catch { return null; }
+  }
+
+  function mostrarPanel() {
+    document.getElementById('login-wrap').style.display  = 'none';
+    document.getElementById('panel-wrap').style.display  = 'block';
+    document.getElementById('nav-empresa-nombre').textContent = perfilActual?.empresa || perfilActual?.nombre || '';
+    cargarViajes();
+  }
+
+  // Verificar sesión activa al cargar
+  sb.auth.getSession().then(async ({ data: { session } }) => {
+    if (!session) return;
+    tokenActual   = session.access_token;
+    usuarioActual = session.user;
+    const perfil  = await fetchPerfil(session.user.id);
+    if (perfil?.tipo === 'empresa') { perfilActual = perfil; mostrarPanel(); }
+  });
+
+  // ── VIAJES ────────────────────────────────────────────────────
+  async function cargarViajes() {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/viajes?empresa_id=eq.${usuarioActual.id}&order=created_at.desc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
+    });
+    viajesData = await r.json() || [];
+    actualizarStats();
+    renderViajes();
+  }
+
+  function actualizarStats() {
+    document.getElementById('stat-borrador').textContent   = viajesData.filter(v => v.estado === 'borrador' || v.estado === 'activo').length;
+    document.getElementById('stat-subasta').textContent    = viajesData.filter(v => v.estado === 'en_subasta').length;
+    document.getElementById('stat-adjudicado').textContent = viajesData.filter(v => v.estado === 'adjudicado' || v.estado === 'en_transito').length;
+    document.getElementById('stat-completado').textContent = viajesData.filter(v => v.estado === 'completado').length;
+  }
+
+  function renderViajes() {
+    const lista = document.getElementById('viajes-lista');
+    if (!viajesData.length) {
+      lista.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📦</div>
+          <div class="empty-state-title">Aún no has publicado carga</div>
+          <div class="empty-state-sub">Publica tu primer viaje y los transportadores de NETFLEET empezarán a ofertar.</div>
+          <button class="btn-publicar" onclick="abrirModal()">+ Publicar primera carga</button>
+        </div>`;
+      return;
+    }
+
+    lista.innerHTML = viajesData.map((v, i) => {
+      const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+      const destResumen = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
+      const estadoLabel = {
+        borrador: 'En revisión', activo: 'Publicado', en_subasta: 'En subasta',
+        adjudicado: 'Adjudicado', en_transito: 'En tránsito', completado: 'Completado', cancelado: 'Cancelado'
+      }[v.estado] || v.estado;
+
+      const puedeVerOfertas = ['en_subasta','adjudicado'].includes(v.estado);
+
+      return `
+        <div class="viaje-card" id="vcard-${i}">
+          <div class="viaje-head" onclick="toggleViaje(${i}, '${v.id}', '${v.estado}')">
+            <div>
+              <div class="viaje-ruta">${v.origen || '—'} → ${destResumen}</div>
+              <div class="viaje-meta">
+                ${v.fecha_cargue || '—'} · ${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'} · ${v.tipo_mercancia || 'General'}
+              </div>
+            </div>
+            <div class="viaje-right">
+              ${puedeVerOfertas ? `<span class="ofertas-count-badge" id="badge-count-${i}">...</span>` : ''}
+              <span class="estado-badge ${v.estado}">${estadoLabel}</span>
+            </div>
+          </div>
+
+          <div class="ofertas-panel" id="panel-${i}">
+            <!-- Detalles del viaje -->
+            <div class="viaje-detalles">
+              <div class="det-item"><div class="det-label">Destinos</div><div class="det-value">${(v.destinos||'').split(',').map(d=>d.trim()).join(' · ') || '—'}</div></div>
+              <div class="det-item"><div class="det-label">Peso</div><div class="det-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'}</div></div>
+              <div class="det-item"><div class="det-label">Valor mercancía</div><div class="det-value">${v.valor_mercancia ? '$' + Number(v.valor_mercancia).toLocaleString('es-CO') : '—'}</div></div>
+              <div class="det-item"><div class="det-label">Instrucciones</div><div class="det-value" style="font-size:12px">${v.instrucciones || 'Sin instrucciones'}</div></div>
+            </div>
+
+            <!-- Ofertas -->
+            <div id="ofertas-${i}">
+              ${puedeVerOfertas
+                ? '<div class="loading-msg">Cargando ofertas...</div>'
+                : `<div class="empty-ofertas">${v.estado === 'borrador' ? '⏳ Tu carga está en revisión por NETFLEET. Te avisaremos cuando esté activa.' : 'Sin ofertas disponibles aún.'}</div>`
+              }
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Cargar conteos de ofertas para los viajes en subasta
+    viajesData.forEach((v, i) => {
+      if (['en_subasta','adjudicado'].includes(v.estado)) {
+        cargarConteoOfertas(v.id, i);
+      }
+    });
+  }
+
+  async function cargarConteoOfertas(viajeId, idx) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?viaje_rt=eq.${viajeId}&estado=eq.activa&select=id`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
+    });
+    const data = await r.json();
+    const badge = document.getElementById(`badge-count-${idx}`);
+    if (badge) {
+      const n = data.length || 0;
+      badge.textContent = n + ' oferta' + (n !== 1 ? 's' : '');
+    }
+  }
+
+  async function toggleViaje(idx, viajeId, estado) {
+    const card  = document.getElementById(`vcard-${idx}`);
+    const panel = document.getElementById(`panel-${idx}`);
+    const estaAbierto = card.classList.contains('open');
+
+    // Cerrar todos
+    document.querySelectorAll('.viaje-card.open').forEach(c => c.classList.remove('open'));
+
+    if (!estaAbierto) {
+      card.classList.add('open');
+      if (['en_subasta','adjudicado'].includes(estado)) {
+        await cargarOfertas(viajeId, idx, estado);
+      }
+    }
+  }
+
+  async function cargarOfertas(viajeId, idx, estado) {
+    const contenedor = document.getElementById(`ofertas-${idx}`);
+    const yaAdj = estado === 'adjudicado';
+    const v = viajesData[idx];
+
+    // Solo traer precio, estado e id — NO nombre ni empresa
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?viaje_rt=eq.${viajeId}&select=id,precio_oferta,estado,created_at&order=precio_oferta.asc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
+    });
+    const ofertas = (await r.json()).filter(o => o.estado === 'activa' || o.estado === 'aceptada') || [];
+
+    if (!ofertas.length) {
+      contenedor.innerHTML = '<div class="empty-ofertas">Aún no hay ofertas para este viaje.</div>';
+      return;
+    }
+
+    const ofertaSeleccionadaId = v.oferta_id_seleccionada;
+
+    contenedor.innerHTML = `
+      <div class="ofertas-panel-head">
+        <span>${ofertas.length} oferta${ofertas.length !== 1 ? 's' : ''} recibida${ofertas.length !== 1 ? 's' : ''}</span>
+        <span class="ofertas-panel-hint">${yaAdj ? 'Ya seleccionaste una propuesta — NETFLEET está coordinando tu envío' : 'Los precios son de menor a mayor. Selecciona la propuesta que prefieras.'}</span>
+      </div>
+      ${ofertas.map((o, i) => {
+        const esMejor = i === 0 && !yaAdj;
+        const esSeleccionada = o.id === ofertaSeleccionadaId;
+        const fecha = new Date(o.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        return `
+          <div class="oferta-row ${esMejor ? 'mejor' : ''}">
+            <div class="oferta-rank ${i === 0 ? 'rank-1' : ''}">${i + 1}</div>
+            <div>
+              <div class="oferta-precio ${esMejor ? 'mejor' : ''}">$${Number(o.precio_oferta).toLocaleString('es-CO')}</div>
+              <div class="oferta-fecha-small">Recibida ${fecha}</div>
+            </div>
+            <div>
+              ${esSeleccionada
+                ? `<span class="seleccionado-badge">✓ Seleccionada</span>`
+                : yaAdj
+                  ? ''
+                  : `<button class="btn-seleccionar" onclick="seleccionarOferta('${viajeId}', '${o.id}', ${idx}, '$${Number(o.precio_oferta).toLocaleString('es-CO')}')">Seleccionar →</button>`
+              }
+            </div>
+          </div>`;
+      }).join('')}`;
+  }
+
+  async function seleccionarOferta(viajeId, ofertaId, idx, precioTexto) {
+    const ok = confirm(`¿Confirmas la propuesta de ${precioTexto}?\n\nNETFLEET coordinará el transporte y se pondrá en contacto contigo.`);
+    if (!ok) return;
+
+    // Actualizar viaje con oferta seleccionada
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/viajes?id=eq.${viajeId}`, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ estado: 'adjudicado', oferta_id_seleccionada: ofertaId })
+    });
+    if (!r.ok) { alert('Error al confirmar. Intenta de nuevo.'); return; }
+
+    // Actualizar local
+    viajesData[idx].estado = 'adjudicado';
+    viajesData[idx].oferta_id_seleccionada = ofertaId;
+    actualizarStats();
+
+    // Recargar ofertas en la card
+    await cargarOfertas(viajeId, idx, 'adjudicado');
+
+    // Notificar a Logxie por WhatsApp
+    const v = viajesData[idx];
+    const destinos = (v.destinos || '').split(',').map(d=>d.trim()).join(' → ');
+    const msg = encodeURIComponent(
+      `🚛 Nueva adjudicación en NETFLEET\n\nEmpresa: ${perfilActual?.empresa || perfilActual?.nombre}\nRuta: ${v.origen} → ${destinos}\nFecha: ${v.fecha_cargue}\nPeso: ${Number(v.peso_kg).toLocaleString('es-CO')} kg\nPrecio seleccionado: ${precioTexto}\n\nID viaje: ${viajeId}`
+    );
+    window.open(`https://wa.me/${ADMIN_WA}?text=${msg}`, '_blank');
+  }
+
+  // ── MODAL PUBLICAR ─────────────────────────────────────────────
+  function abrirModal() {
+    document.getElementById('modal-publicar').classList.add('open');
+    // Fecha mínima = hoy
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('f-fecha').min = hoy;
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-publicar').classList.remove('open');
+    document.getElementById('form-error').style.display   = 'none';
+    document.getElementById('form-success').style.display = 'none';
+    document.getElementById('btn-enviar').disabled = false;
+    // Limpiar form
+    ['f-origen','f-destinos','f-fecha','f-peso','f-valor','f-cajas','f-contenedores','f-bidones','f-canecas','f-otros','f-instrucciones'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('f-tipo').value = '';
+  }
+
+  async function publicarViaje() {
+    const origen    = document.getElementById('f-origen').value.trim();
+    const destinos  = document.getElementById('f-destinos').value.trim();
+    const fecha     = document.getElementById('f-fecha').value;
+    const peso      = document.getElementById('f-peso').value;
+    const valor     = document.getElementById('f-valor').value;
+    const tipo      = document.getElementById('f-tipo').value;
+    const cajas     = parseInt(document.getElementById('f-cajas').value)        || 0;
+    const conts     = parseInt(document.getElementById('f-contenedores').value) || 0;
+    const bid       = parseInt(document.getElementById('f-bidones').value)      || 0;
+    const canecas   = parseInt(document.getElementById('f-canecas').value)      || 0;
+    const otros     = parseInt(document.getElementById('f-otros').value)        || 0;
+    const instruc   = document.getElementById('f-instrucciones').value.trim();
+
+    const errEl = document.getElementById('form-error');
+    const sucEl = document.getElementById('form-success');
+    errEl.style.display = 'none';
+    sucEl.style.display = 'none';
+
+    if (!origen || !destinos || !fecha || !peso || !tipo) {
+      errEl.textContent = 'Completa los campos obligatorios: origen, destino, fecha, peso y tipo de mercancía.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Convertir fecha de YYYY-MM-DD a DD/MM/YYYY
+    const [y, m, d] = fecha.split('-');
+    const fechaFormato = `${d}/${m}/${y}`;
+
+    const btn = document.getElementById('btn-enviar');
+    btn.disabled = true;
+    btn.textContent = 'Publicando...';
+
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/viajes`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        empresa_id:     usuarioActual.id,
+        empresa_nombre: perfilActual?.empresa || perfilActual?.nombre || '',
+        origen, destinos,
+        fecha_cargue:   fechaFormato,
+        peso_kg:        parseFloat(peso)  || null,
+        valor_mercancia: parseFloat(valor) || null,
+        tipo_mercancia: tipo,
+        cajas, contenedores: conts, bidones: bid, canecas, unidades_sueltas: otros,
+        instrucciones: instruc || null,
+        estado: 'borrador'
+      })
+    });
+
+    if (!r.ok) {
+      errEl.textContent = 'Error al publicar. Intenta de nuevo.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Publicar carga →';
+      return;
+    }
+
+    sucEl.textContent = '✓ Carga publicada. NETFLEET la revisará y activará pronto.';
+    sucEl.style.display = 'block';
+    btn.textContent = '✓ Publicado';
+
+    // Recargar viajes
+    await cargarViajes();
+
+    setTimeout(() => { cerrarModal(); }, 2000);
+  }
+
+  // Cerrar modal al hacer clic fuera
+  document.getElementById('modal-publicar').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModal();
+  });
+</script>
+</body>
+</html>

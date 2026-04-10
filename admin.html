@@ -411,11 +411,8 @@
     cargarUsuarios();
   }
 
-  sb.auth.getSession().then(({ data: { session } }) => {
-    if (session && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
-      mostrarAdmin(session.user.email);
-    }
-  });
+  // Login desactivado temporalmente — acceso directo
+  mostrarAdmin('admin');
 
   // ── USUARIOS ──────────────────────────────────────────────────
   async function cargarUsuarios() {

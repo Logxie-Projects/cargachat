@@ -2990,30 +2990,57 @@
     ccCalc();
   </script>
 
-  <!-- BOTÓN FLOTANTE WHATSAPP -->
-  <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20NETFLEET"
-     target="_blank" rel="noopener" aria-label="Contactar por WhatsApp"
-     style="
-       position:fixed;
-       bottom:24px;
-       right:24px;
-       z-index:9999;
-       width:56px;
-       height:56px;
-       border-radius:50%;
-       background:#25D366;
-       display:flex;
-       align-items:center;
-       justify-content:center;
-       box-shadow:0 4px 16px rgba(37,211,102,0.45);
-       transition:transform 0.2s,box-shadow 0.2s;
-       text-decoration:none;
-     "
-     onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 24px rgba(37,211,102,0.6)'"
-     onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(37,211,102,0.45)'">
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="white">
-      <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.648 4.831 1.783 6.865L2 30l7.347-1.745A13.94 13.94 0 0016 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.56 11.56 0 01-5.89-1.608l-.422-.25-4.36 1.036 1.072-4.245-.275-.437A11.56 11.56 0 014.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.326-8.664c-.347-.174-2.05-1.01-2.368-1.126-.317-.115-.548-.174-.778.174-.23.347-.894 1.126-1.097 1.357-.202.23-.404.26-.75.087-.347-.174-1.464-.54-2.788-1.72-1.03-.918-1.726-2.052-1.928-2.4-.202-.347-.022-.534.152-.707.156-.155.347-.404.52-.606.174-.202.23-.347.347-.578.115-.23.058-.433-.029-.606-.087-.174-.778-1.878-1.067-2.572-.28-.675-.566-.584-.778-.595l-.663-.011c-.23 0-.606.086-.923.433-.317.347-1.21 1.183-1.21 2.884s1.24 3.346 1.413 3.577c.174.23 2.44 3.726 5.91 5.226.826.356 1.47.569 1.973.729.829.264 1.584.226 2.18.137.665-.1 2.05-.838 2.34-1.648.29-.81.29-1.504.202-1.648-.086-.145-.317-.23-.664-.404z"/>
-    </svg>
-  </a>
+  <!-- BOTONES FLOTANTES -->
+  <style>
+    .fab-stack { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; align-items:center; gap:12px; }
+    .fab-wa { width:56px; height:56px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(37,211,102,0.45); transition:transform 0.2s,box-shadow 0.2s; text-decoration:none; flex-shrink:0; }
+    .fab-wa:hover { transform:scale(1.1); box-shadow:0 6px 24px rgba(37,211,102,0.6); }
+    .fab-main { width:56px; height:56px; border-radius:50%; background:var(--navy); border:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(27,42,107,0.35); cursor:pointer; flex-shrink:0; transition:transform 0.25s,background 0.2s; }
+    .fab-main:hover { background:var(--navy-dark); }
+    .fab-main.open { transform:rotate(45deg); background:var(--navy-dark); }
+    .fab-main svg { transition:inherit; }
+    .fab-menu { display:flex; flex-direction:column; align-items:flex-end; gap:8px; overflow:hidden; max-height:0; opacity:0; transition:max-height 0.35s ease, opacity 0.25s ease; pointer-events:none; }
+    .fab-menu.open { max-height:300px; opacity:1; pointer-events:auto; }
+    .fab-item { display:flex; align-items:center; gap:10px; text-decoration:none; background:white; color:var(--navy); font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; padding:9px 16px 9px 14px; border-radius:50px; box-shadow:0 2px 10px rgba(0,0,0,0.13); white-space:nowrap; transition:background 0.2s,transform 0.2s; }
+    .fab-item:hover { background:var(--cyan-light); transform:translateX(-3px); }
+    .fab-item-icon { font-size:16px; }
+  </style>
+
+  <div class="fab-stack">
+    <!-- Menú expandible -->
+    <div class="fab-menu" id="fab-menu">
+      <a class="fab-item" href="#como-funciona"><span class="fab-item-icon">❓</span> Cómo funciona</a>
+      <a class="fab-item" href="#viajes"><span class="fab-item-icon">📦</span> Ver ofertas</a>
+      <a class="fab-item" href="#"><span class="fab-item-icon">🏠</span> Ir al inicio</a>
+    </div>
+    <!-- Botón + -->
+    <button class="fab-main" id="fab-main" onclick="toggleFab()" aria-label="Menú rápido">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+    <!-- WhatsApp -->
+    <a class="fab-wa" href="https://wa.me/573214401975?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20NETFLEET" target="_blank" rel="noopener" aria-label="WhatsApp">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="white">
+        <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.648 4.831 1.783 6.865L2 30l7.347-1.745A13.94 13.94 0 0016 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.56 11.56 0 01-5.89-1.608l-.422-.25-4.36 1.036 1.072-4.245-.275-.437A11.56 11.56 0 014.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.326-8.664c-.347-.174-2.05-1.01-2.368-1.126-.317-.115-.548-.174-.778.174-.23.347-.894 1.126-1.097 1.357-.202.23-.404.26-.75.087-.347-.174-1.464-.54-2.788-1.72-1.03-.918-1.726-2.052-1.928-2.4-.202-.347-.022-.534.152-.707.156-.155.347-.404.52-.606.174-.202.23-.347.347-.578.115-.23.058-.433-.029-.606-.087-.174-.778-1.878-1.067-2.572-.28-.675-.566-.584-.778-.595l-.663-.011c-.23 0-.606.086-.923.433-.317.347-1.21 1.183-1.21 2.884s1.24 3.346 1.413 3.577c.174.23 2.44 3.726 5.91 5.226.826.356 1.47.569 1.973.729.829.264 1.584.226 2.18.137.665-.1 2.05-.838 2.34-1.648.29-.81.29-1.504.202-1.648-.086-.145-.317-.23-.664-.404z"/>
+      </svg>
+    </a>
+  </div>
+
+  <script>
+    function toggleFab() {
+      const menu = document.getElementById('fab-menu');
+      const btn  = document.getElementById('fab-main');
+      const open = menu.classList.toggle('open');
+      btn.classList.toggle('open', open);
+    }
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.fab-stack')) {
+        document.getElementById('fab-menu').classList.remove('open');
+        document.getElementById('fab-main').classList.remove('open');
+      }
+    });
+  </script>
 </body>
 </html>

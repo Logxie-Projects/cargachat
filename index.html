@@ -343,11 +343,6 @@
     /* ═══════════════════════════════════════════════════════════
        ESTADÍSTICAS (3 columnas)
     ═══════════════════════════════════════════════════════════ */
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--gray-100); }
-    .stat  { padding: 1.5rem 1rem; text-align: center; border-right: 1px solid var(--gray-100); }
-    .stat:last-child { border-right: none; }
-    .stat-val { font-size: 1.8rem; font-weight: 600; color: var(--navy); letter-spacing: -1px; }
-    .stat-lbl { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
 
     /* ═══════════════════════════════════════════════════════════
        SECCIONES GENÉRICAS
@@ -736,8 +731,6 @@
     }
     @media (max-width: 640px) {
       .bifurcacion   { grid-template-columns: 1fr; }
-      .stats         { grid-template-columns: 1fr; }
-      .stat          { border-right: none; border-bottom: 1px solid var(--gray-100); }
       .viajes-grid   { grid-template-columns: 1fr; }
       .sectores-grid { grid-template-columns: 1fr; }
       .como-steps.active { grid-template-columns: 1fr; }
@@ -868,6 +861,11 @@
       </div>
       <div class="trust-div"></div>
       <div class="trust-item">
+        <div class="trust-num">9.9M kg</div>
+        <div class="trust-label">carga transportada</div>
+      </div>
+      <div class="trust-div"></div>
+      <div class="trust-item">
         <div class="trust-num">98%</div>
         <div class="trust-label">entregas a tiempo</div>
       </div>
@@ -882,13 +880,6 @@
         <div class="trust-label">cobertura nacional</div>
       </div>
     </div>
-  </div>
-
-  <!-- ESTADÍSTICAS DE LA PLATAFORMA -->
-  <div class="stats">
-    <div class="stat"><div class="stat-val">2.000+</div><div class="stat-lbl">viajes gestionados</div></div>
-    <div class="stat"><div class="stat-val">9.9M kg</div><div class="stat-lbl">carga transportada</div></div>
-    <div class="stat"><div class="stat-val">4PL/5PL</div><div class="stat-lbl">modelo de gestión</div></div>
   </div>
 
   <!-- BUSCADOR DE VIAJES -->

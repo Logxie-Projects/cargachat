@@ -741,6 +741,24 @@
       .hero          { padding: 3rem 1rem 2.5rem; }
     }
 
+    /* ── BIFURCACIÓN ── */
+    .bifurcacion-section { padding: 64px 48px; text-align: center; background: var(--navy); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .bifurcacion-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 32px; }
+    .bifurcacion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto; }
+    .bifurcacion-card { padding: 36px 32px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; display: block; text-align: left; }
+    .bifurcacion-card:hover, .bifurcacion-card.activa { border-color: var(--cyan); background: rgba(0,191,223,0.06); }
+    .bifurcacion-card-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+    .bifurcacion-card-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 10px; line-height: 1.2; }
+    .bifurcacion-card-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.6; margin-bottom: 20px; }
+    .bifurcacion-card-cta { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cyan); }
+    @media (max-width: 640px) { .bifurcacion-grid { grid-template-columns: 1fr; } .bifurcacion-section { padding: 48px 24px; } }
+    /* CTA bajo el mapa */
+    .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
+    #cta-mapa { display: inline-block; background: var(--navy); color: white; font-size: 13px; font-weight: 700; padding: 11px 24px; border-radius: 10px; text-decoration: none; transition: background 0.2s; }
+    #cta-mapa:hover { background: var(--cyan); color: var(--navy); }
+    /* Ticker rol label */
+    .ticker-label-rol { font-size: 10px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: uppercase; }
+
     /* ── PREVENIR DESBORDAMIENTO HORIZONTAL EN MÓVIL ── */
     @media (max-width: 768px) {
       body, html { max-width: 100vw; }
@@ -851,6 +869,25 @@
     </div>
   </section>
 
+  <!-- BIFURCACIÓN — ¿Empresa o Transportador? -->
+  <div class="bifurcacion-section" id="bifurcacion">
+    <div class="bifurcacion-eyebrow">¿Cómo usas NETFLEET?</div>
+    <div class="bifurcacion-grid">
+      <a href="#viajes" class="bifurcacion-card" id="card-generador" onclick="setRol('generador')">
+        <span class="bifurcacion-card-icon">📦</span>
+        <div class="bifurcacion-card-title">Tengo carga para mover</div>
+        <div class="bifurcacion-card-desc">Publica tu carga, recibe ofertas de transportadores certificados y elige la mejor.</div>
+        <div class="bifurcacion-card-cta">Publicar mi carga →</div>
+      </a>
+      <a href="#viajes" class="bifurcacion-card" id="card-transportador" onclick="setRol('transportador')">
+        <span class="bifurcacion-card-icon">🚛</span>
+        <div class="bifurcacion-card-title">Soy transportador certificado</div>
+        <div class="bifurcacion-card-desc">Explora viajes disponibles, oferta en tiempo real y llena tu flota sin intermediarios.</div>
+        <div class="bifurcacion-card-cta">Ver viajes disponibles →</div>
+      </a>
+    </div>
+  </div>
+
   <!-- BARRA DE CONFIANZA B2B -->
   <div class="trust-bar">
     <div class="trust-bar-inner">
@@ -948,6 +985,9 @@
       <div class="mapa-wrap">
         <div id="map"></div>
         <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
+      </div>
+      <div class="cta-mapa-wrap">
+        <a id="cta-mapa" href="empresa.html">Publicar mi carga →</a>
       </div>
     </div>
 
@@ -1319,6 +1359,74 @@
     let usuarioActual = null;
     let perfilActual  = null;
     let tokenActual   = null;
+
+    // ── ESTADO GLOBAL DE ROL ──────────────────────────────────────
+    let rolActivo = localStorage.getItem('netfleet_rol') || null;
+    let tickerRolAplicado = false; // evitar doble replace en ticker
+
+    function setRol(rol) {
+      rolActivo = rol;
+      localStorage.setItem('netfleet_rol', rol);
+      tickerRolAplicado = false;
+      document.querySelectorAll('.bifurcacion-card').forEach(c => c.classList.remove('activa'));
+      document.getElementById('card-' + rol)?.classList.add('activa');
+      aplicarRol();
+    }
+
+    function aplicarRol() {
+      if (!rolActivo) return;
+      document.body.setAttribute('data-rol', rolActivo);
+      actualizarMapaRol();
+      actualizarSeccionesRol();
+      actualizarTickerRol();
+    }
+
+    function actualizarMapaRol() {
+      const titulo    = document.querySelector('.mapa-col .section-hdr h2');
+      const subtitulo = document.querySelector('.mapa-col .section-hdr p');
+      const ctaMapa   = document.getElementById('cta-mapa');
+      if (!titulo) return;
+      if (rolActivo === 'generador') {
+        titulo.textContent = 'Así ven tu carga los transportadores';
+        if (subtitulo) subtitulo.textContent = 'Tu carga aparece aquí, visible para toda la red certificada en tiempo real';
+        if (ctaMapa) { ctaMapa.textContent = 'Publicar mi carga →'; ctaMapa.href = 'empresa.html'; ctaMapa.onclick = null; }
+      } else if (rolActivo === 'transportador') {
+        titulo.textContent = 'Viajes disponibles para ti hoy';
+        if (subtitulo) subtitulo.textContent = 'Haz clic en cualquier ruta para ver detalles y presentar tu oferta';
+        if (ctaMapa) { ctaMapa.textContent = 'Ver todos los viajes →'; ctaMapa.href = '#viajes'; ctaMapa.onclick = null; }
+      }
+    }
+
+    function actualizarSeccionesRol() {
+      const seccionViajes   = document.getElementById('viajes');
+      const seccionRetornos = document.getElementById('retornos-section');
+      if (rolActivo === 'generador') {
+        if (seccionViajes) seccionViajes.style.display = 'none';
+      } else if (rolActivo === 'transportador') {
+        if (seccionViajes) seccionViajes.style.display = '';
+      }
+      if (seccionRetornos) seccionRetornos.style.display = 'none';
+    }
+
+    function actualizarTickerRol() {
+      if (tickerRolAplicado) return;
+      tickerRolAplicado = true;
+      const label = rolActivo === 'generador' ? 'mejor oferta' : 'flete base';
+      document.querySelectorAll('.ticker-item').forEach(item => {
+        item.innerHTML = item.innerHTML.replace(
+          /(\$[\d.,]+[MKB])/g,
+          `$1 <span class="ticker-label-rol">${label}</span>`
+        );
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (rolActivo) {
+        document.querySelectorAll('.bifurcacion-card').forEach(c => c.classList.remove('activa'));
+        document.getElementById('card-' + rolActivo)?.classList.add('activa');
+        aplicarRol();
+      }
+    });
 
     async function fetchPerfil(userId, token) {
       try {
@@ -2903,10 +3011,10 @@
     // ================================================================
     // INICIO
     // ================================================================
-    // Cargar los viajes cuando la página termine de cargar
     cargarViajes();
-    // Revisar nuevos viajes cada 3 minutos
     setInterval(revisarNuevosViajes, 180000);
+    // Aplicar rol guardado después de que el DOM y los viajes carguen
+    if (rolActivo) setTimeout(aplicarRol, 800);
 
   </script>
   <script>

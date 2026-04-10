@@ -21,13 +21,17 @@
     .login-box  { background: white; border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
     .login-logo { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.25rem; }
     .login-logo span { color: var(--cyan); }
-    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 2rem; }
+    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 1.5rem; }
+    .login-tabs { display: flex; gap: 4px; background: var(--gray-50); border-radius: 10px; padding: 4px; margin-bottom: 1.5rem; }
+    .login-tab  { flex: 1; border: none; background: none; border-radius: 8px; padding: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--gray-400); transition: all .2s; }
+    .login-tab.active { background: white; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
     .login-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-600); margin-bottom: 6px; display: block; }
     .login-input { width: 100%; border: 1.5px solid var(--gray-100); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 1rem; transition: border .2s; }
     .login-input:focus { border-color: var(--cyan); }
     .login-btn  { width: 100%; background: var(--navy); color: white; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
     .login-btn:hover { background: var(--cyan); color: var(--navy); }
-    .login-error { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; min-height: 18px; }
+    .login-error   { font-size: 12px; color: #cc0000; margin-top: 10px; text-align: center; min-height: 18px; }
+    .login-success { font-size: 12px; color: #00875a; margin-top: 10px; text-align: center; background: #f0fff8; border-radius: 8px; padding: 10px; }
     .login-link { font-size: 12px; color: var(--gray-400); margin-top: 1rem; text-align: center; }
     .login-link a { color: var(--cyan); font-weight: 600; text-decoration: none; }
 
@@ -163,14 +167,35 @@
   <div class="login-box">
     <div class="login-logo">NET<span>FLEET</span></div>
     <div class="login-sub">Portal de transportadora</div>
-    <label class="login-label">email</label>
-    <input class="login-input" id="login-email" type="email" placeholder="tu@empresa.com">
-    <label class="login-label">contraseña</label>
-    <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
-      onkeydown="if(event.key==='Enter') iniciarSesion()">
-    <button class="login-btn" onclick="iniciarSesion()">Entrar →</button>
-    <div class="login-error" id="login-error"></div>
-    <div class="login-link">¿No tienes cuenta? <a href="index.html">Regístrate en netfleet.app</a></div>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login"    onclick="cambiarTab('login')">Ingresar</button>
+      <button class="login-tab"        id="tab-registro" onclick="cambiarTab('registro')">Crear cuenta</button>
+    </div>
+
+    <!-- INGRESAR -->
+    <div id="form-login">
+      <label class="login-label">Email</label>
+      <input class="login-input" id="login-email" type="email" placeholder="tu@empresa.com">
+      <label class="login-label">Contraseña</label>
+      <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') iniciarSesion()">
+      <button class="login-btn" onclick="iniciarSesion()">Ingresar →</button>
+      <div class="login-error" id="login-error"></div>
+    </div>
+
+    <!-- REGISTRARSE -->
+    <div id="form-registro" style="display:none">
+      <input class="login-input" id="reg-nombre"   type="text"     placeholder="Nombre completo">
+      <input class="login-input" id="reg-empresa"  type="text"     placeholder="Nombre de la transportadora">
+      <input class="login-input" id="reg-telefono" type="tel"      placeholder="Teléfono / WhatsApp">
+      <input class="login-input" id="reg-nit"      type="text"     placeholder="NIT">
+      <input class="login-input" id="reg-email"    type="email"    placeholder="Email corporativo">
+      <input class="login-input" id="reg-pass"     type="password" placeholder="Contraseña (mín. 8 caracteres)">
+      <button class="login-btn" onclick="registrarse()">Solicitar acceso →</button>
+      <div class="login-error"   id="reg-error"></div>
+      <div class="login-success" id="reg-success" style="display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -284,6 +309,58 @@
     { tipo: 'poliza_mercancias', nombre: 'Póliza de Mercancías',         desc: 'Póliza que ampara las mercancías transportadas.' },
     { tipo: 'poliza_rc',         nombre: 'Póliza de Responsabilidad Civil', desc: 'Póliza de responsabilidad civil contractual y extracontractual.' },
   ];
+
+  // ── TABS LOGIN/REGISTRO ────────────────────────────────────────
+  function cambiarTab(tab) {
+    document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+    document.getElementById('form-registro').style.display = tab === 'registro' ? '' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+    document.getElementById('tab-registro').classList.toggle('active', tab === 'registro');
+  }
+
+  // ── REGISTRO ──────────────────────────────────────────────────
+  async function registrarse() {
+    const nombre   = document.getElementById('reg-nombre').value.trim();
+    const empresa  = document.getElementById('reg-empresa').value.trim();
+    const telefono = document.getElementById('reg-telefono').value.trim();
+    const nit      = document.getElementById('reg-nit').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const pass     = document.getElementById('reg-pass').value;
+    const errEl    = document.getElementById('reg-error');
+    const okEl     = document.getElementById('reg-success');
+    errEl.textContent = ''; okEl.style.display = 'none';
+
+    if (!nombre || !empresa || !email || !pass) { errEl.textContent = 'Completa todos los campos obligatorios.'; return; }
+    if (pass.length < 8) { errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; return; }
+
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ email, password: pass, options: { data: { nombre, empresa, telefono, nit, tipo: 'transportador' } } })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.msg || data.error_description || 'Error al crear la cuenta.';
+      return;
+    }
+
+    if (data.user) {
+      await fetch(`${SUPABASE_URL}/rest/v1/perfiles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: data.user.id, email, nombre, empresa, telefono, nit, tipo: 'transportador', estado: 'pendiente' })
+      });
+    }
+
+    okEl.style.display = '';
+    okEl.textContent = '✓ Solicitud enviada. Revisaremos tu cuenta y te avisamos por WhatsApp cuando esté activa.';
+    document.getElementById('reg-nombre').value = '';
+    document.getElementById('reg-empresa').value = '';
+    document.getElementById('reg-telefono').value = '';
+    document.getElementById('reg-nit').value = '';
+    document.getElementById('reg-email').value = '';
+    document.getElementById('reg-pass').value = '';
+  }
 
   // ── AUTH ──────────────────────────────────────────────────────
   async function iniciarSesion() {

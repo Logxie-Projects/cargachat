@@ -197,7 +197,20 @@
       margin-bottom: 2.25rem;
     }
 
-    .hero-ctas { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; width: 100%; max-width: 420px; }
+    /* Pasos del hero */
+    .hero-steps { display: flex; align-items: center; gap: 10px; margin: 1.5rem 0 1rem; flex-wrap: wrap; }
+    .hero-step  { display: flex; align-items: center; gap: 8px; }
+    .hero-step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--cyan); color: var(--navy); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .hero-step-text { font-size: 13px; color: rgba(255,255,255,0.8); }
+    .hero-step-text strong { color: white; }
+    .hero-step-sep { color: rgba(255,255,255,0.25); font-size: 16px; }
+
+    /* CTAs nuevos */
+    .hero-ctas { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 1.5rem; width: 100%; max-width: 420px; }
+    .hero-btn-primary { display: inline-block; background: var(--cyan); color: var(--navy); font-weight: 800; font-size: 1rem; padding: 16px 32px; border-radius: 14px; text-decoration: none; transition: filter 0.2s, transform 0.2s; letter-spacing: -0.2px; width: 100%; text-align: center; box-shadow: 0 4px 20px rgba(0,191,223,0.35); }
+    .hero-btn-primary:hover { filter: brightness(1.08); transform: translateY(-2px); }
+    .hero-btn-secondary { font-size: 13px; color: rgba(255,255,255,0.5); text-decoration: none; padding: 4px 0; transition: color 0.2s; text-align: center; width: 100%; }
+    .hero-btn-secondary:hover { color: rgba(255,255,255,0.9); }
 
     .hero-cta-card {
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -783,30 +796,42 @@
   <section class="hero">
     <div class="hero-inner">
 
-      <!-- COLUMNA IZQUIERDA: copy + CTAs -->
       <div class="hero-content">
+
+        <!-- DOLOR -->
         <div class="hero-badge">marketplace de carga b2b · colombia</div>
-        <h1>deja de pagar<br>de más por<br><span>tu logística.</span></h1>
-        <p class="hero-sub">Transportadores certificados compiten por tu carga. La mejor oferta gana.</p>
-        <p class="hero-proof">subasta inversa · red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
-        <div class="hero-ctas">
-          <a class="hero-cta-card primary" href="empresa.html">
-            <span class="cta-card-icon">📦</span>
-            <span class="cta-card-text">
-              <span class="cta-card-title">Tengo carga para mover</span>
-              <span class="cta-card-sub">Publica tu carga · recibe propuestas · escoge la mejor oferta</span>
-            </span>
-            <span class="cta-card-arrow">→</span>
-          </a>
-          <a class="hero-cta-card" href="transportador.html">
-            <span class="cta-card-icon">🚛</span>
-            <span class="cta-card-text">
-              <span class="cta-card-title">Soy transportadora</span>
-              <span class="cta-card-sub">Ve los viajes disponibles · haz tu oferta · gana contratos</span>
-            </span>
-            <span class="cta-card-arrow">→</span>
-          </a>
+        <h1>¿Sigues pagando<br>lo que te digan<br><span>por tus fletes?</span></h1>
+
+        <!-- SOLUCIÓN -->
+        <p class="hero-sub">En NETFLEET los transportadores compiten por tu carga. Tú pones las condiciones y escoges la mejor oferta. Sin intermediarios, sin comisiones ocultas.</p>
+
+        <!-- CÓMO FUNCIONA — 3 pasos -->
+        <div class="hero-steps">
+          <div class="hero-step">
+            <span class="hero-step-num">1</span>
+            <span class="hero-step-text"><strong>Publicas</strong> tu carga</span>
+          </div>
+          <span class="hero-step-sep">→</span>
+          <div class="hero-step">
+            <span class="hero-step-num">2</span>
+            <span class="hero-step-text"><strong>Recibes</strong> propuestas</span>
+          </div>
+          <span class="hero-step-sep">→</span>
+          <div class="hero-step">
+            <span class="hero-step-num">3</span>
+            <span class="hero-step-text"><strong>Escoges</strong> la mejor</span>
+          </div>
         </div>
+
+        <!-- PRUEBA -->
+        <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
+
+        <!-- ACCIÓN — un CTA principal, uno secundario -->
+        <div class="hero-ctas">
+          <a class="hero-btn-primary" href="empresa.html">Publicar mi primera carga →</a>
+          <a class="hero-btn-secondary" href="transportador.html">¿Eres transportadora? Entra aquí</a>
+        </div>
+
       </div>
 
       <!-- COLUMNA DERECHA: badge de certificación -->

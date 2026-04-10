@@ -197,22 +197,27 @@
       margin-bottom: 2.25rem;
     }
 
-    .hero-ctas { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-    .btn-primary-cta {
-      padding: 14px 32px; border-radius: 100px;
-      border: none; background: var(--cyan); color: white;
-      font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s; white-space: nowrap; align-self: flex-start;
+    .hero-ctas { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; width: 100%; max-width: 420px; }
+
+    .hero-cta-card {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 14px; padding: 14px 18px; cursor: pointer; width: 100%;
+      transition: all .2s; text-align: left; font-family: 'DM Sans', sans-serif;
+      text-decoration: none;
     }
-    .btn-primary-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
-    .btn-secondary-cta {
-      padding: 12px 24px; border-radius: 100px;
-      border: 1.5px solid rgba(255,255,255,0.22); background: transparent;
-      color: rgba(255,255,255,0.75);
-      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s; white-space: nowrap; align-self: flex-start;
-    }
-    .btn-secondary-cta:hover { border-color: rgba(255,255,255,0.6); color: white; }
+    .hero-cta-card:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.28); transform: translateY(-1px); }
+    .hero-cta-card.primary { background: var(--cyan); border-color: var(--cyan); }
+    .hero-cta-card.primary:hover { filter: brightness(1.08); }
+
+    .cta-card-icon { font-size: 22px; flex-shrink: 0; }
+    .cta-card-text { flex: 1; }
+    .cta-card-title { font-size: 14px; font-weight: 700; color: white; display: block; }
+    .cta-card-sub   { font-size: 11px; color: rgba(255,255,255,0.65); display: block; margin-top: 2px; }
+    .hero-cta-card.primary .cta-card-sub { color: rgba(27,42,107,0.75); }
+    .hero-cta-card.primary .cta-card-title { color: var(--navy); }
+    .cta-card-arrow { font-size: 16px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+    .hero-cta-card.primary .cta-card-arrow { color: rgba(27,42,107,0.5); }
 
     /* BADGE LATERAL — Certificación */
     .cert-badge {
@@ -760,8 +765,22 @@
         <p class="hero-sub">Transportadores certificados compiten por tu carga. El mejor precio gana.</p>
         <p class="hero-proof">subasta inversa · red verificada MinTransporte · todo el país</p>
         <div class="hero-ctas">
-          <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')">Publicar mi carga →</button>
-          <button class="btn-secondary-cta" onclick="abrirVinculacionModal('transportador')">Vincular mi empresa de transporte →</button>
+          <a class="hero-cta-card primary" href="empresa.html">
+            <span class="cta-card-icon">📦</span>
+            <span class="cta-card-text">
+              <span class="cta-card-title">Tengo carga para mover</span>
+              <span class="cta-card-sub">Publica tu viaje · recibe ofertas · elige el mejor precio</span>
+            </span>
+            <span class="cta-card-arrow">→</span>
+          </a>
+          <a class="hero-cta-card" href="transportador.html">
+            <span class="cta-card-icon">🚛</span>
+            <span class="cta-card-text">
+              <span class="cta-card-title">Soy transportadora</span>
+              <span class="cta-card-sub">Ve los viajes disponibles · haz tu oferta · gana contratos</span>
+            </span>
+            <span class="cta-card-arrow">→</span>
+          </a>
         </div>
       </div>
 

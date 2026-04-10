@@ -311,7 +311,7 @@
     .btn-vinc-wa::before { content: ''; display: inline-block; width: 18px; height: 18px;
                             background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z'/%3E%3Cpath d='M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.524 5.849L0 24l6.304-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.498-5.178-1.37l-.371-.22-3.742.895.929-3.641-.241-.381A9.94 9.94 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z'/%3E%3C/svg%3E") no-repeat center/contain; }
 
-    .trust-bar       { background: var(--navy); border-top: 1px solid rgba(255,255,255,0.07); padding: 1.25rem 2rem; }
+    .trust-bar       { background: var(--navy); border-top: none; padding: 1.25rem 2rem; }
     .trust-bar-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0; }
     .trust-item      { text-align: center; padding: 0 3rem; }
     .trust-num       { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
@@ -742,15 +742,17 @@
     }
 
     /* ── BIFURCACIÓN ── */
-    .bifurcacion-section { padding: 64px 48px; text-align: center; background: var(--navy); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .bifurcacion-section { padding: 64px 48px 56px; text-align: center; background: var(--navy); border-bottom: none; margin-bottom: 0; }
     .bifurcacion-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 32px; }
     .bifurcacion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto; }
     .bifurcacion-card { padding: 36px 32px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; display: block; text-align: left; }
     .bifurcacion-card:hover, .bifurcacion-card.activa { border-color: var(--cyan); background: rgba(0,191,223,0.06); }
     .bifurcacion-card-icon { font-size: 32px; margin-bottom: 16px; display: block; }
     .bifurcacion-card-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 10px; line-height: 1.2; }
-    .bifurcacion-card-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.6; margin-bottom: 20px; }
+    .bifurcacion-card-desc { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 20px; }
     .bifurcacion-card-cta { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cyan); }
+    .bifurcacion-card.activa .bifurcacion-card-title { color: #fff; }
+    .bifurcacion-card.activa .bifurcacion-card-cta { color: var(--cyan); }
     @media (max-width: 640px) { .bifurcacion-grid { grid-template-columns: 1fr; } .bifurcacion-section { padding: 48px 24px; } }
     /* CTA bajo el mapa */
     .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
@@ -823,32 +825,8 @@
         <!-- SOLUCIÓN -->
         <p class="hero-sub">En NETFLEET los transportadores compiten por tu carga. Tú pones las condiciones y escoges la mejor oferta. Sin intermediarios, sin comisiones ocultas.</p>
 
-        <!-- CÓMO FUNCIONA — 3 pasos -->
-        <div class="hero-steps">
-          <div class="hero-step">
-            <span class="hero-step-num">1</span>
-            <span class="hero-step-text"><strong>Publicas</strong> tu carga</span>
-          </div>
-          <span class="hero-step-sep">→</span>
-          <div class="hero-step">
-            <span class="hero-step-num">2</span>
-            <span class="hero-step-text"><strong>Recibes</strong> propuestas</span>
-          </div>
-          <span class="hero-step-sep">→</span>
-          <div class="hero-step">
-            <span class="hero-step-num">3</span>
-            <span class="hero-step-text"><strong>Escoges</strong> la mejor oferta</span>
-          </div>
-        </div>
-
         <!-- PRUEBA -->
         <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
-
-        <!-- ACCIÓN — un CTA principal, uno secundario -->
-        <div class="hero-ctas">
-          <a class="hero-btn-primary" href="empresa.html">Publicar mi primera carga →</a>
-          <a class="hero-btn-secondary" href="transportador.html">¿Eres transportadora? Entra aquí</a>
-        </div>
 
       </div>
 

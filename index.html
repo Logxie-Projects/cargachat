@@ -841,7 +841,7 @@
         <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
 
         <!-- SOLUCIÓN -->
-        <p class="hero-sub" id="hero-sub-text">En NETFLEET los transportadores compiten por tu carga. Tú pones las condiciones y escoges la mejor oferta. Sin intermediarios, sin comisiones ocultas.</p>
+        <p class="hero-sub" id="hero-sub-text">En NETFLEET los transportadores te hacen sus mejores ofertas por tu carga. Tú pones las condiciones y escoges la mejor. Sin intermediarios, sin comisiones ocultas.</p>
 
         <!-- PRUEBA -->
         <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
@@ -876,7 +876,7 @@
       <a href="#viajes" class="bifurcacion-card" id="card-generador" onclick="setRol('generador')">
         <span class="bifurcacion-card-icon">📦</span>
         <div class="bifurcacion-card-title">Tengo carga para mover</div>
-        <div class="bifurcacion-card-desc">Así compiten los transportadores por cargas como la tuya. Tú pones condiciones, tú eliges.</div>
+        <div class="bifurcacion-card-desc">Los transportadores te hacen sus mejores ofertas por tu carga. Tú pones condiciones, tú eliges.</div>
         <div class="bifurcacion-card-cta">Publicar mi carga →</div>
       </a>
       <a href="#viajes" class="bifurcacion-card" id="card-transportador" onclick="setRol('transportador')">
@@ -1387,7 +1387,7 @@
       aplicarRol();
       // Cambio 4 — título dinámico en #viajes
       const viajesTitles = {
-        generador:    { title: 'Así compiten los transportadores por cargas como la tuya', sub: 'Precios reales · Pujas en tiempo real · Sin intermediarios' },
+        generador:    { title: 'Así se ven las cargas en la red de transportadores', sub: 'Precios reales · Pujas en tiempo real · Sin intermediarios' },
         transportador:{ title: 'Viajes disponibles ahora para tu flota',                  sub: 'Carga real · Pago garantizado · Tú pones el precio' }
       };
       const titleEl = document.getElementById('viajes-title');
@@ -1422,7 +1422,7 @@
       if (rolActivo === 'generador') {
         // Mostrar sección pero con contexto de empresa
         if (seccionViajes) seccionViajes.style.display = '';
-        if (titulo)   titulo.textContent   = 'Así compiten los transportadores por cargas como la tuya';
+        if (titulo)   titulo.textContent   = 'Así se ven las cargas en la red de transportadores';
         if (subtitulo) subtitulo.textContent = 'Precios reales · Pujas en tiempo real · Sin intermediarios';
 
         // Ocultar botones de acción en tarjetas
@@ -1434,7 +1434,7 @@
           const banner = document.createElement('div');
           banner.id        = 'banner-generador';
           banner.className = 'banner-generador';
-          banner.innerHTML = '👆 Los transportadores ven estas cargas y compiten por ellas — la tuya aparecería aquí';
+          banner.innerHTML = '👆 Los transportadores ven estas cargas y hacen sus ofertas — la tuya aparecería aquí';
           grid.parentNode.insertBefore(banner, grid);
         }
 

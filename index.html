@@ -754,10 +754,13 @@
     .bifurcacion-card.activa .bifurcacion-card-title { color: #fff; }
     .bifurcacion-card.activa .bifurcacion-card-cta { color: var(--cyan); }
     @media (max-width: 640px) { .bifurcacion-grid { grid-template-columns: 1fr; } .bifurcacion-section { padding: 48px 24px; } }
+    /* Banner generador en sección viajes */
+    .banner-generador { background: rgba(0,191,223,0.08); border: 1px solid rgba(0,191,223,0.25); border-radius: 8px; padding: 12px 20px; font-size: 13px; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 24px; }
     /* CTA bajo el mapa */
     .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
     #cta-mapa { display: inline-block; background: var(--navy); color: white; font-size: 13px; font-weight: 700; padding: 11px 24px; border-radius: 10px; text-decoration: none; transition: background 0.2s; }
     #cta-mapa:hover { background: var(--cyan); color: var(--navy); }
+    .cta-mapa-micro { font-size: 11px; color: var(--gray-400); text-align: center; margin-top: 6px; }
     /* Ticker rol label */
     .ticker-label-rol { font-size: 10px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: uppercase; }
 
@@ -1354,36 +1357,75 @@
     function aplicarRol() {
       if (!rolActivo) return;
       document.body.setAttribute('data-rol', rolActivo);
-      actualizarMapaRol();
       actualizarSeccionesRol();
       actualizarTickerRol();
-    }
-
-    function actualizarMapaRol() {
-      const titulo    = document.querySelector('.mapa-col .section-hdr h2');
-      const subtitulo = document.querySelector('.mapa-col .section-hdr p');
-      const ctaMapa   = document.getElementById('cta-mapa');
-      if (!titulo) return;
-      if (rolActivo === 'generador') {
-        titulo.textContent = 'Así ven tu carga los transportadores';
-        if (subtitulo) subtitulo.textContent = 'Tu carga aparece aquí, visible para toda la red certificada en tiempo real';
-        if (ctaMapa) { ctaMapa.textContent = 'Publicar mi carga →'; ctaMapa.href = 'empresa.html'; ctaMapa.onclick = null; }
-      } else if (rolActivo === 'transportador') {
-        titulo.textContent = 'Viajes disponibles para ti hoy';
-        if (subtitulo) subtitulo.textContent = 'Haz clic en cualquier ruta para ver detalles y presentar tu oferta';
-        if (ctaMapa) { ctaMapa.textContent = 'Ver todos los viajes →'; ctaMapa.href = '#viajes'; ctaMapa.onclick = null; }
-      }
     }
 
     function actualizarSeccionesRol() {
       const seccionViajes   = document.getElementById('viajes');
       const seccionRetornos = document.getElementById('retornos-section');
-      if (rolActivo === 'generador') {
-        if (seccionViajes) seccionViajes.style.display = 'none';
-      } else if (rolActivo === 'transportador') {
-        if (seccionViajes) seccionViajes.style.display = '';
-      }
+      const titulo          = document.getElementById('viajes-titulo');
+      const subtitulo       = document.getElementById('viajes-subtitle');
+      const grid            = document.getElementById('viajes-grid');
+
       if (seccionRetornos) seccionRetornos.style.display = 'none';
+
+      if (rolActivo === 'generador') {
+        // Mostrar sección pero con contexto de empresa
+        if (seccionViajes) seccionViajes.style.display = '';
+        if (titulo)   titulo.textContent   = 'Así compiten los transportadores por cargas como la tuya';
+        if (subtitulo) subtitulo.textContent = 'Precios reales · Pujas en tiempo real · Sin intermediarios';
+
+        // Ocultar botones de acción en tarjetas
+        document.querySelectorAll('.viaje-actions, .btn-aceptar, .btn-oferta, button[onclick*="aceptar"], button[onclick*="oferta"]')
+          .forEach(b => b.style.display = 'none');
+
+        // Agregar banner si no existe ya
+        if (grid && !document.getElementById('banner-generador')) {
+          const banner = document.createElement('div');
+          banner.id        = 'banner-generador';
+          banner.className = 'banner-generador';
+          banner.innerHTML = '👆 Los transportadores ven estas cargas y compiten por ellas — la tuya aparecería aquí';
+          grid.parentNode.insertBefore(banner, grid);
+        }
+
+        // Mapa contextual generador
+        const tituloMapa  = document.querySelector('.mapa-col .section-hdr h2');
+        const subtitMapa  = document.querySelector('.mapa-col .section-hdr p');
+        const ctaMapa     = document.getElementById('cta-mapa');
+        if (tituloMapa)  tituloMapa.textContent  = 'Rutas activas en Colombia ahora mismo';
+        if (subtitMapa)  subtitMapa.textContent   = 'Tu carga aparecería en este mapa, visible para toda la red certificada';
+        if (ctaMapa) {
+          ctaMapa.textContent = 'Cotiza tu ruta sin compromiso →';
+          ctaMapa.href = '#calculadora';
+          ctaMapa.insertAdjacentHTML('afterend', '<p class="cta-mapa-micro">Gratis · Sin registro · Ofertas en menos de 2 horas</p>');
+        }
+
+      } else if (rolActivo === 'transportador') {
+        // Mostrar todo normal
+        if (seccionViajes) seccionViajes.style.display = '';
+        if (titulo)    titulo.textContent    = 'Viajes disponibles ahora';
+        if (subtitulo) subtitulo.textContent = '';
+
+        // Restaurar botones
+        document.querySelectorAll('.viaje-actions, .btn-aceptar, .btn-oferta, button[onclick*="aceptar"], button[onclick*="oferta"]')
+          .forEach(b => b.style.display = '');
+
+        // Quitar banner si existe
+        const banner = document.getElementById('banner-generador');
+        if (banner) banner.remove();
+
+        // Quitar microcopy del CTA si ya fue insertado
+        document.querySelectorAll('.cta-mapa-micro').forEach(el => el.remove());
+
+        // Mapa contextual transportador
+        const tituloMapa = document.querySelector('.mapa-col .section-hdr h2');
+        const subtitMapa = document.querySelector('.mapa-col .section-hdr p');
+        const ctaMapa    = document.getElementById('cta-mapa');
+        if (tituloMapa) tituloMapa.textContent = 'Viajes disponibles para ti hoy';
+        if (subtitMapa) subtitMapa.textContent  = 'Haz clic en cualquier ruta para ver detalles y presentar tu oferta';
+        if (ctaMapa) { ctaMapa.textContent = 'Ver todos los viajes →'; ctaMapa.href = '#viajes'; }
+      }
     }
 
     function actualizarTickerRol() {

@@ -3226,7 +3226,8 @@
           L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
           L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
 
-          const precio = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
+          const precioReal = parseFloat((v.precio_base || '').toString().replace(/[^\d.]/g, '')) || 0;
+          const precio = precioReal > 0 ? precioReal : estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
           const precioText = precio > 0 ? formatCOP(precio) : '';
           viajesHero.push({ route: `${origen} → ${destino}`, price: precioText });
         }

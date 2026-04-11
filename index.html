@@ -1796,7 +1796,7 @@
       ofertaViajeIdx = idx;
 
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-      const destinoTexto = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : v.destino;
+      const destinoTexto = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1} destinos` : v.destino;
 
       document.getElementById('oferta-titulo').textContent = accion === 'aceptar' ? 'Aceptar precio' : 'Hacer oferta';
       document.getElementById('oferta-resumen').innerHTML = `
@@ -2317,7 +2317,7 @@
       const items = viajes.map(v => {
         const origen   = (v.origen  || '').split(',')[0].trim();
         const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-        const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : destinos[0] || '—';
+        const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1} destinos` : destinos[0] || '—';
         const precio   = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
         const precioTxt = precio > 0 ? formatPrecioCorto(precio) : 'A convenir';
 

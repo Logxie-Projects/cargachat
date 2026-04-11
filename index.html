@@ -2557,7 +2557,7 @@
 
         // HTML de la tarjeta
         return `
-          <div class="viaje-card" onclick="seleccionarViaje(${idxReal})" data-origen="${origen.split(',')[0].trim()}" data-destino="${destinos[0] || destino.split(',')[0].trim()}">
+          <div class="viaje-card" onclick="seleccionarViaje(${idxReal})" data-origen="${origen.split(',')[0].trim()}" data-destino="${destinos[0] || destino.split(',')[0].trim()}" data-precio="${precioBase > 0 ? formatCOP(precioBase) : ''}">
             ${retornoTag}
             <!-- Ruta + badge de estado -->
             <div class="viaje-header">
@@ -3240,8 +3240,7 @@
           L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
           L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
 
-          const precioEl  = card.querySelector('[class*="precio-base"], .viaje-precio-base, .precio-num');
-          const precioText = precioEl?.textContent?.match(/\$[\d\.,]+/)?.[0] || '';
+          const precioText = (card.dataset.precio || '').trim();
           viajesHero.push({ route: `${origen} → ${destino}`, price: precioText });
         });
 

@@ -226,7 +226,8 @@
     .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(10,22,40,0.92); border: 1px solid rgba(0,191,223,0.35); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
     .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
     .hero-map-card-route { font-size: 13px; font-weight: 600; color: #fff; }
-    .hero-map-card-price { font-size: 16px; font-weight: 700; color: var(--cyan); font-family: monospace; }
+    .hero-map-card-space { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; }
+    .hero-map-card-price { font-size: 15px; font-weight: 700; color: var(--cyan); font-family: monospace; }
     .hero-map-card-badge { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
     .hero-map-caption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(255,255,255,0.4); padding: 6px; background: rgba(10,22,40,0.7); letter-spacing: 0.06em; text-transform: uppercase; }
     @media (max-width: 768px) { .hero-visual { display: none; } .hero-inner { text-align: center; } }
@@ -872,11 +873,12 @@
         <div class="hero-map-card" id="hero-live-card">
           <span class="hero-map-card-pulse"></span>
           <span class="hero-map-card-route" id="hero-card-route">Yumbo → Armenia</span>
-          <span class="hero-map-card-price" id="hero-card-price">$1.462.613</span>
-          <span class="hero-map-card-badge" id="hero-card-badge">⚡ en subasta</span>
+          <span class="hero-map-card-space" id="hero-card-space">📦 espacio disponible</span>
+          <span class="hero-map-card-price" id="hero-card-price">$1.462.613 precio ref.</span>
+          <span class="hero-map-card-badge" id="hero-card-badge">⚡ acepta tu carga ahora</span>
         </div>
         <div id="hero-map"></div>
-        <p class="hero-map-caption">Rutas activas ahora mismo · Colombia</p>
+        <p class="hero-map-caption">Capacidad disponible en la red · Colombia</p>
       </div>
 
     </div>
@@ -965,8 +967,8 @@
   <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2 id="viajes-titulo">Así se mueve la carga en NETFLEET</h2>
-      <p id="viajes-subtitle">Cargas publicadas por empresas como la tuya · Transportadores pujando en tiempo real</p>
+      <h2 id="viajes-titulo">Espacio disponible para tu carga hoy</h2>
+      <p id="viajes-subtitle">Transportadores activos en estas rutas · Listos para recibir tu publicación</p>
     </div>
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
       🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
@@ -1008,15 +1010,15 @@
     <!-- MAPA -->
     <div class="mapa-col">
       <div class="section-hdr">
-        <h2>Rutas activas en Colombia</h2>
-        <p>Viajes disponibles hoy en todo el país</p>
+        <h2>Capacidad disponible en la red</h2>
+        <p>Transportadores activos hoy con espacio para tu carga</p>
       </div>
       <div class="mapa-wrap">
         <div id="map"></div>
         <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
       </div>
       <div class="cta-mapa-wrap">
-        <a id="cta-mapa" href="empresa.html">Publicar mi carga →</a>
+        <a id="cta-mapa" href="empresa.html">Publicar mi carga en esta ruta →</a>
       </div>
     </div>
 
@@ -3232,16 +3234,20 @@
           const precioReal = parseFloat((v.precio_base || '').toString().replace(/\./g,'').replace(',','.')) || 0;
           const precio = precioReal > 0 ? precioReal : estimarPrecio(v.km, v.peso_kg, destinosParsed.length, v.destino, v.origen);
           const precioText = precio > 0 ? formatCOP(precio) : '';
-          viajesHero.push({ route: routeLabel, price: precioText });
+          const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
+          const pesoLabel = pesoKg > 0 ? `📦 ${Number(pesoKg).toLocaleString('es-CO')} kg disponibles` : '📦 espacio disponible';
+          viajesHero.push({ route: routeLabel, price: precioText, space: pesoLabel });
         }
 
         if (viajesHero.length > 0) {
           let idx = 0;
           const routeEl = document.getElementById('hero-card-route');
           const priceEl = document.getElementById('hero-card-price');
+          const spaceEl = document.getElementById('hero-card-space');
           function actualizarHeroCard() {
             if (routeEl) routeEl.textContent = viajesHero[idx].route;
-            if (priceEl) priceEl.textContent = viajesHero[idx].price || '';
+            if (priceEl) priceEl.textContent = viajesHero[idx].price ? viajesHero[idx].price + ' precio ref.' : '';
+            if (spaceEl) spaceEl.textContent = viajesHero[idx].space || '📦 espacio disponible';
           }
           actualizarHeroCard();
           setInterval(() => { idx = (idx+1) % viajesHero.length; actualizarHeroCard(); }, 3000);

@@ -2557,7 +2557,7 @@
 
         // HTML de la tarjeta
         return `
-          <div class="viaje-card" onclick="seleccionarViaje(${idxReal})">
+          <div class="viaje-card" onclick="seleccionarViaje(${idxReal})" data-origen="${origen.split(',')[0].trim()}" data-destino="${destinos[0] || destino.split(',')[0].trim()}">
             ${retornoTag}
             <!-- Ruta + badge de estado -->
             <div class="viaje-header">
@@ -3224,27 +3224,10 @@
         const viajesHero = [];
 
         cards.forEach(card => {
-          // Leer origen y destino desde los atributos de datos del card
-          const origenEl  = card.querySelector('.viaje-origen, [data-origen]');
-          const destinoEl = card.querySelector('.viaje-destino, [data-destino]');
-          const precioEl  = card.querySelector('[class*="precio"], [class*="price"], .viaje-precio');
-
-          // Fallback: leer del texto del header
-          const headerEl = card.querySelector('h3, .viaje-header, .viaje-ruta');
-          let origen = origenEl?.textContent?.trim() || origenEl?.dataset?.origen || '';
-          let destino = destinoEl?.textContent?.trim() || destinoEl?.dataset?.destino || '';
-
-          if ((!origen || !destino) && headerEl) {
-            const txt = headerEl.textContent || '';
-            const partes = txt.split('→');
-            if (partes.length >= 2) {
-              const origParts = partes[0].split(',').map(s => s.trim());
-              origen  = origParts[origParts.length - 1];
-              destino = partes[1].split('+')[0].split(' destinos')[0].trim().split(',')[0].trim();
-            }
-          }
-
+          const origen  = (card.dataset.origen  || '').trim();
+          const destino = (card.dataset.destino || '').trim();
           if (!origen || !destino) return;
+
           const oc = getCoord(origen);
           const dc = getCoord(destino);
           if (!oc || !dc) return;
@@ -3257,21 +3240,24 @@
           L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
           L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
 
+          const precioEl  = card.querySelector('[class*="precio-base"], .viaje-precio-base, .precio-num');
           const precioText = precioEl?.textContent?.match(/\$[\d\.,]+/)?.[0] || '';
-          const rutaCorta  = `${origen} → ${destino.split(' ')[0]}`;
-          if (precioText) viajesHero.push({ route: rutaCorta, price: precioText });
+          viajesHero.push({ route: `${origen} → ${destino}`, price: precioText });
         });
 
+        // Rotar tarjeta hero cada 3s
         if (viajesHero.length > 0) {
           let idx = 0;
           const routeEl = document.getElementById('hero-card-route');
           const priceEl = document.getElementById('hero-card-price');
-          if (routeEl) routeEl.textContent = viajesHero[0].route;
-          if (priceEl) priceEl.textContent = viajesHero[0].price;
+          function actualizarHeroCard() {
+            if (routeEl) routeEl.textContent = viajesHero[idx].route;
+            if (priceEl && viajesHero[idx].price) priceEl.textContent = viajesHero[idx].price;
+          }
+          actualizarHeroCard();
           setInterval(() => {
             idx = (idx + 1) % viajesHero.length;
-            if (routeEl) routeEl.textContent = viajesHero[idx].route;
-            if (priceEl) priceEl.textContent = viajesHero[idx].price;
+            actualizarHeroCard();
           }, 3000);
         }
       }

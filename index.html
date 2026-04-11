@@ -2890,6 +2890,7 @@
         actualizarTicker(viajesData);
         await initMapa(viajesData);
         cargarConteosOfertas();
+        if (typeof _heroDrawFn === 'function') _heroDrawFn(viajesData);
 
       } catch (error) {
         console.warn('Error al cargar viajes:', error);
@@ -2901,6 +2902,7 @@
 
         renderViajes(viajesData);
         await initMapa(viajesData);
+        if (typeof _heroDrawFn === 'function') _heroDrawFn(viajesData);
       }
     }
 
@@ -3188,7 +3190,10 @@
   </script>
 
   <script>
-    // ── MINI-MAPA HERO — lee viajes reales del DOM ─────────────────
+    // ── MINI-MAPA HERO ─────────────────────────────────────────────
+    let _heroMapInstance = null;
+    let _heroDrawFn = null; // se llama desde cargarViajes() con los datos reales
+
     function initHeroMap() {
       const heroMap = L.map('hero-map', {
         zoomControl: false, attributionControl: false,
@@ -3218,14 +3223,14 @@
       }
       function getCoord(nombre) { return coords[norm(nombre)] || null; }
 
-      function drawRutasReales() {
-        const cards = document.querySelectorAll('.viaje-card');
+      // Exponer función para ser llamada desde cargarViajes() con datos reales
+      _heroDrawFn = function(viajes) {
         const rutasDrawn = [];
         const viajesHero = [];
 
-        cards.forEach(card => {
-          const origen  = (card.dataset.origen  || '').trim();
-          const destino = (card.dataset.destino || '').trim();
+        (viajes || []).forEach(v => {
+          const origen  = (v.origen  || '').split(',')[0].trim();
+          const destino = (v.destino || '').split(',')[0].trim();
           if (!origen || !destino) return;
 
           const oc = getCoord(origen);
@@ -3240,42 +3245,28 @@
           L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
           L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
 
-          const precioText = (card.dataset.precio || '').trim();
+          const precio = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
+          const precioText = precio > 0 ? formatCOP(precio) : '';
           viajesHero.push({ route: `${origen} → ${destino}`, price: precioText });
         });
 
-        // Rotar tarjeta hero cada 3s
         if (viajesHero.length > 0) {
           let idx = 0;
           const routeEl = document.getElementById('hero-card-route');
           const priceEl = document.getElementById('hero-card-price');
           function actualizarHeroCard() {
             if (routeEl) routeEl.textContent = viajesHero[idx].route;
-            if (priceEl && viajesHero[idx].price) priceEl.textContent = viajesHero[idx].price;
+            if (priceEl) priceEl.textContent = viajesHero[idx].price || '';
           }
           actualizarHeroCard();
-          setInterval(() => {
-            idx = (idx + 1) % viajesHero.length;
-            actualizarHeroCard();
-          }, 3000);
+          setInterval(() => { idx = (idx+1) % viajesHero.length; actualizarHeroCard(); }, 3000);
         }
-      }
-
-      // Esperar a que cargarViajes() renderice los .viaje-card
-      if (document.querySelectorAll('.viaje-card').length > 0) {
-        drawRutasReales();
-      } else {
-        const wait = setInterval(() => {
-          if (document.querySelectorAll('.viaje-card').length > 0) {
-            clearInterval(wait);
-            drawRutasReales();
-          }
-        }, 500);
-      }
+      };
     }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initHeroMap);
     } else { initHeroMap(); }
+    // Nota: _heroDrawFn(viajes) se llama desde cargarViajes() después de renderViajes()
   </script>
 
   <!-- BOTONES FLOTANTES -->

@@ -197,6 +197,29 @@
       margin-bottom: 2.25rem;
     }
 
+    /* CTA principal del hero */
+    .hero-cta-main { display:inline-block; background:var(--cyan); color:#0A1628; padding:14px 28px; border-radius:8px; font-weight:700; font-size:15px; text-decoration:none; margin:1.5rem 0 0.5rem; transition:filter 0.2s; }
+    .hero-cta-main:hover { filter:brightness(1.08); }
+
+    /* Propuesta de valor — 3 columnas */
+    .propval-section { background:#f7f9fc; padding:3rem 2rem; }
+    .propval-grid { max-width:900px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
+    .propval-item { text-align:center; }
+    .propval-icon { font-size:2rem; margin-bottom:0.75rem; }
+    .propval-title { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:0.5rem; }
+    .propval-desc { font-size:13px; color:#5a6280; line-height:1.6; }
+    @media(max-width:768px){ .propval-grid { grid-template-columns:1fr; gap:1.5rem; } .propval-item { text-align:left; display:flex; gap:1rem; align-items:flex-start; } .propval-icon { font-size:1.5rem; flex-shrink:0; } }
+
+    /* Cómo funciona — solo generador */
+    .bloque-inner--generador { max-width:680px; text-align:center; }
+    .como-solo-title { font-size:clamp(24px,4vw,38px); font-weight:700; color:#fff; line-height:1.2; margin:1rem 0 2.5rem; }
+    .como-solo-title span { color:var(--cyan); }
+    .como-solo-steps { display:flex; gap:2rem; justify-content:center; flex-wrap:wrap; margin-bottom:0.5rem; }
+    .como-solo-step { flex:1; min-width:160px; max-width:200px; text-align:left; }
+    .como-solo-step .como-col-num { font-size:28px; font-weight:800; color:var(--cyan); opacity:0.5; margin-bottom:0.5rem; }
+    .como-solo-step .como-col-desc { font-size:14px; color:rgba(255,255,255,0.75); line-height:1.6; }
+    @media(max-width:768px){ .como-solo-steps { flex-direction:column; align-items:center; } .como-solo-step { max-width:100%; } .bloque-inner--generador { text-align:left; } }
+
     /* Mini-mapa hero */
     .hero-visual { flex: 0 0 420px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); }
     #hero-map { width: 100%; height: 300px; border-radius: 16px; z-index: 1; }
@@ -795,13 +818,13 @@
     </div>
     <nav-menu class="nav-menu">
       <a href="#como-funciona">Cómo funciona</a>
-      <a href="#empresas">Para empresas</a>
-      <a href="#transportadores">Transportadores</a>
+      <a href="#viajes">Viajes activos</a>
       <a href="#contacto">Contacto</a>
+      <a href="transportador.html" style="opacity:0.55;font-size:13px">¿Eres transportador?</a>
     </nav-menu>
     <div class="nav-links">
       <div id="nav-auth-buttons">
-        <button class="btn-nav-access" onclick="abrirSelectorModal()">Solicitar acceso</button>
+        <a href="empresa.html" class="btn-nav-access" style="text-decoration:none">Publicar mi carga →</a>
       </div>
       <div id="nav-user-info" class="nav-user" style="display:none">
         <span class="nav-user-name" id="nav-user-name"></span>
@@ -834,7 +857,10 @@
         <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
 
         <!-- SOLUCIÓN -->
-        <p class="hero-sub" id="hero-sub-text">En NETFLEET los transportadores te hacen sus mejores ofertas por tu carga. Tú pones las condiciones y escoges la mejor. Sin intermediarios, sin comisiones ocultas.</p>
+        <p class="hero-sub" id="hero-sub-text">Publica tu carga y recibe ofertas de transportadores verificados. Tú escoges la mejor. Sin intermediarios, sin comisiones ocultas.</p>
+
+        <!-- CTA -->
+        <a href="empresa.html" class="hero-cta-main">Publicar mi carga gratis →</a>
 
         <!-- PRUEBA -->
         <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
@@ -856,22 +882,24 @@
     </div>
   </section>
 
-  <!-- BIFURCACIÓN — ¿Empresa o Transportador? -->
-  <div class="bifurcacion-section" id="bifurcacion">
-    <div class="bifurcacion-eyebrow">¿Cómo llegaste a NETFLEET?</div>
-    <div class="bifurcacion-grid">
-      <a href="#viajes" class="bifurcacion-card" id="card-generador" onclick="setRol('generador')">
-        <span class="bifurcacion-card-icon">📦</span>
-        <div class="bifurcacion-card-title">Tengo carga para mover</div>
-        <div class="bifurcacion-card-desc">Los transportadores te hacen sus mejores ofertas por tu carga. Tú pones condiciones, tú eliges.</div>
-        <div class="bifurcacion-card-cta">Publicar mi carga →</div>
-      </a>
-      <a href="#viajes" class="bifurcacion-card" id="card-transportador" onclick="setRol('transportador')">
-        <span class="bifurcacion-card-icon">🚛</span>
-        <div class="bifurcacion-card-title">Soy transportador</div>
-        <div class="bifurcacion-card-desc">Viajes disponibles ahora. Pago garantizado. Tú pones el precio, sin intermediarios que se queden con tu margen.</div>
-        <div class="bifurcacion-card-cta">Ver viajes disponibles →</div>
-      </a>
+  <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
+  <div class="propval-section">
+    <div class="propval-grid">
+      <div class="propval-item">
+        <div class="propval-icon">🏆</div>
+        <div class="propval-title">Tú pones las condiciones</div>
+        <div class="propval-desc">Publica la ruta, la carga y la fecha. Los transportadores te hacen sus mejores ofertas. Tú eliges.</div>
+      </div>
+      <div class="propval-item">
+        <div class="propval-icon">🔒</div>
+        <div class="propval-title">Red verificada MinTransporte</div>
+        <div class="propval-desc">Solo transportadores habilitados, con vehículos inspeccionados, pólizas vigentes y seguimiento GPS.</div>
+      </div>
+      <div class="propval-item">
+        <div class="propval-icon">💸</div>
+        <div class="propval-title">$0 comisiones ocultas</div>
+        <div class="propval-desc">Sin intermediarios que se queden con tu margen. El precio que acuerdas es el precio que pagas.</div>
+      </div>
     </div>
   </div>
 
@@ -937,8 +965,8 @@
   <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2 id="viajes-titulo">Viajes disponibles ahora</h2>
-      <p id="viajes-subtitle">Precios reales · Pujas en tiempo real · Sin intermediarios</p>
+      <h2 id="viajes-titulo">Así se mueve la carga en NETFLEET</h2>
+      <p id="viajes-subtitle">Cargas publicadas por empresas como la tuya · Transportadores pujando en tiempo real</p>
     </div>
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
       🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
@@ -1085,59 +1113,26 @@
     </div>
   </div>
 
-  <!-- CÓMO FUNCIONA — dos columnas -->
+  <!-- CÓMO FUNCIONA — solo para generador, ancho completo -->
   <div class="bloque-oscuro" id="como-funciona">
-    <div class="bloque-inner">
+    <div class="bloque-inner bloque-inner--generador">
       <div class="bloque-eyebrow bloque-eyebrow--dark">cómo funciona</div>
-      <div class="como-cols">
-
-        <div class="como-col">
-          <div class="como-col-header">
-            <div class="como-col-tag">si tienes carga</div>
-            <h3 class="como-col-title">Publica.<br>Recibe ofertas.<br><span>El mejor precio gana.</span></h3>
-          </div>
-          <div class="como-col-steps">
-            <div class="como-col-step">
-              <div class="como-col-num">01</div>
-              <div class="como-col-desc">Publicas tu operación — ruta, carga y fecha en minutos.</div>
-            </div>
-            <div class="como-col-step">
-              <div class="como-col-num">02</div>
-              <div class="como-col-desc">Transportadores certificados pujan por tu carga. Sin favoritismos.</div>
-            </div>
-            <div class="como-col-step">
-              <div class="como-col-num">03</div>
-              <div class="como-col-desc">Eliges la mejor oferta. NETFLEET coordina todo lo demás.</div>
-            </div>
-          </div>
-          <button class="btn-primary-cta" onclick="abrirVinculacionModal('empresa')" style="margin-top:1.5rem">Publicar mi carga →</button>
+      <h3 class="como-solo-title">Publica.<br>Recibe ofertas.<br><span>El mejor precio gana.</span></h3>
+      <div class="como-solo-steps">
+        <div class="como-solo-step">
+          <div class="como-col-num">01</div>
+          <div class="como-col-desc">Publicas tu operación — ruta, carga y fecha en minutos.</div>
         </div>
-
-        <div class="como-col-divider"></div>
-
-        <div class="como-col">
-          <div class="como-col-header">
-            <div class="como-col-tag">si eres transportador</div>
-            <h3 class="como-col-title">Carga constante.<br>Clientes que<br><span>sí pagan.</span></h3>
-          </div>
-          <div class="como-col-steps">
-            <div class="como-col-step">
-              <div class="como-col-num">01</div>
-              <div class="como-col-desc">Accedes a operaciones reales publicadas cada día. Sin llamadas, sin intermediarios.</div>
-            </div>
-            <div class="como-col-step">
-              <div class="como-col-num">02</div>
-              <div class="como-col-desc">Ofertas tu precio directamente. Tú decides cuánto vale el viaje.</div>
-            </div>
-            <div class="como-col-step">
-              <div class="como-col-num">03</div>
-              <div class="como-col-desc">Si te eligen, recibes documentos y contacto al instante. A mover.</div>
-            </div>
-          </div>
-          <button class="btn-primary-cta" onclick="abrirVinculacionModal('transportador')" style="margin-top:1.5rem">Vincular mi flota →</button>
+        <div class="como-solo-step">
+          <div class="como-col-num">02</div>
+          <div class="como-col-desc">Transportadores verificados pujan por tu carga. Sin favoritismos, sin intermediarios.</div>
         </div>
-
+        <div class="como-solo-step">
+          <div class="como-col-num">03</div>
+          <div class="como-col-desc">Eliges la mejor oferta. NETFLEET coordina todo lo demás.</div>
+        </div>
       </div>
+      <a href="empresa.html" class="btn-primary-cta" style="margin-top:2rem;display:inline-block;text-decoration:none">Publicar mi carga →</a>
     </div>
   </div>
 

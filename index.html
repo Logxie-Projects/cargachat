@@ -3203,42 +3203,23 @@
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(heroMap);
 
-      const coords = {
-        'yumbo':[3.5959,-76.4957],'armenia':[4.5339,-75.6811],
-        'funza':[4.7149,-74.2146],'paipa':[5.7833,-73.1167],
-        'espinal':[4.1533,-74.8867],'ibague':[4.4389,-75.2322],
-        'ibague':[4.4389,-75.2322],'giron':[7.0667,-73.1667],
-        'cucuta':[7.8939,-72.5078],'bucaramanga':[7.1193,-73.1227],
-        'monteria':[8.7575,-75.8814],'manizales':[5.0703,-75.5138],
-        'bogota':[4.7110,-74.0721],'medellin':[6.2442,-75.5812],
-        'ventaquemada':[5.3833,-73.5167],'duitama':[5.8319,-73.0278],
-        'sogamoso':[5.7167,-72.9333],'granada':[3.5383,-73.7072],
-        'floridablanca':[7.0667,-73.0833],'cali':[3.4516,-76.5320],
-        'palmira':[3.5394,-76.3036],'pasto':[1.2136,-77.2811],
-        'barranquilla':[10.9685,-74.7813],'cartagena':[10.3932,-75.4832]
-      };
-
-      function norm(s) {
-        return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-      }
-      function getCoord(nombre) { return coords[norm(nombre)] || null; }
-
       // Exponer función para ser llamada desde cargarViajes() con datos reales
-      _heroDrawFn = function(viajes) {
+      _heroDrawFn = async function(viajes) {
         const rutasDrawn = [];
         const viajesHero = [];
 
-        (viajes || []).forEach(v => {
+        for (const v of (viajes || [])) {
           const origen  = (v.origen  || '').split(',')[0].trim();
           const destino = (v.destino || '').split(',')[0].trim();
-          if (!origen || !destino) return;
+          if (!origen || !destino) continue;
 
-          const oc = getCoord(origen);
-          const dc = getCoord(destino);
-          if (!oc || !dc) return;
+          // Usar getCoordenadas() — el mismo dict completo que usa el mapa principal
+          const oc = getCoordenadas(origen)  || await geocodeCiudad(origen);
+          const dc = getCoordenadas(destino) || await geocodeCiudad(destino);
+          if (!oc || !dc) continue;
 
-          const key = norm(origen) + '-' + norm(destino);
-          if (rutasDrawn.includes(key)) return;
+          const key = origen.toLowerCase() + '-' + destino.toLowerCase();
+          if (rutasDrawn.includes(key)) continue;
           rutasDrawn.push(key);
 
           L.polyline([oc,dc],{color:'#00bfdf',weight:1.5,opacity:0.6,dashArray:'4 6'}).addTo(heroMap);
@@ -3248,7 +3229,7 @@
           const precio = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
           const precioText = precio > 0 ? formatCOP(precio) : '';
           viajesHero.push({ route: `${origen} → ${destino}`, price: precioText });
-        });
+        }
 
         if (viajesHero.length > 0) {
           let idx = 0;

@@ -198,8 +198,23 @@
     }
 
     /* CTA principal del hero */
-    .hero-cta-main { display:inline-block; background:var(--cyan); color:#0A1628; padding:14px 28px; border-radius:8px; font-weight:700; font-size:15px; text-decoration:none; margin:1.5rem 0 0.5rem; transition:filter 0.2s; }
+    .hero-cta-main { display:block; background:var(--cyan); color:#0A1628; padding:14px 28px; border-radius:8px; font-weight:700; font-size:15px; text-decoration:none; text-align:center; margin-top:1rem; transition:filter 0.2s; }
     .hero-cta-main:hover { filter:brightness(1.08); }
+
+    /* Mini-calculadora del hero */
+    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:1.25rem 1.5rem; margin-top:1.5rem; }
+    .hero-calc-row { margin-bottom:0.9rem; }
+    .hero-calc-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+    .hero-calc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.5); }
+    .hero-calc-val { font-size:12px; font-weight:700; color:var(--cyan); }
+    .hero-calc-slider { width:100%; accent-color:var(--cyan); cursor:pointer; }
+    .hero-calc-result { display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.25); border-radius:10px; padding:0.85rem 1rem; margin:1rem 0 0; gap:1rem; }
+    .hero-calc-result-main { display:flex; flex-direction:column; gap:3px; }
+    .hero-calc-label-sm { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.4); }
+    .hero-calc-price { font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px; font-family:'DM Mono',monospace; }
+    .hero-calc-result-savings { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+    .hero-calc-savings-pct { font-size:22px; font-weight:800; color:#4ade80; letter-spacing:-0.5px; }
+    @media(max-width:768px){ .hero-calc { padding:1rem; } .hero-calc-price { font-size:20px; } }
 
     /* Propuesta de valor — 3 columnas */
     .propval-section { background:#f7f9fc; padding:3rem 2rem; }
@@ -853,18 +868,40 @@
 
       <div class="hero-content">
 
-        <!-- DOLOR -->
         <div class="hero-badge">marketplace de carga b2b · colombia</div>
-        <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
+        <h1>¿Cuánto deberías<br>pagar por tu<br><span>próximo flete?</span></h1>
+        <p class="hero-sub">Calculado con +1.000 viajes reales en Colombia. Sin intermediarios.</p>
 
-        <!-- SOLUCIÓN -->
-        <p class="hero-sub" id="hero-sub-text">Publica tu carga y recibe ofertas de transportadores verificados. Tú escoges la mejor. Sin intermediarios, sin comisiones ocultas.</p>
+        <!-- MINI-CALCULADORA -->
+        <div class="hero-calc">
+          <div class="hero-calc-row">
+            <div class="hero-calc-label-row">
+              <label class="hero-calc-label">Distancia</label>
+              <span class="hero-calc-val" id="hc-km-out">400 km</span>
+            </div>
+            <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
+          </div>
+          <div class="hero-calc-row">
+            <div class="hero-calc-label-row">
+              <label class="hero-calc-label">Peso de la carga</label>
+              <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
+            </div>
+            <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
+          </div>
+          <div class="hero-calc-result">
+            <div class="hero-calc-result-main">
+              <span class="hero-calc-label-sm">tu flete estimado</span>
+              <span class="hero-calc-price" id="hc-price">—</span>
+            </div>
+            <div class="hero-calc-result-savings" id="hc-savings-wrap">
+              <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
+              <span class="hero-calc-label-sm">menos que el mercado</span>
+            </div>
+          </div>
+          <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
+        </div>
 
-        <!-- CTA -->
-        <a href="empresa.html" class="hero-cta-main">Publicar mi carga gratis →</a>
-
-        <!-- PRUEBA -->
-        <p class="hero-proof">red verificada MinTransporte · cumplimiento normativo · cobertura nacional</p>
+        <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
 
       </div>
 
@@ -3184,6 +3221,28 @@
     document.getElementById('cc-paradas').addEventListener('input', ccCalc);
     document.getElementById('cc-zona').addEventListener('change', ccCalc);
     ccCalc();
+
+    // ── MINI-CALC HERO ────────────────────────────────────────────
+    function hcCalc() {
+      const km = parseInt(document.getElementById('hc-km').value);
+      const kg = parseInt(document.getElementById('hc-kg').value);
+      document.getElementById('hc-km-out').textContent = km.toLocaleString('es-CO') + ' km';
+      document.getElementById('hc-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
+      const base = estimarPrecio(km, kg, 1, '', '');
+      document.getElementById('hc-price').textContent = ccFmt(base);
+      const r = ccRango(km);
+      const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
+      const wrap = document.getElementById('hc-savings-wrap');
+      if (ahorroPct > 0) {
+        document.getElementById('hc-savings-pct').textContent = ahorroPct + '%';
+        wrap.style.display = 'flex';
+      } else {
+        wrap.style.display = 'none';
+      }
+      // Actualizar CTA con precio
+      document.getElementById('hc-cta').textContent = `Publicar mi carga · ${ccFmt(base)} →`;
+    }
+    hcCalc();
   </script>
 
   <script>

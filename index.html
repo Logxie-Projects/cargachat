@@ -238,13 +238,13 @@
     /* Mini-mapa hero */
     .hero-visual { flex: 0 0 420px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); align-self: stretch; }
     #hero-map { width: 100%; height: 100%; min-height: 300px; border-radius: 16px; z-index: 1; }
-    .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(10,22,40,0.92); border: 1px solid rgba(0,191,223,0.35); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(255,255,255,0.95); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
     .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
-    .hero-map-card-route { font-size: 13px; font-weight: 600; color: #fff; }
-    .hero-map-card-space { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; }
-    .hero-map-card-price { font-size: 15px; font-weight: 700; color: var(--cyan); font-family: monospace; }
-    .hero-map-card-badge { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
-    .hero-map-caption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(255,255,255,0.4); padding: 6px; background: rgba(10,22,40,0.7); letter-spacing: 0.06em; text-transform: uppercase; }
+    .hero-map-card-route { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .hero-map-card-space { font-size: 12px; color: var(--gray-600); font-weight: 600; }
+    .hero-map-card-price { font-size: 15px; font-weight: 700; color: var(--navy); font-family: monospace; }
+    .hero-map-card-badge { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em; }
+    .hero-map-caption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--gray-400); padding: 6px; background: rgba(255,255,255,0.85); letter-spacing: 0.06em; text-transform: uppercase; }
     @media (max-width: 768px) { .hero-visual { display: none; } .hero-inner { text-align: center; } }
 
     /* Pasos del hero */
@@ -3000,52 +3000,170 @@
 
     function initHeroMap() {
       const heroMap = L.map('hero-map', {
-        zoomControl: false, attributionControl: false,
-        dragging: false, touchZoom: false,
-        scrollWheelZoom: false, doubleClickZoom: false
+        zoomControl: true, attributionControl: false
       }).setView([4.5709, -74.2973], 6);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(heroMap);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd', maxZoom: 18
+      }).addTo(heroMap);
 
-      // Exponer función para ser llamada desde cargarViajes() con datos reales
       _heroDrawFn = async function(viajes) {
-        const rutasDrawn = [];
+        const todosLosPuntos = [];
+        const origenesConteo = {};
         const viajesHero = [];
 
-        for (const v of (viajes || [])) {
-          const origenPrincipal  = (v.origen  || '').split(',')[0].trim();
-          const destinosParsed   = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-          const destinoPrincipal = destinosParsed[0] || '';
-          if (!origenPrincipal || !destinoPrincipal) continue;
+        for (let viajeIdx = 0; viajeIdx < (viajes || []).length; viajeIdx++) {
+          const v = viajes[viajeIdx];
+          const origen = (v.origen || '').split(',')[0].trim();
+          const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+          const precioBase = estimarPrecio(v.km, v.peso_kg, destinos.length || 1, v.destino, v.origen);
+          const precioCorto = formatPrecioCorto(precioBase);
 
-          // Usar getCoordenadas() — el mismo dict completo que usa el mapa principal
-          const oc = getCoordenadas(origenPrincipal)  || await geocodeCiudad(origenPrincipal);
-          const dc = getCoordenadas(destinoPrincipal) || await geocodeCiudad(destinoPrincipal);
-          if (!oc || !dc) continue;
+          const grupo = L.layerGroup();
+          const bounds = [];
+          const puntosRuta = [];
 
-          const key = origenPrincipal.toLowerCase() + '-' + destinoPrincipal.toLowerCase();
-          if (rutasDrawn.includes(key)) continue;
-          rutasDrawn.push(key);
+          // Pin ORIGEN con precio estilo Airbnb
+          const coordBase = await getCoords(origen);
+          let coordOrigen = null;
+          if (coordBase) {
+            const n = origenesConteo[origen] || 0;
+            origenesConteo[origen] = n + 1;
+            coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.06, coordBase[1] + n * 0.04];
+            todosLosPuntos.push(coordOrigen);
+            bounds.push(coordOrigen);
+            puntosRuta.push(coordOrigen);
 
-          L.polyline([oc,dc],{color:'#00bfdf',weight:1.5,opacity:0.6,dashArray:'4 6'}).addTo(heroMap);
-          L.circleMarker(oc,{radius:3,fillColor:'#00bfdf',color:'#00bfdf',fillOpacity:0.9,weight:0}).addTo(heroMap);
-          L.circleMarker(dc,{radius:2,fillColor:'#ffffff',color:'#ffffff',fillOpacity:0.5,weight:0}).addTo(heroMap);
+            const texto = precioCorto || 'A convenir';
+            const w = texto.length > 7 ? 90 : 68;
+            const icon = L.divIcon({
+              html: `<div class="precio-pin">${texto}</div>`,
+              iconSize: [w, 28], iconAnchor: [w / 2, 36], className: ''
+            });
+            const marker = L.marker(coordOrigen, { icon });
+            marker.bindTooltip(
+              `<div class="pin-preview"><b>${v.origen}</b><div class="pin-preview-dest">→ ${destinos.join(', ')}</div></div>`,
+              { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' }
+            );
+            grupo.addLayer(marker);
+          }
 
-          // Etiqueta igual a la tarjeta: "Funza → Paipa +11 destinos"
-          const extras = destinosParsed.length - 1;
-          const routeLabel = extras > 0
-            ? `${origenPrincipal} → ${destinoPrincipal} +${extras} destinos`
-            : `${origenPrincipal} → ${destinoPrincipal}`;
+          // Pins DESTINOS con geocoding + nearest-neighbor + 2-opt
+          const destinosConCoord = await Promise.all(
+            destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
+          );
+          const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
 
-          // precio_base viene como "1.262.169" (puntos = miles, formato colombiano)
-          const precioReal = parseFloat((v.precio_base || '').toString().replace(/\./g,'').replace(',','.')) || 0;
-          const precio = precioReal > 0 ? precioReal : estimarPrecio(v.km, v.peso_kg, destinosParsed.length, v.destino, v.origen);
-          const precioText = precio > 0 ? formatCOP(precio) : '';
+          // Detectar ruta circular
+          const origenKey = normalizarNombre(origen);
+          let destinoRetorno = null;
+          let destinosParaOptimizar = [...destinosValidos];
+          if (coordBase) {
+            const idxRet = destinosValidos.findIndex(d => {
+              const porNombre = variantes(d.nombre).some(v => v === origenKey || origenKey.includes(v) || v.includes(origenKey));
+              const porCoord = d.coord && Math.hypot(d.coord[0] - coordBase[0], d.coord[1] - coordBase[1]) < 0.05;
+              return porNombre || porCoord;
+            });
+            if (idxRet !== -1) {
+              destinoRetorno = destinosValidos[idxRet];
+              destinosParaOptimizar = destinosValidos.filter((_, i) => i !== idxRet);
+            }
+          }
+
+          // Nearest-neighbor
+          const destinosOrdenados = [];
+          let puntoActual = coordOrigen || (destinosParaOptimizar[0]?.coord ?? null);
+          const pendientes = [...destinosParaOptimizar];
+          while (pendientes.length > 0) {
+            let minDist = Infinity, minIdx = 0;
+            pendientes.forEach((d, i) => {
+              const dist = Math.hypot(d.coord[0] - puntoActual[0], d.coord[1] - puntoActual[1]);
+              if (dist < minDist) { minDist = dist; minIdx = i; }
+            });
+            destinosOrdenados.push(pendientes[minIdx]);
+            puntoActual = pendientes[minIdx].coord;
+            pendientes.splice(minIdx, 1);
+          }
+
+          // 2-opt
+          if (destinosOrdenados.length > 3) {
+            const pts = coordOrigen ? [{ coord: coordOrigen }, ...destinosOrdenados] : destinosOrdenados;
+            const dist2 = (a, b) => Math.hypot(a.coord[0] - b.coord[0], a.coord[1] - b.coord[1]);
+            const offset = coordOrigen ? 1 : 0;
+            let improved = true;
+            while (improved) {
+              improved = false;
+              for (let i = offset; i < pts.length - 1; i++) {
+                for (let j = i + 1; j < pts.length; j++) {
+                  const before = dist2(pts[i-1] ?? pts[0], pts[i]) + dist2(pts[j], pts[j+1] ?? pts[pts.length-1]);
+                  const after  = dist2(pts[i-1] ?? pts[0], pts[j]) + dist2(pts[i], pts[j+1] ?? pts[pts.length-1]);
+                  if (after < before - 1e-10) { pts.splice(i, j-i+1, ...pts.slice(i, j+1).reverse()); improved = true; }
+                }
+              }
+            }
+            destinosOrdenados.splice(0, destinosOrdenados.length, ...pts.slice(offset));
+          }
+
+          if (destinoRetorno) destinosOrdenados.push(destinoRetorno);
+
+          const totalParadas = destinosOrdenados.length;
+          destinosOrdenados.forEach((dest, i) => {
+            todosLosPuntos.push(dest.coord);
+            bounds.push(dest.coord);
+            puntosRuta.push(dest.coord);
+            const numParada = totalParadas > 1 ? `${i + 1}` : '';
+            const esRetornoPin = destinoRetorno && i === totalParadas - 1;
+            const iconDest = L.divIcon({
+              html: esRetornoPin
+                ? `<div style="position:relative"><div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div><div style="position:absolute;top:-10px;left:12px;background:#00B4D8;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap">↩ ${numParada}</div></div>`
+                : `<div style="position:relative"><div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}</div>`,
+              iconSize: [12, 12], iconAnchor: [6, 6], className: ''
+            });
+            grupo.addLayer(
+              L.marker(dest.coord, { icon: iconDest })
+                .bindPopup(esRetornoPin ? `<b style="color:#00B4D8">↩ Retorno · Parada ${numParada}:</b> ${dest.nombre}` : `<b style="color:#1B2A6B">Parada${numParada ? ' '+numParada : ''}:</b> ${dest.nombre}`)
+            );
+          });
+
+          if (destinoRetorno && coordOrigen) puntosRuta.push(coordOrigen);
+
+          // Ruta OSRM con fallback a línea recta
+          if (puntosRuta.length > 1) {
+            const lineaRecta = L.polyline(puntosRuta, { color: '#1B2A6B', weight: 2.5, opacity: 0.6, dashArray: '6 4' });
+            grupo.addLayer(lineaRecta);
+            obtenerRutaOSRM(puntosRuta).then(rutaReal => {
+              if (rutaReal) { grupo.removeLayer(lineaRecta); grupo.addLayer(L.polyline(rutaReal, { color: '#1B2A6B', weight: 3, opacity: 0.75 })); }
+            });
+          }
+
+          grupo.addTo(heroMap);
+
+          // Datos para el card rotativo
+          const extras = destinos.length - 1;
+          const routeLabel = extras > 0 ? `${origen} → ${destinos[0]} +${extras}` : `${origen} → ${destinos[0] || '—'}`;
+          const precio = precioBase > 0 ? formatCOP(precioBase) : '';
           const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
           const pesoLabel = pesoKg > 0 ? `📦 ${Number(pesoKg).toLocaleString('es-CO')} kg disponibles` : '📦 espacio disponible';
-          viajesHero.push({ route: routeLabel, price: precioText, space: pesoLabel });
+          viajesHero.push({ route: routeLabel, price: precio, space: pesoLabel });
         }
 
+        if (todosLosPuntos.length > 1) {
+          heroMap.fitBounds(todosLosPuntos, { padding: [40, 40], maxZoom: 12 });
+        }
+
+        // Leyenda
+        const leyenda = L.control({ position: 'bottomleft' });
+        leyenda.onAdd = () => {
+          const div = L.DomUtil.create('div');
+          div.innerHTML = `<div style="background:white;padding:8px 12px;border-radius:8px;border:1px solid #eef0f6;font-family:'DM Sans',sans-serif;font-size:11px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><div style="background:white;border:2px solid #1B2A6B;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;color:#1B2A6B;">$</div><span style="color:#5a6280">Origen · precio</span></div>
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#1B2A6B;"></div><span style="color:#5a6280">Destino</span></div>
+          </div>`;
+          return div;
+        };
+        leyenda.addTo(heroMap);
+
+        // Card rotativo
         if (viajesHero.length > 0) {
           let idx = 0;
           const routeEl = document.getElementById('hero-card-route');
@@ -3064,7 +3182,6 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initHeroMap);
     } else { initHeroMap(); }
-    // Nota: _heroDrawFn(viajes) se llama desde cargarViajes() después de renderViajes()
   </script>
 
   <!-- BOTONES FLOTANTES -->

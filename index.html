@@ -880,37 +880,6 @@
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Reciclables</span>
         </div>
 
-        <!-- MINI-CALCULADORA -->
-        <div class="hero-calc">
-          <div class="hero-calc-row">
-            <div class="hero-calc-label-row">
-              <label class="hero-calc-label">Distancia</label>
-              <span class="hero-calc-val" id="hc-km-out">400 km</span>
-            </div>
-            <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
-          </div>
-          <div class="hero-calc-row">
-            <div class="hero-calc-label-row">
-              <label class="hero-calc-label">Peso de la carga</label>
-              <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
-            </div>
-            <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
-          </div>
-          <div class="hero-calc-result">
-            <div class="hero-calc-result-main">
-              <span class="hero-calc-label-sm">tu flete estimado</span>
-              <span class="hero-calc-price" id="hc-price">—</span>
-            </div>
-            <div class="hero-calc-result-savings" id="hc-savings-wrap">
-              <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
-              <span class="hero-calc-label-sm">menos que el mercado</span>
-            </div>
-          </div>
-          <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
-        </div>
-
-        <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
-
       </div>
 
       <!-- COLUMNA DERECHA: mapa de rutas activas -->
@@ -930,6 +899,40 @@
 
     </div>
   </section>
+
+  <!-- MINI-CALCULADORA (debajo del hero, mismo fondo navy) -->
+  <div style="background:var(--navy);padding:0 2rem 3rem;">
+    <div style="max-width:1100px;margin:0 auto;">
+      <div class="hero-calc">
+        <div class="hero-calc-row">
+          <div class="hero-calc-label-row">
+            <label class="hero-calc-label">Distancia</label>
+            <span class="hero-calc-val" id="hc-km-out">400 km</span>
+          </div>
+          <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
+        </div>
+        <div class="hero-calc-row">
+          <div class="hero-calc-label-row">
+            <label class="hero-calc-label">Peso de la carga</label>
+            <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
+          </div>
+          <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
+        </div>
+        <div class="hero-calc-result">
+          <div class="hero-calc-result-main">
+            <span class="hero-calc-label-sm">tu flete estimado</span>
+            <span class="hero-calc-price" id="hc-price">—</span>
+          </div>
+          <div class="hero-calc-result-savings" id="hc-savings-wrap">
+            <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
+            <span class="hero-calc-label-sm">menos que el mercado</span>
+          </div>
+        </div>
+        <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
+      </div>
+      <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
+    </div>
+  </div>
 
   <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
   <div class="propval-section">

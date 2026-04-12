@@ -980,35 +980,6 @@
     </div>
   </div>
 
-  <!-- BUSCADOR DE VIAJES -->
-  <div class="buscador-wrap">
-    <div class="buscador-intro">¿A dónde vas?</div>
-    <div class="buscador-bar">
-      <div class="buscador-field">
-        <label class="buscador-label">salgo desde</label>
-        <input class="buscador-input" id="b-origen" type="text" placeholder="Ciudad de origen..." autocomplete="off" list="list-origen">
-        <datalist id="list-origen"></datalist>
-      </div>
-      <div class="buscador-sep">→</div>
-      <div class="buscador-field">
-        <label class="buscador-label">voy hacia</label>
-        <input class="buscador-input" id="b-destino" type="text" placeholder="Ciudad destino..." autocomplete="off" list="list-destino">
-        <datalist id="list-destino"></datalist>
-      </div>
-      <div class="buscador-sep buscador-sep--cal">📅</div>
-      <div class="buscador-field buscador-field--fecha">
-        <label class="buscador-label">fecha de salida</label>
-        <select class="buscador-input" id="b-fecha">
-          <option value="">Cualquier fecha</option>
-        </select>
-      </div>
-      <button class="buscador-btn" onclick="buscarViajes()">Buscar →</button>
-    </div>
-    <div class="buscador-reset" id="buscador-reset" style="display:none">
-      <span onclick="resetBuscador()">✕ Ver todos los viajes disponibles</span>
-    </div>
-  </div>
-
   <!-- SECCIÓN SECTORES -->
   <section id="sectores" style="background:#f8f9fc;padding:4rem 2rem;">
     <div style="max-width:1100px;margin:0 auto;">
@@ -1092,117 +1063,6 @@
         <li>mercancía asegurada</li>
         <li>seguimiento GPS en tiempo real</li>
       </ul>
-    </div>
-  </div>
-
-  <!-- MAPA + CALCULADORA LADO A LADO -->
-  <div class="mapa-calc-section">
-
-    <!-- MAPA -->
-    <div class="mapa-col">
-      <div class="section-hdr">
-        <h2>Capacidad disponible en la red</h2>
-        <p>Transportadores activos hoy con espacio para tu carga</p>
-      </div>
-      <div class="mapa-wrap">
-        <div id="map"></div>
-        <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
-      </div>
-      <div class="cta-mapa-wrap">
-        <a id="cta-mapa" href="empresa.html">Publicar mi carga en esta ruta →</a>
-      </div>
-    </div>
-
-    <!-- CALCULADORA DE FLETE -->
-    <div class="calc-col">
-      <div class="section-hdr">
-        <h2>Estimador de flete</h2>
-        <p>Basado en más de 1.000 viajes reales en Colombia</p>
-      </div>
-      <div class="calc-card">
-
-        <div class="calc-row">
-          <label class="calc-label">Distancia</label>
-          <div class="calc-slider-wrap">
-            <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
-            <span class="calc-val" id="cc-km-out">400 km</span>
-          </div>
-        </div>
-
-        <div class="calc-row">
-          <label class="calc-label">Peso de la carga</label>
-          <div class="calc-slider-wrap">
-            <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
-            <span class="calc-val" id="cc-kg-out">5.000 kg</span>
-          </div>
-        </div>
-
-        <div class="calc-row">
-          <label class="calc-label">Paradas de entrega</label>
-          <div class="calc-slider-wrap">
-            <input type="range" id="cc-paradas" min="1" max="10" step="1" value="1">
-            <span class="calc-val" id="cc-paradas-out">1</span>
-          </div>
-        </div>
-
-        <div class="calc-row">
-          <label class="calc-label">Zona de destino</label>
-          <select id="cc-zona" class="calc-select">
-            <option value="">Sin especificar</option>
-            <option value="HUB">Hub (entre bodegas)</option>
-            <option value="ANTIOQUIA">Antioquia</option>
-            <option value="BOYACA">Boyacá</option>
-            <option value="CENTRO">Centro</option>
-            <option value="CUNDINAMARCA">Cundinamarca</option>
-            <option value="EJE CAFETERO">Eje Cafetero</option>
-            <option value="LLANOS">Llanos</option>
-            <option value="NORTE">Norte / Costa</option>
-            <option value="OCCIDENTE">Occidente</option>
-            <option value="ORIENTE">Oriente</option>
-            <option value="SANTANDERES">Santanderes</option>
-            <option value="SUR">Sur / Nariño</option>
-            <option value="TOLHUIL">Tolima / Huila</option>
-            <option value="VALLE">Valle</option>
-          </select>
-        </div>
-
-        <div class="calc-results" style="grid-template-columns:1fr auto;">
-          <div class="calc-result-card main">
-            <div class="calc-result-label">Precio base estimado</div>
-            <div class="calc-result-val" id="cc-base">—</div>
-          </div>
-          <div class="calc-result-card cc-ahorro" id="cc-ahorro-card" style="display:none;">
-            <div class="calc-result-label">Ahorra hasta</div>
-            <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">—</div>
-          </div>
-        </div>
-
-        <div class="calc-rango">
-          <div class="calc-rango-label">Rango histórico — <span id="cc-zona-badge">—</span></div>
-          <div class="calc-bar-track"><div class="calc-bar-fill" id="cc-bar"></div></div>
-          <div class="calc-bar-extremos">
-            <span id="cc-hist-min">—</span>
-            <span style="color:var(--gray-400);font-size:11px">mediana histórica</span>
-            <span id="cc-hist-max">—</span>
-          </div>
-        </div>
-
-        <div class="calc-nota">
-          Modelo: regresión polinomial (n=1.015 viajes) · Fuente: viajes Colombia 2025–2026
-        </div>
-
-        <button onclick="abrirLeadModal()" class="calc-cta" style="border:none;cursor:pointer;width:100%">
-          Solicitar cotización →
-        </button>
-
-        <!-- BPO PROMO -->
-        <div class="bpo-promo">
-          <div class="bpo-promo-tag">bpo logístico</div>
-          <p class="bpo-promo-text">¿Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestión logística integral</strong> — operación completa, sin carga administrativa.</p>
-          <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO →</a>
-        </div>
-
-      </div>
     </div>
   </div>
 
@@ -2429,26 +2289,6 @@
       });
     }
 
-    // ── BUSCADOR ──────────────────────────────────────────────────
-    function poblarBuscador(viajes) {
-      // Orígenes únicos
-      const origenes = [...new Set(viajes.map(v => (v.origen || '').trim()).filter(Boolean))].sort();
-      const listOrig = document.getElementById('list-origen');
-      listOrig.innerHTML = origenes.map(o => `<option value="${o}">`).join('');
-
-      // Destinos únicos (cada viaje puede tener varios separados por coma)
-      const destSet = new Set();
-      viajes.forEach(v => (v.destino || '').split(',').forEach(d => { const t = d.trim(); if (t) destSet.add(t); }));
-      const listDest = document.getElementById('list-destino');
-      listDest.innerHTML = [...destSet].sort().map(d => `<option value="${d}">`).join('');
-
-      // Fechas únicas
-      const fechas = [...new Set(viajes.map(v => (v.fecha_cargue || '').trim()).filter(Boolean))].sort();
-      const sel = document.getElementById('b-fecha');
-      sel.innerHTML = '<option value="">Cualquier fecha</option>' +
-        fechas.map(f => `<option value="${f}">${f}</option>`).join('');
-    }
-
     // Parsear fecha DD/MM/YYYY → Date
     function parseFecha(str) {
       if (!str) return null;
@@ -2456,96 +2296,6 @@
       if (p.length !== 3) return null;
       return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
     }
-
-    function buscarViajes() {
-      const origenVal  = document.getElementById('b-origen').value.trim();
-      const destinoVal = document.getElementById('b-destino').value.trim();
-      const fechaVal   = document.getElementById('b-fecha').value.trim();
-      const origenQ    = origenVal.toLowerCase();
-      const destinoQ   = destinoVal.toLowerCase();
-
-      const hayFiltro = origenQ || destinoQ || fechaVal;
-      if (!hayFiltro) { resetBuscador(); return; }
-
-      // ── Viajes de IDA ─────────────────────────────────────
-      const ida = viajesData.filter(v => {
-        const matchOrigen  = !origenQ  || (v.origen  || '').toLowerCase().includes(origenQ);
-        const matchDestino = !destinoQ || (v.destino || '').toLowerCase().includes(destinoQ);
-        const matchFecha   = !fechaVal || (v.fecha_cargue || '') === fechaVal;
-        return matchOrigen && matchDestino && matchFecha;
-      });
-
-      // ── Viajes de RETORNO ─────────────────────────────────
-      // Origen del retorno = ciudad destino buscada (o destino del viaje de ida si no hay destinoQ)
-      // Fecha del retorno = misma fecha o hasta 3 días después
-      let retornos = [];
-      if (destinoQ) {
-        const fechaBase = fechaVal ? parseFecha(fechaVal) : new Date();
-        const fechaLimite = new Date(fechaBase);
-        fechaLimite.setDate(fechaLimite.getDate() + 3);
-
-        retornos = viajesData.filter(v => {
-          // Excluir los que ya salieron en ida
-          const esIda = ida.some(i => i.rt_total === v.rt_total);
-          if (esIda) return false;
-          // El origen del retorno debe ser la ciudad destino buscada
-          const origenRetorno = (v.origen || '').toLowerCase();
-          if (!origenRetorno.includes(destinoQ)) return false;
-          // Fecha dentro del rango
-          const fv = parseFecha(v.fecha_cargue);
-          if (!fv) return true; // sin fecha = incluir
-          return fv >= fechaBase && fv <= fechaLimite;
-        });
-      }
-
-      // ── Renderizar ────────────────────────────────────────
-      const tituloIda = origenVal && destinoVal
-        ? `${origenVal} → ${destinoVal}`
-        : origenVal || destinoVal || 'Búsqueda';
-
-      document.getElementById('viajes-titulo').textContent = `Viajes · ${tituloIda}`;
-      document.getElementById('viajes-subtitle').textContent =
-        ida.length ? `${ida.length} viaje${ida.length !== 1 ? 's' : ''} encontrado${ida.length !== 1 ? 's' : ''}` : 'Sin resultados para esta búsqueda';
-
-      renderViajes(ida);
-
-      // Retornos
-      const secRetornos = document.getElementById('retornos-section');
-      if (retornos.length > 0) {
-        secRetornos.style.display = 'block';
-        document.getElementById('retornos-titulo').textContent = `Retornos desde ${destinoVal}`;
-        document.getElementById('retornos-subtitle').textContent =
-          `${retornos.length} viaje${retornos.length !== 1 ? 's' : ''} disponible${retornos.length !== 1 ? 's' : ''} para el regreso (próximos 3 días)`;
-        renderViajes(retornos, 'retornos-grid', true);
-      } else {
-        secRetornos.style.display = destinoQ ? 'block' : 'none';
-        if (destinoQ) {
-          document.getElementById('retornos-titulo').textContent = `Retornos desde ${destinoVal}`;
-          document.getElementById('retornos-subtitle').textContent = 'No hay retornos disponibles en los próximos 3 días';
-          document.getElementById('retornos-grid').innerHTML =
-            '<div class="loading-msg">Sin retornos disponibles para esta ruta en los próximos 3 días.</div>';
-        }
-      }
-
-      document.getElementById('buscador-reset').style.display = 'block';
-      document.getElementById('viajes').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    function resetBuscador() {
-      document.getElementById('b-origen').value  = '';
-      document.getElementById('b-destino').value = '';
-      document.getElementById('b-fecha').value   = '';
-      document.getElementById('buscador-reset').style.display = 'none';
-      document.getElementById('viajes-titulo').textContent = 'Viajes disponibles ahora';
-      document.getElementById('retornos-section').style.display = 'none';
-      renderViajes(viajesData);
-    }
-
-    // Buscar con Enter en los inputs
-    ['b-origen','b-destino'].forEach(id => {
-      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarViajes(); });
-    });
-    // ─────────────────────────────────────────────────────────────
 
     function renderViajes(viajes, gridId = 'viajes-grid', esRetorno = false) {
       const grid     = document.getElementById(gridId);
@@ -2971,7 +2721,6 @@
         });
 
         renderViajes(viajesData);
-        poblarBuscador(viajesData);
         actualizarTicker(viajesData);
         await initMapa(viajesData);
         cargarConteosOfertas();
@@ -3038,18 +2787,7 @@
         mapaLeaflet.setView(mapaCapas[idx].bounds[0], 9, { animate: false });
       }
 
-      // Actualizar calculadora con los valores del viaje seleccionado
-      const v = viajesData[idx];
-      const km = parseInt(v.km)      || 0;
-      const kg = parseInt(v.peso_kg) || 0;
-      const numParadas = (v.destino || '').split(',').filter(d => d.trim()).length || 1;
-      document.getElementById('cc-km').value = Math.min(1200, Math.max(10, km));
-      document.getElementById('cc-kg').value = Math.min(50000, Math.max(100, kg));
-      document.getElementById('cc-paradas').value = Math.min(10, Math.max(1, numParadas));
-      // Auto-detectar zona desde origen y destino del viaje
-      const zonaDetectada = ccDetectarZona(v.destino, v.origen);
-      document.getElementById('cc-zona').value = zonaDetectada;
-      ccCalc();
+      // Calculadora movida a transportador.html — no actualizar sliders aquí
 
       // Scroll suave al mapa
       document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3231,47 +2969,6 @@
       }
       return '';
     }
-
-    function ccCalc() {
-      const km      = parseInt(document.getElementById('cc-km').value);
-      const kg      = parseInt(document.getElementById('cc-kg').value);
-      const paradas = parseInt(document.getElementById('cc-paradas').value);
-      const zona    = document.getElementById('cc-zona').value;
-      document.getElementById('cc-km-out').textContent      = km.toLocaleString('es-CO') + ' km';
-      document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
-      document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
-      const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
-      let base;
-      if (km < 50) {
-        // Distribución local / mismo municipio — fórmula calibrada con datos reales
-        // 5 ton → $400K · 34 ton → $1.2M · mínimo $300K
-        base = Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
-      } else {
-        // Larga distancia — modelo polynomial Ridge (R²=0.919, n=1.015 viajes)
-        base = Math.max(CC_PRECIO_MINIMO, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
-      }
-      document.getElementById('cc-base').textContent  = ccFmt(base);
-      // Ahorro vs p75 histórico
-      const r = ccRango(km);
-      const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
-      const ahorroCard = document.getElementById('cc-ahorro-card');
-      if (ahorroPct > 0) {
-        document.getElementById('cc-ahorro').textContent = ahorroPct + '%';
-        ahorroCard.style.display = '';
-      } else {
-        ahorroCard.style.display = 'none';
-      }
-      document.getElementById('cc-zona-badge').textContent = r.label;
-      document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
-      document.getElementById('cc-hist-max').textContent   = ccFmt(r.p75);
-      const pct = Math.min(100, Math.max(0, (base - r.p25) / (r.p75 - r.p25) * 100));
-      document.getElementById('cc-bar').style.width = Math.round(pct) + '%';
-    }
-    document.getElementById('cc-km').addEventListener('input', ccCalc);
-    document.getElementById('cc-kg').addEventListener('input', ccCalc);
-    document.getElementById('cc-paradas').addEventListener('input', ccCalc);
-    document.getElementById('cc-zona').addEventListener('change', ccCalc);
-    ccCalc();
 
     // ── MINI-CALC HERO ────────────────────────────────────────────
     function hcCalc() {

@@ -6,6 +6,7 @@
   <title>NETFLEET — Portal Transportadora</title>
   <script src="./supabase.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -158,6 +159,70 @@
       .docs-grid { grid-template-columns: 1fr; }
       .oferta-row { grid-template-columns: 1fr 1fr; }
     }
+
+    /* ── BUSCADOR (movido de index.html) ── */
+    .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 1rem 2rem 1.25rem; position: sticky; top: 56px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    @media(max-width:700px) { .buscador-wrap { position: relative; top: auto; z-index: auto; box-shadow: none; } }
+    .buscador-intro   { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); text-align: center; margin-bottom: 10px; }
+    .buscador-bar     { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
+    .buscador-field   { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
+    .buscador-field--fecha { flex: 0.8; }
+    .buscador-label   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 3px; }
+    .buscador-input   { background: transparent; border: none; outline: none; font-size: 14px; font-weight: 500; color: var(--navy); font-family: 'DM Sans', sans-serif; width: 100%; }
+    .buscador-input::placeholder { color: var(--gray-400); font-weight: 400; }
+    .buscador-sep     { color: var(--gray-400); font-size: 14px; padding: 0 4px; flex-shrink: 0; }
+    .buscador-sep--cal { font-size: 16px; }
+    .buscador-btn     { background: var(--navy); color: white; border: none; padding: 0 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: stretch; transition: background .2s; flex-shrink: 0; }
+    .buscador-btn:hover { background: var(--cyan); color: var(--navy); }
+    .buscador-reset   { text-align: center; margin-top: 8px; font-size: 12px; color: var(--cyan); cursor: pointer; font-weight: 600; }
+    .buscador-reset span:hover { text-decoration: underline; }
+    @media(max-width:700px) {
+      .buscador-bar   { flex-direction: column; border-radius: 12px; }
+      .buscador-field { border-bottom: 1px solid var(--gray-100); width: 100%; }
+      .buscador-sep   { display: none; }
+      .buscador-btn   { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
+    }
+
+    /* ── MAPA + CALCULADORA (movido de index.html) ── */
+    .section-hdr { margin-bottom: 1.5rem; }
+    .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
+    .section-hdr p  { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+    .mapa-calc-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 0 2rem 2rem; max-width: 1100px; margin: 0 auto; align-items: start; }
+    #map { height: 420px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
+    .mapa-wrap { position: relative; }
+    .btn-ver-todos { display: none; position: absolute; top: 12px; left: 12px; z-index: 500; background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--navy); cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
+    .cta-mapa-wrap a { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; }
+    .calc-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 20px; padding: 1.5rem; }
+    .calc-row { margin-bottom: 1.25rem; }
+    .calc-label { font-size: 12px; font-weight: 500; color: var(--gray-600); display: block; margin-bottom: 8px; }
+    .calc-slider-wrap { display: flex; align-items: center; gap: 12px; }
+    .calc-slider-wrap input[type=range] { flex: 1; accent-color: var(--navy); }
+    .calc-val { font-size: 13px; font-weight: 600; color: var(--navy); min-width: 80px; text-align: right; }
+    .calc-select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-100); border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231B2A6B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    .calc-select:focus { outline: none; border-color: var(--cyan); }
+    .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.25rem 0; }
+    .calc-result-card { background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 0.75rem; text-align: center; }
+    .calc-result-card.main { border-color: var(--cyan); background: #e6f9fd; }
+    .calc-result-label { font-size: 11px; color: var(--gray-400); margin-bottom: 4px; }
+    .calc-result-val { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .calc-result-card.main .calc-result-val { font-size: 17px; }
+    .calc-rango { margin-bottom: 1rem; }
+    .calc-rango-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
+    .calc-rango-label span { font-weight: 600; color: var(--navy); }
+    .calc-bar-track { height: 6px; background: var(--gray-100); border-radius: 3px; margin-bottom: 4px; }
+    .calc-bar-fill { height: 6px; border-radius: 3px; background: var(--cyan); transition: width 0.2s; }
+    .calc-bar-extremos { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-400); }
+    .calc-nota { font-size: 10px; color: var(--gray-400); line-height: 1.5; margin-bottom: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
+    .calc-cta { display: block; text-align: center; background: var(--navy); color: white; border-radius: 100px; padding: 10px 20px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+    .calc-cta:hover { background: #0f1a45; }
+    .bpo-promo       { margin-top: 1.25rem; border-top: 1px dashed var(--gray-100); padding-top: 1.25rem; }
+    .bpo-promo-tag   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
+    .bpo-promo-text  { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 0.75rem; }
+    .bpo-promo-text strong { color: var(--navy); }
+    .bpo-promo-link  { font-size: 12px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; transition: color 0.2s; }
+    .bpo-promo-link:hover { color: var(--cyan); }
+    @media (max-width: 768px) { .mapa-calc-section { grid-template-columns: 1fr; } #map { height: 280px; } }
   </style>
 </head>
 <body>
@@ -237,6 +302,131 @@
           <div class="stat-lbl">Adjudicadas</div>
         </div>
       </div>
+      <!-- BUSCADOR (movido de index.html) -->
+      <div class="buscador-wrap">
+        <div class="buscador-intro">¿A dónde vas?</div>
+        <div class="buscador-bar">
+          <div class="buscador-field">
+            <label class="buscador-label">salgo desde</label>
+            <input class="buscador-input" id="b-origen" type="text" placeholder="Ciudad de origen..." autocomplete="off" list="list-origen">
+            <datalist id="list-origen"></datalist>
+          </div>
+          <div class="buscador-sep">→</div>
+          <div class="buscador-field">
+            <label class="buscador-label">voy hacia</label>
+            <input class="buscador-input" id="b-destino" type="text" placeholder="Ciudad destino..." autocomplete="off" list="list-destino">
+            <datalist id="list-destino"></datalist>
+          </div>
+          <div class="buscador-sep buscador-sep--cal">📅</div>
+          <div class="buscador-field buscador-field--fecha">
+            <label class="buscador-label">fecha de salida</label>
+            <select class="buscador-input" id="b-fecha">
+              <option value="">Cualquier fecha</option>
+            </select>
+          </div>
+          <button class="buscador-btn" onclick="buscarViajes()">Buscar →</button>
+        </div>
+        <div class="buscador-reset" id="buscador-reset" style="display:none">
+          <span onclick="resetBuscador()">✕ Ver todos los viajes disponibles</span>
+        </div>
+      </div>
+
+      <!-- MAPA + CALCULADORA (movido de index.html) -->
+      <div class="mapa-calc-section">
+        <!-- MAPA -->
+        <div class="mapa-col">
+          <div class="section-hdr">
+            <h2>Capacidad disponible en la red</h2>
+            <p>Transportadores activos hoy con espacio para tu carga</p>
+          </div>
+          <div class="mapa-wrap">
+            <div id="map"></div>
+            <button class="btn-ver-todos" id="btn-ver-todos">← Ver todos</button>
+          </div>
+          <div class="cta-mapa-wrap">
+            <a id="cta-mapa" href="#viajes-lista">Ver todos los viajes →</a>
+          </div>
+        </div>
+
+        <!-- CALCULADORA DE FLETE -->
+        <div class="calc-col">
+          <div class="section-hdr">
+            <h2>Estimador de flete</h2>
+            <p>Basado en más de 1.000 viajes reales en Colombia</p>
+          </div>
+          <div class="calc-card">
+            <div class="calc-row">
+              <label class="calc-label">Distancia</label>
+              <div class="calc-slider-wrap">
+                <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
+                <span class="calc-val" id="cc-km-out">400 km</span>
+              </div>
+            </div>
+            <div class="calc-row">
+              <label class="calc-label">Peso de la carga</label>
+              <div class="calc-slider-wrap">
+                <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
+                <span class="calc-val" id="cc-kg-out">5.000 kg</span>
+              </div>
+            </div>
+            <div class="calc-row">
+              <label class="calc-label">Paradas de entrega</label>
+              <div class="calc-slider-wrap">
+                <input type="range" id="cc-paradas" min="1" max="10" step="1" value="1">
+                <span class="calc-val" id="cc-paradas-out">1</span>
+              </div>
+            </div>
+            <div class="calc-row">
+              <label class="calc-label">Zona de destino</label>
+              <select id="cc-zona" class="calc-select">
+                <option value="">Sin especificar</option>
+                <option value="HUB">Hub (entre bodegas)</option>
+                <option value="ANTIOQUIA">Antioquia</option>
+                <option value="BOYACA">Boyacá</option>
+                <option value="CENTRO">Centro</option>
+                <option value="CUNDINAMARCA">Cundinamarca</option>
+                <option value="EJE CAFETERO">Eje Cafetero</option>
+                <option value="LLANOS">Llanos</option>
+                <option value="NORTE">Norte / Costa</option>
+                <option value="OCCIDENTE">Occidente</option>
+                <option value="ORIENTE">Oriente</option>
+                <option value="SANTANDERES">Santanderes</option>
+                <option value="SUR">Sur / Nariño</option>
+                <option value="TOLHUIL">Tolima / Huila</option>
+                <option value="VALLE">Valle</option>
+              </select>
+            </div>
+            <div class="calc-results" style="grid-template-columns:1fr auto;">
+              <div class="calc-result-card main">
+                <div class="calc-result-label">Precio base estimado</div>
+                <div class="calc-result-val" id="cc-base">—</div>
+              </div>
+              <div class="calc-result-card cc-ahorro" id="cc-ahorro-card" style="display:none;">
+                <div class="calc-result-label">Ahorra hasta</div>
+                <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">—</div>
+              </div>
+            </div>
+            <div class="calc-rango">
+              <div class="calc-rango-label">Rango histórico — <span id="cc-zona-badge">—</span></div>
+              <div class="calc-bar-track"><div class="calc-bar-fill" id="cc-bar"></div></div>
+              <div class="calc-bar-extremos">
+                <span id="cc-hist-min">��</span>
+                <span style="color:var(--gray-400);font-size:11px">mediana histórica</span>
+                <span id="cc-hist-max">—</span>
+              </div>
+            </div>
+            <div class="calc-nota">
+              Modelo: regresión polinomial (n=1.015 viajes) · Fuente: viajes Colombia 2025–2026
+            </div>
+            <div class="bpo-promo">
+              <div class="bpo-promo-tag">bpo logístico</div>
+              <p class="bpo-promo-text">¿Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestión logística integral</strong> — operación completa, sin carga administrativa.</p>
+              <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="viajes-grid" id="viajes-lista">
         <div class="loading-msg">Cargando viajes...</div>
       </div>
@@ -698,6 +888,132 @@
     msg.innerHTML = '<span style="color:var(--green);font-weight:600">✓ Subido — en revisión</span>';
     await cargarDocumentos();
   }
+
+  // ── BUSCADOR (movido de index.html) ──────────────────────────
+  function buscarViajes() {
+    const origenVal  = document.getElementById('b-origen').value.trim();
+    const destinoVal = document.getElementById('b-destino').value.trim();
+    const fechaVal   = document.getElementById('b-fecha').value.trim();
+    const origenQ    = origenVal.toLowerCase();
+    const destinoQ   = destinoVal.toLowerCase();
+
+    const hayFiltro = origenQ || destinoQ || fechaVal;
+    if (!hayFiltro) { resetBuscador(); return; }
+
+    const filtrados = viajesDisp.filter(v => {
+      const matchOrigen  = !origenQ  || (v.origen  || '').toLowerCase().includes(origenQ);
+      const matchDestino = !destinoQ || (v.destinos || '').toLowerCase().includes(destinoQ);
+      const matchFecha   = !fechaVal || (v.fecha_cargue || '') === fechaVal;
+      return matchOrigen && matchDestino && matchFecha;
+    });
+
+    viajesFiltrados = filtrados;
+    renderViajesFiltrados(filtrados, origenVal, destinoVal);
+    document.getElementById('buscador-reset').style.display = 'block';
+  }
+
+  function renderViajesFiltrados(lista, origenVal, destinoVal) {
+    const el = document.getElementById('viajes-lista');
+    if (!lista.length) {
+      el.innerHTML = '<div class="empty-msg">Sin resultados para esta búsqueda.</div>';
+      return;
+    }
+    const misRts = new Set(misOfertas.filter(o => o.estado === 'activa').map(o => o.viaje_rt));
+    el.innerHTML = lista.map(v => {
+      const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+      const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
+      const yaOferte = misRts.has(v.id);
+      return `
+        <div class="viaje-card">
+          <div class="viaje-head">
+            <div>
+              <div class="viaje-ruta">${v.origen || '—'} → ${destRes}</div>
+              <div class="viaje-sub">${destinos.join(' · ')}</div>
+            </div>
+            <span class="badge-estado badge-${v.estado}">${v.estado === 'en_subasta' ? 'En subasta' : 'Publicado'}</span>
+          </div>
+          <div class="viaje-meta-grid">
+            <div class="viaje-meta"><span class="meta-label">Peso</span><span class="meta-val">${Number(v.peso_kg||0).toLocaleString('es-CO')} kg</span></div>
+            <div class="viaje-meta"><span class="meta-label">Distancia</span><span class="meta-val">${Number(v.distancia_km||0).toLocaleString('es-CO')} km</span></div>
+            <div class="viaje-meta"><span class="meta-label">Cargue</span><span class="meta-val">${v.fecha_cargue || '—'}</span></div>
+            <div class="viaje-meta"><span class="meta-label">Precio ref.</span><span class="meta-val">$${Number(v.precio_sugerido||0).toLocaleString('es-CO')}</span></div>
+          </div>
+          <button class="btn-ofertar" ${yaOferte ? 'disabled style="opacity:.5"' : ''} onclick="abrirModalOferta('${v.id}')">
+            ${yaOferte ? '✓ Ya ofertaste' : 'Hacer oferta →'}
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  function resetBuscador() {
+    document.getElementById('b-origen').value  = '';
+    document.getElementById('b-destino').value = '';
+    document.getElementById('b-fecha').value   = '';
+    document.getElementById('buscador-reset').style.display = 'none';
+    viajesFiltrados = null;
+    renderViajes();
+  }
+
+  let viajesFiltrados = null;
+
+  ['b-origen','b-destino'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarViajes(); });
+  });
+
+  // ── CALCULADORA DE FLETE (movido de index.html) ──────────────
+  const CC_RANGOS = [
+    { label:'< 100 km',    min:0,    max:100,  p25:380000,   p75:800000   },
+    { label:'100–300 km',  min:100,  max:300,  p25:900000,   p75:1695000  },
+    { label:'300–600 km',  min:300,  max:600,  p25:1500000,  p75:2602500  },
+    { label:'600–1000 km', min:600,  max:1000, p25:1040025,  p75:4506945  },
+    { label:'≥ 1000 km',   min:1000, max:9999, p25:4250000,  p75:11030000 },
+  ];
+  const CC_ZONA_AJUSTE = {
+    'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
+    'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,
+    'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226
+  };
+  function ccNorm(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
+  function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
+
+  function ccCalc() {
+    const km      = parseInt(document.getElementById('cc-km').value);
+    const kg      = parseInt(document.getElementById('cc-kg').value);
+    const paradas = parseInt(document.getElementById('cc-paradas').value);
+    const zona    = document.getElementById('cc-zona').value;
+    document.getElementById('cc-km-out').textContent      = km.toLocaleString('es-CO') + ' km';
+    document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
+    document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
+    const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
+    let base;
+    if (km < 50) {
+      base = Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
+    } else {
+      base = Math.max(950000, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
+    }
+    document.getElementById('cc-base').textContent  = ccFmt(base);
+    const r = ccRango(km);
+    const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
+    const ahorroCard = document.getElementById('cc-ahorro-card');
+    if (ahorroPct > 0) {
+      document.getElementById('cc-ahorro').textContent = ahorroPct + '%';
+      ahorroCard.style.display = '';
+    } else {
+      ahorroCard.style.display = 'none';
+    }
+    document.getElementById('cc-zona-badge').textContent = r.label;
+    document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
+    document.getElementById('cc-hist-max').textContent   = ccFmt(r.p75);
+    const pct = Math.min(100, Math.max(0, (base - r.p25) / (r.p75 - r.p25) * 100));
+    document.getElementById('cc-bar').style.width = Math.round(pct) + '%';
+  }
+  document.getElementById('cc-km')?.addEventListener('input', ccCalc);
+  document.getElementById('cc-kg')?.addEventListener('input', ccCalc);
+  document.getElementById('cc-paradas')?.addEventListener('input', ccCalc);
+  document.getElementById('cc-zona')?.addEventListener('change', ccCalc);
+  ccCalc();
 </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>

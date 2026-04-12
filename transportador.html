@@ -493,6 +493,35 @@
   let misDocs       = [];
   let viajeOfertaActual = null;
 
+  const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
+
+  function parseCSV(text) {
+    const lineas = text.trim().split('\n');
+    if (lineas.length < 2) return [];
+    const headers = lineas[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+    return lineas.slice(1).map(linea => {
+      const valores = []; let val = '', enComillas = false;
+      for (let i = 0; i < linea.length; i++) {
+        const c = linea[i];
+        if (c === '"') enComillas = !enComillas;
+        else if (c === ',' && !enComillas) { valores.push(val.trim()); val = ''; }
+        else val += c;
+      }
+      valores.push(val.trim());
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (valores[i] || '').replace(/"/g, '').trim(); });
+      return obj;
+    });
+  }
+
+  function generarIdViaje(v) {
+    if (v.rt_total) return v.rt_total;
+    const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
+    let hash = 0;
+    for (let c = 0; c < raw.length; c++) hash = ((hash << 5) - hash + raw.charCodeAt(c)) | 0;
+    return 'v-' + Math.abs(hash).toString(36);
+  }
+
   const DOCS_CONFIG = [
     { tipo: 'camara_comercio',   nombre: 'Cámara de Comercio',          desc: 'Certificado de existencia y representación legal vigente.' },
     { tipo: 'rut',               nombre: 'RUT',                          desc: 'Registro Único Tributario actualizado.' },
@@ -622,12 +651,25 @@
     await Promise.all([cargarViajes(), cargarMisOfertas(), cargarDocumentos()]);
   }
 
-  // ── VIAJES ────────────────────────────────────────────────────
+  // ── VIAJES (desde Google Sheet CSV — misma fuente que index.html) ──
   async function cargarViajes() {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/viajes?estado=in.(activo,en_subasta)&order=created_at.desc`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
-    });
-    viajesDisp = await r.json() || [];
+    try {
+      const resp = await fetch(CSV_URL);
+      if (!resp.ok) throw new Error('No se pudo cargar CSV');
+      const texto = await resp.text();
+      const viajes = parseCSV(texto);
+
+      // Deduplicar por rt_total y generar ID
+      const vistos = {};
+      viajesDisp = [];
+      viajes.forEach(v => {
+        v.rt_total = generarIdViaje(v);
+        if (!vistos[v.rt_total]) { vistos[v.rt_total] = true; viajesDisp.push(v); }
+      });
+    } catch (e) {
+      console.warn('Error al cargar viajes:', e);
+      viajesDisp = [];
+    }
     document.getElementById('stat-disponibles').textContent = viajesDisp.length;
     renderViajes();
   }
@@ -642,10 +684,10 @@
     const misRts = new Set(misOfertas.filter(o => o.estado === 'activa').map(o => o.viaje_rt));
 
     lista.innerHTML = viajesDisp.map(v => {
-      const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+      const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
       const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
-      const yaOferte = misRts.has(v.id);
-      const numOfertas = misOfertas.filter(o => o.viaje_rt === v.id && o.estado === 'activa').length;
+      const yaOferte = misRts.has(v.rt_total);
+      const tipo     = (v.tipo_mercancia || '').trim() || 'General';
 
       return `
         <div class="viaje-card">
@@ -654,22 +696,20 @@
               <div class="viaje-ruta">${v.origen || '—'} → ${destRes}</div>
               <div class="viaje-sub">${destinos.join(' · ')}</div>
             </div>
-            <span class="badge-estado badge-${v.estado}">${v.estado === 'en_subasta' ? 'En subasta' : 'Publicado'}</span>
           </div>
           <div class="viaje-meta-grid">
             <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${v.fecha_cargue || '—'}</div></div>
             <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'}</div></div>
-            <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${v.tipo_mercancia || 'General'}</div></div>
-            <div class="meta-item"><div class="meta-label">Valor mercancía</div><div class="meta-value">${v.valor_mercancia ? '$' + Number(v.valor_mercancia).toLocaleString('es-CO') : '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${tipo}</div></div>
+            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—'}</div></div>
           </div>
           <div class="viaje-footer">
             <div class="precio-estimado">
-              ${v.instrucciones ? `<div style="font-size:11px;color:var(--gray-400);margin-bottom:4px">📋 ${v.instrucciones}</div>` : ''}
               ${yaOferte ? `<span style="color:var(--green);font-size:12px;font-weight:600">✓ Ya ofertaste en este viaje</span>` : ''}
             </div>
             ${yaOferte
               ? `<button class="btn-ya-oferte">Oferta enviada</button>`
-              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.id}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar →</button>`
+              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar →</button>`
             }
           </div>
         </div>`;
@@ -694,8 +734,8 @@
     }
     lista.innerHTML = misOfertas.map(o => {
       const fecha = new Date(o.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-      const viaje = viajesDisp.find(v => v.id === o.viaje_rt);
-      const ruta  = viaje ? `${viaje.origen} → ${(viaje.destinos||'').split(',')[0].trim()}` : o.viaje_rt;
+      const viaje = viajesDisp.find(v => v.rt_total === o.viaje_rt);
+      const ruta  = viaje ? `${viaje.origen} → ${(viaje.destino||'').split(',')[0].trim()}` : o.viaje_rt;
       return `
         <div class="oferta-row">
           <div>
@@ -778,13 +818,6 @@
       btn.disabled = false; btn.textContent = 'Enviar oferta →';
       return;
     }
-
-    // Actualizar estado del viaje a en_subasta
-    await fetch(`${SUPABASE_URL}/rest/v1/viajes?id=eq.${viajeOfertaActual.id}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ estado: 'en_subasta' })
-    });
 
     sucEl.textContent = '✓ Oferta enviada exitosamente.'; sucEl.style.display = 'block';
     btn.textContent = '✓ Enviada';
@@ -902,7 +935,7 @@
 
     const filtrados = viajesDisp.filter(v => {
       const matchOrigen  = !origenQ  || (v.origen  || '').toLowerCase().includes(origenQ);
-      const matchDestino = !destinoQ || (v.destinos || '').toLowerCase().includes(destinoQ);
+      const matchDestino = !destinoQ || (v.destino || '').toLowerCase().includes(destinoQ);
       const matchFecha   = !fechaVal || (v.fecha_cargue || '') === fechaVal;
       return matchOrigen && matchDestino && matchFecha;
     });
@@ -920,9 +953,9 @@
     }
     const misRts = new Set(misOfertas.filter(o => o.estado === 'activa').map(o => o.viaje_rt));
     el.innerHTML = lista.map(v => {
-      const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+      const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
       const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
-      const yaOferte = misRts.has(v.id);
+      const yaOferte = misRts.has(v.rt_total);
       return `
         <div class="viaje-card">
           <div class="viaje-head">
@@ -930,17 +963,19 @@
               <div class="viaje-ruta">${v.origen || '—'} → ${destRes}</div>
               <div class="viaje-sub">${destinos.join(' · ')}</div>
             </div>
-            <span class="badge-estado badge-${v.estado}">${v.estado === 'en_subasta' ? 'En subasta' : 'Publicado'}</span>
           </div>
           <div class="viaje-meta-grid">
-            <div class="viaje-meta"><span class="meta-label">Peso</span><span class="meta-val">${Number(v.peso_kg||0).toLocaleString('es-CO')} kg</span></div>
-            <div class="viaje-meta"><span class="meta-label">Distancia</span><span class="meta-val">${Number(v.distancia_km||0).toLocaleString('es-CO')} km</span></div>
-            <div class="viaje-meta"><span class="meta-label">Cargue</span><span class="meta-val">${v.fecha_cargue || '—'}</span></div>
-            <div class="viaje-meta"><span class="meta-label">Precio ref.</span><span class="meta-val">$${Number(v.precio_sugerido||0).toLocaleString('es-CO')}</span></div>
+            <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Cargue</div><div class="meta-value">${v.fecha_cargue || '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${(v.tipo_mercancia||'').trim() || 'General'}</div></div>
           </div>
-          <button class="btn-ofertar" ${yaOferte ? 'disabled style="opacity:.5"' : ''} onclick="abrirModalOferta('${v.id}')">
-            ${yaOferte ? '✓ Ya ofertaste' : 'Hacer oferta →'}
-          </button>
+          <div class="viaje-footer">
+            ${yaOferte
+              ? `<button class="btn-ya-oferte">Oferta enviada</button>`
+              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar →</button>`
+            }
+          </div>
         </div>`;
     }).join('');
   }
@@ -1068,10 +1103,10 @@
         if (oc) {
           bounds.push(oc);
           L.circleMarker(oc, { radius: 6, color: '#1B2A6B', fillColor: '#1B2A6B', fillOpacity: 0.8, weight: 2 })
-            .bindPopup(`<b>${v.origen}</b> → ${v.destinos || '—'}<br>$${Number(v.precio_sugerido||0).toLocaleString('es-CO')}`)
+            .bindPopup(`<b>${v.origen}</b> → ${v.destino || '—'}<br>${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : ''}`)
             .addTo(mapa);
         }
-        const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+        const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
         destinos.forEach(d => {
           const dc = getCoord(d);
           if (dc) {

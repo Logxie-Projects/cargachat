@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NETFLEET — Marketplace de Carga B2B Colombia</title>
-  <meta name="description" content="Conecta tu empresa con transportadores certificados. Licitación inversa en tiempo real. Sin intermediarios, sin comisiones ocultas. Todo Colombia.">
+  <title>NETFLEET — Deja de pagar de más por tu logística</title>
+  <meta name="description" content="Publica tu carga y deja que transportadores certificados MinTransporte compitan por ella. Precios reales de mercado, sin intermediarios.">
 
   <!-- Open Graph / WhatsApp / LinkedIn -->
   <meta property="og:type"        content="website">
@@ -834,9 +834,9 @@
     </div>
     <nav-menu class="nav-menu">
       <a href="#como-funciona">Cómo funciona</a>
-      <a href="#viajes">Viajes activos</a>
+      <a href="#sectores">Sectores</a>
       <a href="#contacto">Contacto</a>
-      <a href="transportador.html" style="opacity:0.55;font-size:13px">¿Eres transportador?</a>
+      <a href="transportador.html" style="opacity:0.4;font-size:13px">¿Eres transportador?</a>
     </nav-menu>
     <div class="nav-links">
       <div id="nav-auth-buttons">
@@ -870,7 +870,15 @@
 
         <div class="hero-badge">marketplace de carga b2b · colombia</div>
         <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
-        <p class="hero-sub">Calcula lo que deberías pagar en tu ruta. Basado en +1.000 viajes reales en Colombia.</p>
+        <p class="hero-sub">Publica tu carga y deja que <strong>transportadores certificados MinTransporte</strong> compitan por ella. Descubre el precio real de mercado en minutos.</p>
+
+        <div class="hero-sectores" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.75rem;">
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Oil & Gas</span>
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Agroquímicos</span>
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Health & Nutrition</span>
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Farmacéutico</span>
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Reciclables</span>
+        </div>
 
         <!-- MINI-CALCULADORA -->
         <div class="hero-calc">
@@ -912,7 +920,7 @@
           <span class="hero-map-card-route" id="hero-card-route">Yumbo → Armenia</span>
           <span class="hero-map-card-space" id="hero-card-space">📦 espacio disponible</span>
           <span class="hero-map-card-price" id="hero-card-price">$1.462.613 precio ref.</span>
-          <span class="hero-map-card-badge" id="hero-card-badge">🏷️ transportadores pujando</span>
+          <span class="hero-map-card-badge" id="hero-card-badge">transportadores compitiendo</span>
         </div>
         <div id="hero-map"></div>
         <p class="hero-map-caption">Capacidad disponible en la red · Colombia</p>
@@ -1001,11 +1009,57 @@
     </div>
   </div>
 
+  <!-- SECCIÓN SECTORES -->
+  <section id="sectores" style="background:#f8f9fc;padding:4rem 2rem;">
+    <div style="max-width:1100px;margin:0 auto;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#00BFDF;margin-bottom:0.5rem;">operaciones activas por sector</div>
+      <h2 style="font-size:clamp(1.5rem,3.5vw,2.2rem);font-weight:800;color:#1B2A6B;letter-spacing:-0.5px;margin-bottom:0.5rem;">Gestionamos carga en sectores <span style="color:#00BFDF;">regulados y de alto valor</span></h2>
+      <p style="font-size:14px;color:#5a6280;line-height:1.6;margin-bottom:2.5rem;max-width:560px;">Transportadores con experiencia específica en el manejo de tu tipo de carga. Cada sector tiene sus requerimientos y nuestra red los cumple.</p>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;">
+        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
+          <div style="font-size:24px;margin-bottom:0.75rem;">🛢️</div>
+          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Oil & Gas</div>
+          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Insumos, equipos y materiales para operaciones de exploración y producción.</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Carga pesada</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Rutas de campo</div>
+        </div>
+        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
+          <div style="font-size:24px;margin-bottom:0.75rem;">🌿</div>
+          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Agroquímicos</div>
+          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Fertilizantes, plaguicidas y productos de uso agrícola con requerimientos ADR.</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Carga peligrosa ADR</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Documentación MSDS</div>
+        </div>
+        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
+          <div style="font-size:24px;margin-bottom:0.75rem;">💊</div>
+          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Health & Nutrition</div>
+          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Suplementos, alimentos funcionales y productos de salud y bienestar.</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Temperatura controlada</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ BPD / BPM</div>
+        </div>
+        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
+          <div style="font-size:24px;margin-bottom:0.75rem;">🏥</div>
+          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Farmacéutico</div>
+          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Medicamentos, insumos médicos y productos regulados por INVIMA.</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Trazabilidad total</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Cadena de custodia</div>
+        </div>
+        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
+          <div style="font-size:24px;margin-bottom:0.75rem;">♻️</div>
+          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Reciclables</div>
+          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Cartón, plástico, metales y materiales de recuperación con alto volumen.</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Alto volumen</div>
+          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Frecuencia recurrente</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SECCIÓN DE VIAJES DISPONIBLES -->
   <div class="section" id="viajes">
     <div class="section-hdr">
-      <h2 id="viajes-titulo">Espacio disponible para tu carga hoy</h2>
-      <p id="viajes-subtitle">Transportadores activos en estas rutas · Listos para recibir tu publicación</p>
+      <h2 id="viajes-titulo">Así compiten los transportadores por tu carga</h2>
+      <p id="viajes-subtitle">Subastas activas ahora — precios reales de mercado</p>
     </div>
     <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
       🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
@@ -1201,6 +1255,7 @@
     <div class="footer-logo">NET<span>FLEET</span></div>
     <div class="footer-links">
       <a href="#como-funciona">Cómo funciona</a>
+      <a href="#sectores">Sectores</a>
       <a href="#empresas">Empresas</a>
       <a href="#transportadores">Transportadores</a>
       <a href="#contacto">Contacto</a>
@@ -1224,12 +1279,12 @@
           <input type="text" id="lead-nombre" class="modal-input" placeholder="Ej: Carlos Pérez · Grupo Nutresa">
         </div>
         <div class="lead-field">
-          <label class="calc-label">Email corporativo</label>
-          <input type="email" id="lead-email" class="modal-input" placeholder="carlos@empresa.com">
+          <label class="calc-label">WhatsApp</label>
+          <input type="tel" id="lead-whatsapp" class="modal-input" placeholder="+57 300 000 0000">
         </div>
         <div class="lead-field">
-          <label class="calc-label">Ruta principal</label>
-          <input type="text" id="lead-ruta" class="modal-input" placeholder="Ej: Bogotá → Medellín">
+          <label class="calc-label">Sector</label>
+          <select id="lead-sector" class="modal-input"><option value="">Sector...</option><option value="og">Oil & Gas</option><option value="agro">Agroquímicos</option><option value="health">Health & Nutrition</option><option value="farma">Farmacéutico</option><option value="reciclables">Reciclables</option><option value="otro">Otro</option></select>
         </div>
         <div class="lead-field">
           <label class="calc-label">Volumen mensual estimado</label>
@@ -1244,7 +1299,7 @@
 
         <div id="lead-error" style="font-size:12px;color:#e53e3e;margin-bottom:10px;display:none"></div>
         <button class="calc-cta" style="border:none;cursor:pointer;width:100%;font-size:14px;padding:12px" onclick="enviarLead()">
-          Solicitar cotización →
+          Quiero ver cuánto ahorro →
         </button>
       </div>
 
@@ -1636,19 +1691,14 @@
       document.getElementById('lead-modal').classList.remove('open');
     }
     async function enviarLead() {
-      const nombre  = document.getElementById('lead-nombre').value.trim();
-      const email   = document.getElementById('lead-email').value.trim();
-      const ruta    = document.getElementById('lead-ruta').value.trim();
-      const volumen = document.getElementById('lead-volumen').value;
-      const errEl   = document.getElementById('lead-error');
+      const nombre   = document.getElementById('lead-nombre').value.trim();
+      const whatsapp = document.getElementById('lead-whatsapp').value.trim();
+      const sector   = document.getElementById('lead-sector').value;
+      const volumen  = document.getElementById('lead-volumen').value;
+      const errEl    = document.getElementById('lead-error');
 
-      if (!nombre || !email || !volumen) {
-        errEl.textContent = 'Por favor completa nombre, email y volumen.';
-        errEl.style.display = 'block';
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        errEl.textContent = 'Ingresa un email válido.';
+      if (!nombre || !whatsapp || !volumen) {
+        errEl.textContent = 'Por favor completa nombre, WhatsApp y volumen.';
         errEl.style.display = 'block';
         return;
       }
@@ -1663,14 +1713,15 @@
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({ nombre_empresa: nombre, email, ruta, volumen, fuente: 'calculadora' })
+          body: JSON.stringify({ nombre_empresa: nombre, whatsapp, sector, volumen, fuente: 'calculadora' })
         });
         if (!resp.ok) throw new Error('Error al guardar');
         document.getElementById('lead-form-state').style.display    = 'none';
         document.getElementById('lead-success-state').style.display = 'block';
         // Limpiar campos
-        ['lead-nombre','lead-email','lead-ruta'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('lead-volumen').value = '';
+        ['lead-nombre','lead-whatsapp'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('lead-sector').value  = '';
+        document.getElementById('lead-volumen').value  = '';
       } catch(e) {
         errEl.textContent = 'Error de conexión. Intenta de nuevo.';
         errEl.style.display = 'block';
@@ -3340,7 +3391,7 @@
     <!-- Menú expandible -->
     <div class="fab-menu" id="fab-menu">
       <a class="fab-item" href="#como-funciona"><span class="fab-item-icon">❓</span> Cómo funciona</a>
-      <a class="fab-item" href="#viajes"><span class="fab-item-icon">📦</span> Ver ofertas</a>
+      <a class="fab-item" href="#lead-modal" onclick="abrirLeadModal()"><span class="fab-item-icon">📦</span> Publicar mi carga</a>
       <a class="fab-item" href="#"><span class="fab-item-icon">🏠</span> Ir al inicio</a>
     </div>
     <!-- Botón + -->

@@ -1015,5 +1015,83 @@
   ccCalc();
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ── MAPA BÁSICO ─────────────────────────────────────────────
+  (function() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl || typeof L === 'undefined') return;
+
+    const mapa = L.map('map', { zoomControl: true }).setView([4.5709, -74.2973], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 18
+    }).addTo(mapa);
+
+    // Diccionario mínimo de ciudades principales
+    const CIUDADES = {
+      'funza':[4.7174,-74.1942],'bogota':[4.711,-74.0721],'yumbo':[3.585,-76.4953],'cali':[3.4516,-76.532],
+      'medellin':[6.2476,-75.5658],'barranquilla':[10.9685,-74.7813],'bucaramanga':[7.1193,-73.1227],
+      'cartagena':[10.3997,-75.5144],'cucuta':[7.8939,-72.5078],'pereira':[4.8133,-75.6961],
+      'manizales':[5.0689,-75.5174],'ibague':[4.4389,-75.2322],'neiva':[2.9273,-75.2819],
+      'villavicencio':[4.142,-73.6266],'pasto':[1.2136,-77.2811],'monteria':[8.7479,-75.8814],
+      'armenia':[4.5339,-75.6811],'santa marta':[11.2408,-74.199],'tunja':[5.5353,-73.3678],
+      'popayan':[2.4419,-76.6064],'palmira':[3.5394,-76.3036],'buga':[3.9008,-76.3032],
+      'tulua':[4.0847,-76.1995],'buenaventura':[3.8824,-77.0193],'espinal':[4.1489,-74.884],
+      'girardot':[4.3024,-74.8022],'sogamoso':[5.7146,-72.934],'duitama':[5.8269,-73.034],
+      'barrancabermeja':[7.0653,-73.8547],'valledupar':[10.4769,-73.2503],'sincelejo':[9.3047,-75.3954],
+      'riohacha':[11.5444,-72.907],'florencia':[1.6144,-75.6062],'yopal':[5.3378,-72.3959],
+      'arauca':[7.0847,-70.7592],'mocoa':[1.1491,-76.6513],'zipaquira':[5.0225,-73.9983],
+      'chia':[4.8637,-74.0632],'facatativa':[4.8148,-74.3553],'soacha':[4.5794,-74.2175],
+      'mosquera':[4.7064,-74.2329],'cajica':[4.9186,-73.9736],'fusagasuga':[4.3438,-74.3638],
+      'envigado':[6.1694,-75.5784],'itagui':[6.1844,-75.5992],'rionegro':[6.1453,-75.3741],
+      'bello':[6.3383,-75.5568],'apartado':[7.8832,-76.6259],'caucasia':[7.9851,-75.199],
+      'turbo':[8.093,-76.7279],'san gil':[6.5597,-73.1372],'piedecuesta':[6.9885,-73.0495],
+      'aguachica':[8.3111,-73.6172],'ocana':[8.2425,-73.3588],'pamplona':[7.3752,-72.6489]
+    };
+
+    function norm(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+    function getCoord(ciudad) {
+      const n = norm(ciudad);
+      for (const [k, v] of Object.entries(CIUDADES)) { if (n.includes(k) || k.includes(n)) return v; }
+      return null;
+    }
+
+    // Esperar a que viajesDisp se cargue, luego dibujar markers
+    const interval = setInterval(() => {
+      if (typeof viajesDisp === 'undefined' || !viajesDisp.length) return;
+      clearInterval(interval);
+
+      const bounds = [];
+      viajesDisp.forEach(v => {
+        const oc = getCoord(v.origen);
+        if (oc) {
+          bounds.push(oc);
+          L.circleMarker(oc, { radius: 6, color: '#1B2A6B', fillColor: '#1B2A6B', fillOpacity: 0.8, weight: 2 })
+            .bindPopup(`<b>${v.origen}</b> → ${v.destinos || '—'}<br>$${Number(v.precio_sugerido||0).toLocaleString('es-CO')}`)
+            .addTo(mapa);
+        }
+        const destinos = (v.destinos || '').split(',').map(d => d.trim()).filter(Boolean);
+        destinos.forEach(d => {
+          const dc = getCoord(d);
+          if (dc) {
+            bounds.push(dc);
+            L.circleMarker(dc, { radius: 4, color: '#00BFD8', fillColor: '#00BFD8', fillOpacity: 0.7, weight: 1 })
+              .addTo(mapa);
+          }
+        });
+        // Línea recta origen→destinos
+        if (oc) {
+          destinos.forEach(d => {
+            const dc = getCoord(d);
+            if (dc) L.polyline([oc, dc], { color: '#1B2A6B', weight: 2, opacity: 0.4, dashArray: '4 4' }).addTo(mapa);
+          });
+        }
+      });
+
+      if (bounds.length > 1) mapa.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+    }, 500);
+  })();
+</script>
 </body>
 </html>

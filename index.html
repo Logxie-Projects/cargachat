@@ -143,7 +143,7 @@
     ═══════════════════════════════════════════════════════════ */
     .hero {
       background: var(--navy);
-      padding: 5rem 2rem 0;
+      padding: 4rem 2rem 3rem;
       position: relative;
       overflow: hidden;
     }
@@ -160,7 +160,7 @@
 
     .hero-inner {
       max-width: 1100px; margin: 0 auto;
-      display: flex; align-items: center; gap: 4rem;
+      display: flex; align-items: flex-start; gap: 3rem;
       text-align: left;
     }
     .hero-content { flex: 1; min-width: 0; }
@@ -176,20 +176,22 @@
     }
 
     .hero h1 {
-      font-size: clamp(2.4rem, 5.5vw, 4rem);
-      font-weight: 700; color: white;
-      line-height: 1.1; letter-spacing: 1px;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; color: white;
+      line-height: 1.1; letter-spacing: -1px;
       text-transform: uppercase;
-      margin-bottom: 1.25rem;
+      margin-bottom: 0.75rem;
     }
     .hero h1 span { color: var(--cyan); }
 
     .hero-sub {
-      font-size: 1rem; color: rgba(255,255,255,0.6);
+      font-size: 0.9rem; color: rgba(255,255,255,0.55);
       margin: 0 0 0.75rem;
-      line-height: 1.7; font-weight: 300;
+      line-height: 1.6; font-weight: 300;
+      max-width: 480px;
     }
     .hero-sub strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+    .hero-sectores { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
 
     .hero-proof {
       font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
@@ -202,7 +204,7 @@
     .hero-cta-main:hover { filter:brightness(1.08); }
 
     /* Mini-calculadora del hero */
-    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:1.25rem 1.5rem; margin-top:1.5rem; }
+    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:1rem 1.25rem; margin-top:0.75rem; }
     .hero-calc-row { margin-bottom:0.9rem; }
     .hero-calc-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
     .hero-calc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.5); }
@@ -236,8 +238,8 @@
     @media(max-width:768px){ .como-solo-steps { flex-direction:column; align-items:center; } .como-solo-step { max-width:100%; } .bloque-inner--generador { text-align:left; } }
 
     /* Mini-mapa hero */
-    .hero-visual { flex: 0 0 420px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); align-self: stretch; }
-    #map { width: 100%; height: 100%; min-height: 420px; border-radius: 16px; z-index: 1; }
+    .hero-visual { flex: 0 0 400px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); align-self: flex-start; margin-top: 1rem; }
+    #map { width: 100%; height: 420px; border-radius: 16px; z-index: 1; }
     .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(255,255,255,0.95); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
     .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
     .hero-map-card-route { font-size: 13px; font-weight: 600; color: var(--navy); }
@@ -872,13 +874,44 @@
         <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
         <p class="hero-sub">Publica tu carga y deja que <strong>transportadores certificados MinTransporte</strong> compitan por ella. Descubre el precio real de mercado en minutos.</p>
 
-        <div class="hero-sectores" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.75rem;">
+        <div class="hero-sectores">
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Oil & Gas</span>
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Agroquímicos</span>
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Health & Nutrition</span>
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Farmacéutico</span>
           <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Reciclables</span>
         </div>
+
+        <!-- MINI-CALCULADORA -->
+        <div class="hero-calc">
+          <div class="hero-calc-row">
+            <div class="hero-calc-label-row">
+              <label class="hero-calc-label">Distancia</label>
+              <span class="hero-calc-val" id="hc-km-out">400 km</span>
+            </div>
+            <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
+          </div>
+          <div class="hero-calc-row">
+            <div class="hero-calc-label-row">
+              <label class="hero-calc-label">Peso de la carga</label>
+              <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
+            </div>
+            <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
+          </div>
+          <div class="hero-calc-result">
+            <div class="hero-calc-result-main">
+              <span class="hero-calc-label-sm">tu flete estimado</span>
+              <span class="hero-calc-price" id="hc-price">—</span>
+            </div>
+            <div class="hero-calc-result-savings" id="hc-savings-wrap">
+              <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
+              <span class="hero-calc-label-sm">menos que el mercado</span>
+            </div>
+          </div>
+          <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
+        </div>
+
+        <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
 
       </div>
 
@@ -899,40 +932,6 @@
 
     </div>
   </section>
-
-  <!-- MINI-CALCULADORA (debajo del hero, mismo fondo navy) -->
-  <div style="background:var(--navy);padding:0 2rem 3rem;">
-    <div style="max-width:1100px;margin:0 auto;">
-      <div class="hero-calc">
-        <div class="hero-calc-row">
-          <div class="hero-calc-label-row">
-            <label class="hero-calc-label">Distancia</label>
-            <span class="hero-calc-val" id="hc-km-out">400 km</span>
-          </div>
-          <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
-        </div>
-        <div class="hero-calc-row">
-          <div class="hero-calc-label-row">
-            <label class="hero-calc-label">Peso de la carga</label>
-            <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
-          </div>
-          <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
-        </div>
-        <div class="hero-calc-result">
-          <div class="hero-calc-result-main">
-            <span class="hero-calc-label-sm">tu flete estimado</span>
-            <span class="hero-calc-price" id="hc-price">—</span>
-          </div>
-          <div class="hero-calc-result-savings" id="hc-savings-wrap">
-            <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
-            <span class="hero-calc-label-sm">menos que el mercado</span>
-          </div>
-        </div>
-        <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
-      </div>
-      <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
-    </div>
-  </div>
 
   <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
   <div class="propval-section">

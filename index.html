@@ -237,7 +237,7 @@
 
     /* Mini-mapa hero */
     .hero-visual { flex: 0 0 420px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); align-self: stretch; }
-    #hero-map { width: 100%; height: 100%; min-height: 300px; border-radius: 16px; z-index: 1; }
+    #map { width: 100%; height: 100%; min-height: 420px; border-radius: 16px; z-index: 1; }
     .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(255,255,255,0.95); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
     .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
     .hero-map-card-route { font-size: 13px; font-weight: 600; color: var(--navy); }
@@ -574,7 +574,7 @@
        MAPA — necesita altura explícita o Leaflet no se renderiza
     ═══════════════════════════════════════════════════════════ */
     .mapa-calc-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 0 2rem 3rem; max-width: 1100px; margin: 0 auto; align-items: start; }
-    #map { height: 420px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
+    /* #map styles moved to hero-visual */
     .calc-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 20px; padding: 1.5rem; }
     .calc-row { margin-bottom: 1.25rem; }
     .calc-label { font-size: 12px; font-weight: 500; color: var(--gray-600); display: block; margin-bottom: 8px; }
@@ -913,7 +913,7 @@
 
       </div>
 
-      <!-- COLUMNA DERECHA: mini-mapa de rutas activas -->
+      <!-- COLUMNA DERECHA: mapa de rutas activas -->
       <div class="hero-visual" id="hero-visual">
         <div class="hero-map-card" id="hero-live-card">
           <span class="hero-map-card-pulse"></span>
@@ -922,8 +922,10 @@
           <span class="hero-map-card-price" id="hero-card-price">$1.462.613 precio ref.</span>
           <span class="hero-map-card-badge" id="hero-card-badge">transportadores compitiendo</span>
         </div>
-        <div id="hero-map"></div>
-        <p class="hero-map-caption">Capacidad disponible en la red · Colombia</p>
+        <div class="mapa-wrap">
+          <div id="map"></div>
+          <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
+        </div>
       </div>
 
     </div>
@@ -2487,7 +2489,6 @@
     let viajeSeleccionado = -1; // índice del viaje activo (-1 = todos visibles)
 
     async function initMapa(viajes) {
-      // #map fue movido a transportador.html — si no existe, salir silenciosamente
       if (!document.getElementById('map')) return;
       console.log(`[MAPA] initMapa llamado con ${viajes.length} viajes:`, viajes.map(v => v.origen + ' → ' + v.destino));
       mapaLeaflet = L.map('map', { zoomControl: true })
@@ -2996,194 +2997,34 @@
   </script>
 
   <script>
-    // ── MINI-MAPA HERO ─────────────────────────────────────────────
-    let _heroMapInstance = null;
-    let _heroDrawFn = null; // se llama desde cargarViajes() con los datos reales
-
-    function initHeroMap() {
-      const heroMap = L.map('hero-map', {
-        zoomControl: true, attributionControl: false
-      }).setView([4.5709, -74.2973], 6);
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 18
-      }).addTo(heroMap);
-
-      _heroDrawFn = async function(viajes) {
-        const todosLosPuntos = [];
-        const origenesConteo = {};
-        const viajesHero = [];
-
-        for (let viajeIdx = 0; viajeIdx < (viajes || []).length; viajeIdx++) {
-          const v = viajes[viajeIdx];
-          const origen = (v.origen || '').split(',')[0].trim();
-          const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-          const precioBase = estimarPrecio(v.km, v.peso_kg, destinos.length || 1, v.destino, v.origen);
-          const precioCorto = formatPrecioCorto(precioBase);
-
-          const grupo = L.layerGroup();
-          const bounds = [];
-          const puntosRuta = [];
-
-          // Pin ORIGEN con precio estilo Airbnb
-          const coordBase = await getCoords(origen);
-          let coordOrigen = null;
-          if (coordBase) {
-            const n = origenesConteo[origen] || 0;
-            origenesConteo[origen] = n + 1;
-            coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.06, coordBase[1] + n * 0.04];
-            todosLosPuntos.push(coordOrigen);
-            bounds.push(coordOrigen);
-            puntosRuta.push(coordOrigen);
-
-            const texto = precioCorto || 'A convenir';
-            const w = texto.length > 7 ? 90 : 68;
-            const icon = L.divIcon({
-              html: `<div class="precio-pin">${texto}</div>`,
-              iconSize: [w, 28], iconAnchor: [w / 2, 36], className: ''
-            });
-            const marker = L.marker(coordOrigen, { icon });
-            marker.bindTooltip(
-              `<div class="pin-preview"><b>${v.origen}</b><div class="pin-preview-dest">→ ${destinos.join(', ')}</div></div>`,
-              { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' }
-            );
-            grupo.addLayer(marker);
-          }
-
-          // Pins DESTINOS con geocoding + nearest-neighbor + 2-opt
-          const destinosConCoord = await Promise.all(
-            destinos.map(async d => ({ nombre: d, coord: await getCoords(d) }))
-          );
-          const destinosValidos = destinosConCoord.filter(d => d.coord !== null);
-
-          // Detectar ruta circular
-          const origenKey = normalizarNombre(origen);
-          let destinoRetorno = null;
-          let destinosParaOptimizar = [...destinosValidos];
-          if (coordBase) {
-            const idxRet = destinosValidos.findIndex(d => {
-              const porNombre = variantes(d.nombre).some(v => v === origenKey || origenKey.includes(v) || v.includes(origenKey));
-              const porCoord = d.coord && Math.hypot(d.coord[0] - coordBase[0], d.coord[1] - coordBase[1]) < 0.05;
-              return porNombre || porCoord;
-            });
-            if (idxRet !== -1) {
-              destinoRetorno = destinosValidos[idxRet];
-              destinosParaOptimizar = destinosValidos.filter((_, i) => i !== idxRet);
-            }
-          }
-
-          // Nearest-neighbor
-          const destinosOrdenados = [];
-          let puntoActual = coordOrigen || (destinosParaOptimizar[0]?.coord ?? null);
-          const pendientes = [...destinosParaOptimizar];
-          while (pendientes.length > 0) {
-            let minDist = Infinity, minIdx = 0;
-            pendientes.forEach((d, i) => {
-              const dist = Math.hypot(d.coord[0] - puntoActual[0], d.coord[1] - puntoActual[1]);
-              if (dist < minDist) { minDist = dist; minIdx = i; }
-            });
-            destinosOrdenados.push(pendientes[minIdx]);
-            puntoActual = pendientes[minIdx].coord;
-            pendientes.splice(minIdx, 1);
-          }
-
-          // 2-opt
-          if (destinosOrdenados.length > 3) {
-            const pts = coordOrigen ? [{ coord: coordOrigen }, ...destinosOrdenados] : destinosOrdenados;
-            const dist2 = (a, b) => Math.hypot(a.coord[0] - b.coord[0], a.coord[1] - b.coord[1]);
-            const offset = coordOrigen ? 1 : 0;
-            let improved = true;
-            while (improved) {
-              improved = false;
-              for (let i = offset; i < pts.length - 1; i++) {
-                for (let j = i + 1; j < pts.length; j++) {
-                  const before = dist2(pts[i-1] ?? pts[0], pts[i]) + dist2(pts[j], pts[j+1] ?? pts[pts.length-1]);
-                  const after  = dist2(pts[i-1] ?? pts[0], pts[j]) + dist2(pts[i], pts[j+1] ?? pts[pts.length-1]);
-                  if (after < before - 1e-10) { pts.splice(i, j-i+1, ...pts.slice(i, j+1).reverse()); improved = true; }
-                }
-              }
-            }
-            destinosOrdenados.splice(0, destinosOrdenados.length, ...pts.slice(offset));
-          }
-
-          if (destinoRetorno) destinosOrdenados.push(destinoRetorno);
-
-          const totalParadas = destinosOrdenados.length;
-          destinosOrdenados.forEach((dest, i) => {
-            todosLosPuntos.push(dest.coord);
-            bounds.push(dest.coord);
-            puntosRuta.push(dest.coord);
-            const numParada = totalParadas > 1 ? `${i + 1}` : '';
-            const esRetornoPin = destinoRetorno && i === totalParadas - 1;
-            const iconDest = L.divIcon({
-              html: esRetornoPin
-                ? `<div style="position:relative"><div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div><div style="position:absolute;top:-10px;left:12px;background:#00B4D8;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap">↩ ${numParada}</div></div>`
-                : `<div style="position:relative"><div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}</div>`,
-              iconSize: [12, 12], iconAnchor: [6, 6], className: ''
-            });
-            grupo.addLayer(
-              L.marker(dest.coord, { icon: iconDest })
-                .bindPopup(esRetornoPin ? `<b style="color:#00B4D8">↩ Retorno · Parada ${numParada}:</b> ${dest.nombre}` : `<b style="color:#1B2A6B">Parada${numParada ? ' '+numParada : ''}:</b> ${dest.nombre}`)
-            );
-          });
-
-          if (destinoRetorno && coordOrigen) puntosRuta.push(coordOrigen);
-
-          // Ruta OSRM con fallback a línea recta
-          if (puntosRuta.length > 1) {
-            const lineaRecta = L.polyline(puntosRuta, { color: '#1B2A6B', weight: 2.5, opacity: 0.6, dashArray: '6 4' });
-            grupo.addLayer(lineaRecta);
-            obtenerRutaOSRM(puntosRuta).then(rutaReal => {
-              if (rutaReal) { grupo.removeLayer(lineaRecta); grupo.addLayer(L.polyline(rutaReal, { color: '#1B2A6B', weight: 3, opacity: 0.75 })); }
-            });
-          }
-
-          grupo.addTo(heroMap);
-
-          // Datos para el card rotativo
-          const extras = destinos.length - 1;
-          const routeLabel = extras > 0 ? `${origen} → ${destinos[0]} +${extras}` : `${origen} → ${destinos[0] || '—'}`;
-          const precio = precioBase > 0 ? formatCOP(precioBase) : '';
-          const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
-          const pesoLabel = pesoKg > 0 ? `📦 ${Number(pesoKg).toLocaleString('es-CO')} kg disponibles` : '📦 espacio disponible';
-          viajesHero.push({ route: routeLabel, price: precio, space: pesoLabel });
+    // ── HERO CARD ROTATIVO — usa datos de viajesData (cargados por cargarViajes) ──
+    let _heroDrawFn = function(viajes) {
+      const viajesHero = [];
+      for (const v of (viajes || [])) {
+        const origen = (v.origen || '').split(',')[0].trim();
+        const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+        const extras = destinos.length - 1;
+        const routeLabel = extras > 0 ? `${origen} → ${destinos[0]} +${extras}` : `${origen} → ${destinos[0] || '—'}`;
+        const precioBase = estimarPrecio(v.km, v.peso_kg, destinos.length || 1, v.destino, v.origen);
+        const precio = precioBase > 0 ? formatCOP(precioBase) : '';
+        const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
+        const pesoLabel = pesoKg > 0 ? `📦 ${Number(pesoKg).toLocaleString('es-CO')} kg disponibles` : '📦 espacio disponible';
+        viajesHero.push({ route: routeLabel, price: precio, space: pesoLabel });
+      }
+      if (viajesHero.length > 0) {
+        let idx = 0;
+        const routeEl = document.getElementById('hero-card-route');
+        const priceEl = document.getElementById('hero-card-price');
+        const spaceEl = document.getElementById('hero-card-space');
+        function actualizarHeroCard() {
+          if (routeEl) routeEl.textContent = viajesHero[idx].route;
+          if (priceEl) priceEl.textContent = viajesHero[idx].price ? viajesHero[idx].price + ' precio ref.' : '';
+          if (spaceEl) spaceEl.textContent = viajesHero[idx].space || '📦 espacio disponible';
         }
-
-        if (todosLosPuntos.length > 1) {
-          heroMap.fitBounds(todosLosPuntos, { padding: [40, 40], maxZoom: 12 });
-        }
-
-        // Leyenda
-        const leyenda = L.control({ position: 'bottomleft' });
-        leyenda.onAdd = () => {
-          const div = L.DomUtil.create('div');
-          div.innerHTML = `<div style="background:white;padding:8px 12px;border-radius:8px;border:1px solid #eef0f6;font-family:'DM Sans',sans-serif;font-size:11px;">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><div style="background:white;border:2px solid #1B2A6B;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;color:#1B2A6B;">$</div><span style="color:#5a6280">Origen · precio</span></div>
-            <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#1B2A6B;"></div><span style="color:#5a6280">Destino</span></div>
-          </div>`;
-          return div;
-        };
-        leyenda.addTo(heroMap);
-
-        // Card rotativo
-        if (viajesHero.length > 0) {
-          let idx = 0;
-          const routeEl = document.getElementById('hero-card-route');
-          const priceEl = document.getElementById('hero-card-price');
-          const spaceEl = document.getElementById('hero-card-space');
-          function actualizarHeroCard() {
-            if (routeEl) routeEl.textContent = viajesHero[idx].route;
-            if (priceEl) priceEl.textContent = viajesHero[idx].price ? viajesHero[idx].price + ' precio ref.' : '';
-            if (spaceEl) spaceEl.textContent = viajesHero[idx].space || '📦 espacio disponible';
-          }
-          actualizarHeroCard();
-          setInterval(() => { idx = (idx+1) % viajesHero.length; actualizarHeroCard(); }, 3000);
-        }
-      };
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initHeroMap);
-    } else { initHeroMap(); }
+        actualizarHeroCard();
+        setInterval(() => { idx = (idx+1) % viajesHero.length; actualizarHeroCard(); }, 3000);
+      }
+    };
   </script>
 
   <!-- BOTONES FLOTANTES -->

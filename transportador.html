@@ -223,6 +223,37 @@
     .bpo-promo-link  { font-size: 12px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; transition: color 0.2s; }
     .bpo-promo-link:hover { color: var(--cyan); }
     @media (max-width: 768px) { .mapa-calc-section { grid-template-columns: 1fr; } #map { height: 280px; } }
+
+    /* ── Pins precio estilo Airbnb ── */
+    .precio-pin {
+      background: white;
+      border: 2.5px solid var(--navy);
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-size: 11px; font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      display: inline-block;
+      line-height: 1.4;
+    }
+    .pin-preview-tooltip {
+      background: white;
+      border: 1.5px solid var(--gray-100);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--navy);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .pin-preview-tooltip::before { display: none; }
+    .pin-preview b { font-weight: 700; }
+    .pin-preview-dest { color: var(--gray-600); margin-top: 2px; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -1082,6 +1113,46 @@
     return null;
   }
 
+  function formatPrecioCorto(precio) {
+    const n = parseFloat(precio);
+    if (!n || n === 0) return null;
+    if (n >= 1000000) { const m = n / 1000000; return '$' + (Number.isInteger(m) ? m : m.toFixed(1)) + 'M'; }
+    return '$' + Math.round(n / 1000) + 'K';
+  }
+
+  function estimarPrecioMapa(km, kg, paradas, destino, origen) {
+    km = parseInt(km) || 0; kg = parseInt(kg) || 0; paradas = parseInt(paradas) || 1;
+    if (!km || !kg) return 0;
+    const destNorm = ccNorm(destino || ''); const origNorm = ccNorm(origen || '');
+    // Detectar zona
+    let zona = '';
+    const CC_HUB = ['funza','yumbo','espinal'];
+    const esOrigHub = CC_HUB.some(h => origNorm.includes(h));
+    const dests = destNorm.split(',').map(d => d.trim()).filter(Boolean);
+    const todoDestHub = dests.length > 0 && dests.every(d => CC_HUB.some(h => d.includes(h)));
+    if (esOrigHub && todoDestHub) zona = 'HUB';
+    if (!zona) {
+      const CC_ZC = {
+        'LLANOS':['villavicencio','yopal','arauca','acacias','granada'],
+        'BOYACA':['tunja','duitama','sogamoso','chiquinquira','paipa'],
+        'SANTANDERES':['bucaramanga','cucuta','giron','floridablanca','piedecuesta','barrancabermeja','pamplona','ocana'],
+        'CUNDINAMARCA':['zipaquira','chia','facatativa','soacha','mosquera','madrid','cajica'],
+        'EJE CAFETERO':['armenia','manizales','pereira','dosquebradas','cartago','chinchina'],
+        'VALLE':['cali','palmira','buga','tulua','yumbo','jamundi'],
+        'ANTIOQUIA':['medellin','rionegro','envigado','itagui','bello','sabaneta','caucasia','apartado'],
+        'CENTRO':['ibague','girardot','melgar','honda'],
+        'TOLHUIL':['neiva','garzon','pitalito','espinal'],
+        'OCCIDENTE':['cali','palmira','buga','buenaventura'],
+        'NORTE':['monteria','valledupar','barranquilla','cartagena','santa marta','sincelejo','riohacha'],
+        'SUR':['pasto','ipiales','tumaco','popayan','mocoa','florencia']
+      };
+      for (const [z, cs] of Object.entries(CC_ZC)) { if (cs.some(c => destNorm.includes(c))) { zona = z; break; } }
+    }
+    const aj = CC_ZONA_AJUSTE[zona] || 0;
+    if (km < 50) return Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
+    return Math.max(950000, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + aj - 306248);
+  }
+
   function initMapaTransportador() {
     const mapEl = document.getElementById('map');
     if (!mapEl || typeof L === 'undefined' || !viajesDisp.length) return;
@@ -1093,33 +1164,59 @@
       maxZoom: 18
     }).addTo(mapa);
 
-    // invalidateSize para recalcular después de que el panel sea visible
     setTimeout(() => mapa.invalidateSize(), 100);
 
     const bounds = [];
+    const origenesConteo = {};
+
     viajesDisp.forEach(v => {
-      const oc = getCoord(v.origen);
-      if (oc) {
-        bounds.push(oc);
-        L.circleMarker(oc, { radius: 6, color: '#1B2A6B', fillColor: '#1B2A6B', fillOpacity: 0.8, weight: 2 })
-          .bindPopup(`<b>${v.origen}</b> → ${v.destino || '—'}<br>${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : ''}`)
-          .addTo(mapa);
-      }
+      const origen = (v.origen || '').split(',')[0].trim();
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-      destinos.forEach(d => {
-        const dc = getCoord(d);
-        if (dc) {
-          bounds.push(dc);
-          L.circleMarker(dc, { radius: 4, color: '#00BFD8', fillColor: '#00BFD8', fillOpacity: 0.7, weight: 1 })
-            .addTo(mapa);
-        }
+      const numParadas = destinos.length || 1;
+      const precio = estimarPrecioMapa(v.km, v.peso_kg, numParadas, v.destino, v.origen);
+      const precioCorto = formatPrecioCorto(precio) || 'A convenir';
+
+      const coordBase = getCoord(origen);
+      if (!coordBase) return;
+
+      // Offset para pins del mismo origen
+      const n = origenesConteo[origen] || 0;
+      origenesConteo[origen] = n + 1;
+      const coordOrigen = n === 0 ? coordBase : [coordBase[0] + n * 0.06, coordBase[1] + n * 0.04];
+
+      bounds.push(coordOrigen);
+
+      // Pin estilo Airbnb con precio
+      const w = precioCorto.length > 7 ? 90 : 68;
+      const icon = L.divIcon({
+        html: `<div class="precio-pin">${precioCorto}</div>`,
+        iconSize: [w, 28], iconAnchor: [w / 2, 36], className: ''
       });
-      if (oc) {
-        destinos.forEach(d => {
-          const dc = getCoord(d);
-          if (dc) L.polyline([oc, dc], { color: '#1B2A6B', weight: 2, opacity: 0.4, dashArray: '4 4' }).addTo(mapa);
+      const marker = L.marker(coordOrigen, { icon });
+      const destLabel = destinos.join(', ');
+      marker.bindTooltip(
+        `<div class="pin-preview"><b>${origen}</b><div class="pin-preview-dest">→ ${destLabel}</div></div>`,
+        { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' }
+      );
+      marker.addTo(mapa);
+
+      // Pins destino + líneas
+      destinos.forEach((d, i) => {
+        const dc = getCoord(d);
+        if (!dc) return;
+        bounds.push(dc);
+
+        const numLabel = destinos.length > 1 ? `${i + 1}` : '';
+        const iconDest = L.divIcon({
+          html: `<div style="position:relative">
+            <div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+            ${numLabel ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numLabel}</div>` : ''}
+          </div>`,
+          iconSize: [12, 12], iconAnchor: [6, 6], className: ''
         });
-      }
+        L.marker(dc, { icon: iconDest }).bindPopup(`<b>Parada${numLabel ? ' ' + numLabel : ''}:</b> ${d}`).addTo(mapa);
+        L.polyline([coordOrigen, dc], { color: '#1B2A6B', weight: 2.5, opacity: 0.6 }).addTo(mapa);
+      });
     });
 
     if (bounds.length > 1) {

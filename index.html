@@ -1,1359 +1,783 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NETFLEET — Deja de pagar de más por tu logística</title>
-  <meta name="description" content="Publica tu carga y deja que transportadores certificados MinTransporte compitan por ella. Precios reales de mercado, sin intermediarios.">
-
-  <!-- Open Graph / WhatsApp / LinkedIn -->
-  <meta property="og:type"        content="website">
-  <meta property="og:url"         content="https://netfleet.app/">
-  <meta property="og:title"       content="NETFLEET — Deja de pagar de más por tu logística">
-  <meta property="og:description" content="Conecta tu carga con transportadores verificados o encuentra viajes disponibles hoy. Pago garantizado, sin intermediarios. Red verificada MinTransporte · Colombia.">
-  <meta property="og:image"       content="https://netfleet.app/og-image.png">
-  <meta property="og:site_name"   content="NETFLEET">
-  <meta property="og:locale"      content="es_CO">
-
-  <!-- Twitter / X -->
-  <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="NETFLEET — Deja de pagar de más por tu logística">
-  <meta name="twitter:description" content="Conecta tu carga con transportadores verificados o encuentra viajes disponibles hoy. Pago garantizado, sin intermediarios. Red verificada MinTransporte · Colombia.">
-  <meta name="twitter:image"       content="https://netfleet.app/og-image.png">
-
-  <!--
-    ╔══════════════════════════════════════════════════════════════╗
-    ║  index.html — LANDING PRINCIPAL DE CARGACHAT                ║
-    ║                                                              ║
-    ║  Esta es la página pública de CARGACHAT donde los           ║
-    ║  transportadores ven los viajes disponibles y hacen ofertas. ║
-    ║                                                              ║
-    ║  FLUJO DE DATOS:                                             ║
-    ║  1. n8n procesa mails de Avgust y escribe viajes en Sheets  ║
-    ║  2. Google Sheets publica un CSV público con los viajes      ║
-    ║  3. Esta página lee ese CSV al cargar y muestra las tarjetas ║
-    ║  4. El transportador hace clic en "Hacer oferta" → Google   ║
-    ║     Forms captura su oferta                                  ║
-    ║                                                              ║
-    ║  ARCHIVOS EN NETLIFY:                                        ║
-    ║  - index.html → cargachat.netlify.app (esta página)         ║
-    ║  - viaje.html → cargachat.netlify.app/viaje.html            ║
-    ║    (tarjeta individual para screenshots de LinkedIn)         ║
-    ╚══════════════════════════════════════════════════════════════╝
-
-    DEPENDENCIAS EXTERNAS:
-    - DM Sans + DM Mono (Google Fonts): tipografías del sistema
-    - Leaflet 1.9.4: librería de mapas interactivos
-    - CartoDB tiles: estilo de mapa gris elegante
-    - Google Geocoding API: para ciudades no encontradas en el diccionario
-  -->
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="./supabase.min.js"></script>
-
-  <style>
-    /* ═══════════════════════════════════════════════════════════
-       VARIABLES DE DISEÑO — SISTEMA DE COLORES Y TOKENS
-       Las variables CSS permiten cambiar colores en un solo lugar.
-       Para cambiar la paleta de marca, solo editar aquí.
-    ═══════════════════════════════════════════════════════════ */
-    :root {
-      --navy:       #1B2A6B;   /* Color principal de marca */
-      --navy-dark:  #0f1a45;   /* Versión más oscura del navy (hovers) */
-      --cyan:       #00BFDF;   /* Color de acento */
-      --cyan-light: #e6f9fd;   /* Cyan muy claro (fondos) */
-      --green:      #00c48c;   /* Verde para botones de aceptar */
-      --white:      #ffffff;
-      --gray-50:    #f8f9fc;   /* Fondo de secciones */
-      --gray-100:   #eef0f6;   /* Bordes */
-      --gray-400:   #9aa0b8;   /* Textos secundarios */
-      --gray-600:   #5a6280;   /* Textos medios */
-      --gray-900:   #1a1d2e;   /* Texto principal */
-    }
-
-    /* ═══════════════════════════════════════════════════════════
-       RESET BASE
-    ═══════════════════════════════════════════════════════════ */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html  { scroll-behavior: smooth; overflow-x: hidden; } /* overflow-x en html evita bug iOS con position:fixed */
-    body  {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--white);
-      color: var(--gray-900);
-      overflow-x: hidden;
-    }
-
-    /* ═══════════════════════════════════════════════════════════
-       BARRA DE NAVEGACIÓN
-       sticky: se queda pegada al tope al hacer scroll.
-       backdrop-filter: efecto de vidrio esmerilado.
-    ═══════════════════════════════════════════════════════════ */
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--gray-100);
-      padding: 0 2rem;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-logo    { display: flex; flex-direction: column; line-height: 1; }
-    .logo-main   { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; color: var(--navy); }
-    .logo-main span { color: var(--cyan); }
-    .logo-sub    { display: none; }
-    .nav-menu    { display: flex; gap: 28px; align-items: center; }
-    .nav-menu a  { font-size: 13px; font-weight: 500; color: var(--gray-600); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
-    .nav-menu a:hover { color: var(--navy); }
-    .nav-links   { display: flex; gap: 12px; align-items: center; }
-    .btn-nav-access {
-      padding: 9px 22px; border-radius: 100px;
-      border: none; background: var(--navy); color: white;
-      font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s; white-space: nowrap;
-    }
-    .btn-nav-access:hover { background: var(--cyan); }
-
-    /* Botones de la navbar */
-    .btn-outline {
-      padding: 8px 18px; border-radius: 100px;
-      border: 1.5px solid var(--navy); color: var(--navy); background: transparent;
-      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s;
-    }
-    .btn-outline:hover { background: var(--navy); color: white; }
-
-    .btn-solid {
-      padding: 8px 18px; border-radius: 100px;
-      border: none; background: var(--navy); color: white;
-      font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s;
-    }
-    .btn-solid:hover { background: var(--navy-dark); }
-
-    /* ═══════════════════════════════════════════════════════════
-       HERO (SECCIÓN PRINCIPAL)
-       El gradiente radial crea el efecto de luz cyan en el fondo.
-    ═══════════════════════════════════════════════════════════ */
-    .hero {
-      background: var(--navy);
-      padding: 6rem 2rem 5rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Luz decorativa en la esquina superior derecha */
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -100px; right: -100px;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(0,191,223,0.15) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .hero-inner {
-      max-width: 860px; margin: 0 auto;
-      display: flex; align-items: center; justify-content: center; text-align: center; flex-direction: column;
-    }
-    .hero-content { flex: 1; min-width: 0; }
-
-    .hero-badge {
-      display: inline-block;
-      background: rgba(0,191,223,0.15); color: var(--cyan);
-      border: 1px solid rgba(0,191,223,0.3);
-      padding: 4px 14px; border-radius: 100px;
-      font-size: 11px; font-weight: 600; letter-spacing: 1.2px;
-      text-transform: uppercase;
-      margin-bottom: 1.5rem;
-    }
-
-    .hero h1 {
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      font-weight: 800; color: white;
-      line-height: 1.1; letter-spacing: -1px;
-      text-transform: uppercase;
-      margin-bottom: 0.75rem;
-    }
-    .hero h1 span { color: var(--cyan); }
-
-    .hero-sub {
-      font-size: 0.9rem; color: rgba(255,255,255,0.55);
-      margin: 0 auto 0.75rem;
-      line-height: 1.6; font-weight: 300;
-      max-width: 480px;
-    }
-    .hero-sub strong { color: rgba(255,255,255,0.9); font-weight: 600; }
-    .hero-sectores { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; justify-content: center; }
-
-    .hero-proof {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-      text-transform: uppercase; color: rgba(255,255,255,0.3);
-      margin-bottom: 2.25rem;
-    }
-
-    /* CTA principal del hero */
-    .hero-cta-main { display:block; background:var(--cyan); color:#0A1628; padding:14px 28px; border-radius:8px; font-weight:700; font-size:15px; text-decoration:none; text-align:center; margin-top:1rem; transition:filter 0.2s; }
-    .hero-cta-main:hover { filter:brightness(1.08); }
-
-    /* Mini-calculadora del hero */
-    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:1rem 1.25rem; margin-top:0.75rem; max-width:600px; margin-left:auto; margin-right:auto; }
-    .hero-calc-row { margin-bottom:0.9rem; }
-    .hero-calc-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
-    .hero-calc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.5); }
-    .hero-calc-val { font-size:12px; font-weight:700; color:var(--cyan); }
-    .hero-calc-slider { width:100%; accent-color:var(--cyan); cursor:pointer; }
-    .hero-calc-result { display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.25); border-radius:10px; padding:0.85rem 1rem; margin:1rem 0 0; gap:1rem; }
-    .hero-calc-result-main { display:flex; flex-direction:column; gap:3px; }
-    .hero-calc-label-sm { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.4); }
-    .hero-calc-price { font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px; font-family:'DM Mono',monospace; }
-    .hero-calc-result-savings { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
-    .hero-calc-savings-pct { font-size:22px; font-weight:800; color:#4ade80; letter-spacing:-0.5px; }
-    @media(max-width:768px){ .hero-calc { padding:1rem; } .hero-calc-price { font-size:20px; } }
-
-    /* Propuesta de valor — 3 columnas */
-    .propval-section { background:#f7f9fc; padding:3rem 2rem; }
-    .propval-grid { max-width:900px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
-    .propval-item { text-align:center; }
-    .propval-icon { font-size:2rem; margin-bottom:0.75rem; }
-    .propval-title { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:0.5rem; }
-    .propval-desc { font-size:13px; color:#5a6280; line-height:1.6; }
-    @media(max-width:768px){ .propval-grid { grid-template-columns:1fr; gap:1.5rem; } .propval-item { text-align:left; display:flex; gap:1rem; align-items:flex-start; } .propval-icon { font-size:1.5rem; flex-shrink:0; } }
-
-    /* Cómo funciona — solo generador */
-    .bloque-inner--generador { max-width:680px; text-align:center; }
-    .como-solo-title { font-size:clamp(24px,4vw,38px); font-weight:700; color:#fff; line-height:1.2; margin:1rem 0 2.5rem; }
-    .como-solo-title span { color:var(--cyan); }
-    .como-solo-steps { display:flex; gap:2rem; justify-content:center; flex-wrap:wrap; margin-bottom:0.5rem; }
-    .como-solo-step { flex:1; min-width:160px; max-width:200px; text-align:left; }
-    .como-solo-step .como-col-num { font-size:28px; font-weight:800; color:var(--cyan); opacity:0.5; margin-bottom:0.5rem; }
-    .como-solo-step .como-col-desc { font-size:14px; color:rgba(255,255,255,0.75); line-height:1.6; }
-    @media(max-width:768px){ .como-solo-steps { flex-direction:column; align-items:center; } .como-solo-step { max-width:100%; } .bloque-inner--generador { text-align:left; } }
-
-    /* Mini-mapa hero */
-    .hero-visual { display: none !important; }
-    #map { height: 480px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
-    .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(255,255,255,0.95); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
-    .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
-    .hero-map-card-route { font-size: 13px; font-weight: 600; color: var(--navy); }
-    .hero-map-card-space { font-size: 12px; color: var(--gray-600); font-weight: 600; }
-    .hero-map-card-price { font-size: 15px; font-weight: 700; color: var(--navy); font-family: monospace; }
-    .hero-map-card-badge { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em; }
-    .hero-map-caption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--gray-400); padding: 6px; background: rgba(255,255,255,0.85); letter-spacing: 0.06em; text-transform: uppercase; }
-    @media (max-width: 768px) { .hero-visual { display: none; } .hero-inner { text-align: center; } }
-
-    /* Pasos del hero */
-    .hero-steps { display: flex; align-items: center; gap: 10px; margin: 1.5rem 0 1rem; flex-wrap: wrap; }
-    .hero-step  { display: flex; align-items: center; gap: 8px; }
-    .hero-step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--cyan); color: var(--navy); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .hero-step-text { font-size: 13px; color: rgba(255,255,255,0.8); }
-    .hero-step-text strong { color: white; }
-    .hero-step-sep { color: rgba(255,255,255,0.25); font-size: 16px; }
-
-    /* CTAs nuevos */
-    .hero-ctas { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 1.5rem; width: 100%; max-width: 420px; }
-    .hero-btn-primary { display: inline-block; background: var(--cyan); color: var(--navy); font-weight: 800; font-size: 1rem; padding: 16px 32px; border-radius: 14px; text-decoration: none; transition: filter 0.2s, transform 0.2s; letter-spacing: -0.2px; width: 100%; text-align: center; box-shadow: 0 4px 20px rgba(0,191,223,0.35); }
-    .hero-btn-primary:hover { filter: brightness(1.08); transform: translateY(-2px); }
-    .hero-btn-secondary { font-size: 13px; color: rgba(255,255,255,0.5); text-decoration: none; padding: 4px 0; transition: color 0.2s; text-align: center; width: 100%; }
-    .hero-btn-secondary:hover { color: rgba(255,255,255,0.9); }
-
-    .hero-cta-card {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.12);
-      border-radius: 14px; padding: 14px 18px; cursor: pointer; width: 100%;
-      transition: all .2s; text-align: left; font-family: 'DM Sans', sans-serif;
-      text-decoration: none;
-    }
-    .hero-cta-card:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.28); transform: translateY(-1px); }
-    .hero-cta-card.primary { background: var(--cyan); border-color: var(--cyan); }
-    .hero-cta-card.primary:hover { filter: brightness(1.08); }
-
-    .cta-card-icon { font-size: 22px; flex-shrink: 0; }
-    .cta-card-text { flex: 1; }
-    .cta-card-title { font-size: 14px; font-weight: 700; color: white; display: block; }
-    .cta-card-sub   { font-size: 11px; color: rgba(255,255,255,0.65); display: block; margin-top: 2px; }
-    .hero-cta-card.primary .cta-card-sub { color: rgba(27,42,107,0.75); }
-    .hero-cta-card.primary .cta-card-title { color: var(--navy); }
-    .cta-card-arrow { font-size: 16px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
-    .hero-cta-card.primary .cta-card-arrow { color: rgba(27,42,107,0.5); }
-
-    /* BADGE LATERAL — Certificación */
-    /* ── CERT-BADGE — bloque ancho completo entre viajes y mapa ── */
-    .cert-badge {
-      background: var(--navy); border-top: 1px solid rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.07);
-      padding: 2rem 2rem;
-    }
-    .cert-badge-inner {
-      max-width: 1100px; margin: 0 auto;
-      display: flex; align-items: center; gap: 2.5rem; flex-wrap: wrap;
-    }
-    .cert-badge-title {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-      text-transform: uppercase; color: var(--cyan); white-space: nowrap;
-    }
-    .cert-badge-desc {
-      font-size: 12px; color: rgba(255,255,255,0.4); flex-shrink: 0; max-width: 220px;
-    }
-    .cert-badge-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 12px 24px; flex: 1; }
-    .cert-badge-list li {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
-      text-transform: uppercase; color: rgba(255,255,255,0.7);
-      display: flex; align-items: center; gap: 6px;
-    }
-    .cert-badge-list li::before { content: '✓'; color: var(--cyan); font-size: 12px; font-weight: 700; flex-shrink: 0; }
-    @media (max-width: 640px) { .cert-badge-inner { flex-direction: column; gap: 1rem; } .cert-badge-desc { max-width: 100%; } }
-
-    /* ═══════════════════════════════════════════════════════════
-       BIFURCACIÓN — CARDS DE EMPRESA vs TRANSPORTADOR
-       CSS Grid con 2 columnas iguales.
-    ═══════════════════════════════════════════════════════════ */
-    .bifurcacion {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      max-width: 520px;
-      margin: 0 auto;
-    }
-
-    .bif-card {
-      border-radius: 16px; padding: 1.5rem 1.25rem;
-      cursor: pointer; transition: transform 0.2s; text-align: left;
-    }
-    .bif-card:hover { transform: translateY(-2px); }
-
-    .bif-empresa   { background: white; }
-    .bif-conductor { background: rgba(0,191,223,0.12); border: 1.5px solid rgba(0,191,223,0.4); }
-
-    .bif-icon      { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; }
-    .bif-icon-e    { background: var(--cyan-light); }
-    .bif-icon-c    { background: rgba(0,191,223,0.2); }
-    .bif-title     { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
-    .bif-desc      { font-size: 12px; color: var(--gray-600); line-height: 1.5; margin-bottom: 14px; }
-    .bif-conductor .bif-desc { color: rgba(255,255,255,0.7); }
-
-    .bif-btn       { display: block; width: 100%; padding: 9px; border-radius: 10px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
-    .bif-btn-e     { background: var(--navy); color: white; }
-    .bif-btn-e:hover { background: var(--navy-dark); }
-    .bif-btn-c     { background: var(--cyan); color: var(--navy-dark); }
-    .bif-btn-c:hover { background: #00a8c5; }
-
-    /* ═══════════════════════════════════════════════════════════
-       CUPÓN DE DESCUENTO
-    ═══════════════════════════════════════════════════════════ */
-    /* MODAL LEAD */
-    .lead-box   { max-width: 440px; }
-    .lead-field { margin-bottom: 1rem; }
-
-    /* MODAL VINCULACIÓN */
-    .vinc-box        { max-width: 460px; }
-    .vinc-tag        { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
-    .vinc-title      { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; line-height: 1.3; }
-    .vinc-intro      { font-size: 13px; color: var(--gray-600); line-height: 1.6; margin-bottom: 1.25rem; }
-    .vinc-list-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--navy); margin-bottom: 0.6rem; }
-    .vinc-list       { list-style: none; padding: 0; margin: 0 0 1.75rem; display: flex; flex-direction: column; gap: 8px; }
-    .vinc-list li    { font-size: 13px; color: var(--gray-600); display: flex; align-items: center; gap: 8px; }
-    .vinc-list li::before { content: '✓'; color: var(--cyan); font-weight: 700; flex-shrink: 0; }
-    .btn-vinc-wa     { display: flex; align-items: center; justify-content: center; gap: 8px;
-                       background: #25D366; color: white; font-size: 14px; font-weight: 600;
-                       padding: 13px 24px; border-radius: 100px; text-decoration: none;
-                       transition: filter 0.2s; }
-    .btn-vinc-wa:hover { filter: brightness(1.08); }
-    .btn-vinc-wa::before { content: ''; display: inline-block; width: 18px; height: 18px;
-                            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z'/%3E%3Cpath d='M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.524 5.849L0 24l6.304-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.498-5.178-1.37l-.371-.22-3.742.895.929-3.641-.241-.381A9.94 9.94 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z'/%3E%3C/svg%3E") no-repeat center/contain; }
-
-    .trust-bar       { background: var(--navy); border-top: none; padding: 1.25rem 2rem; }
-    .trust-bar-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0; }
-    .trust-item      { text-align: center; padding: 0 3rem; }
-    .trust-num       { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
-    .trust-label     { font-size: 10px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 2px; }
-    .trust-div       { width: 1px; height: 32px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
-
-    /* ═══════════════════════════════════════════════════════════
-       SECTORES QUE ATENDEMOS
-    ═══════════════════════════════════════════════════════════ */
-    .sectores         { padding: 4.5rem 2rem; background: var(--gray-50); }
-    .sectores-inner   { max-width: 1100px; margin: 0 auto; }
-    .sectores-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
-    .sectores-title   { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700; color: var(--navy); letter-spacing: -0.5px; margin-bottom: 2.5rem; line-height: 1.2; }
-    .sectores-grid    { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .sector-card      { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 1.5rem; transition: box-shadow 0.2s, transform 0.2s; }
-    .sector-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.07); transform: translateY(-2px); }
-    .sector-tag       { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.6rem; }
-    .sector-name      { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.3; }
-    .sector-desc      { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 1.1rem; }
-    .sector-req       { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--gray-100); padding-top: 1rem; }
-    .sector-req-item  { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); display: flex; align-items: center; gap: 7px; }
-    .sector-req-item::before { content: '✓'; color: var(--cyan); font-weight: 700; font-size: 11px; }
-
-    /* ═══════════════════════════════════════════════════════════
-       ESTADÍSTICAS (3 columnas)
-    ═══════════════════════════════════════════════════════════ */
-
-    /* ═══════════════════════════════════════════════════════════
-       SECCIONES GENÉRICAS
-    ═══════════════════════════════════════════════════════════ */
-    /* BUSCADOR */
-    .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 1rem 2rem 1.25rem; position: sticky; top: 60px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    @media(max-width:700px) { .buscador-wrap { position: relative; top: auto; z-index: auto; box-shadow: none; } }
-    .buscador-intro   { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); text-align: center; margin-bottom: 10px; }
-    .buscador-bar     { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
-    .buscador-field   { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
-    .buscador-field--fecha { flex: 0.8; }
-    .buscador-label   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 3px; }
-    .buscador-input   { background: transparent; border: none; outline: none; font-size: 14px; font-weight: 500; color: var(--navy); font-family: 'DM Sans', sans-serif; width: 100%; }
-    .buscador-input::placeholder { color: var(--gray-400); font-weight: 400; }
-    .buscador-sep     { color: var(--gray-300); font-size: 14px; padding: 0 4px; flex-shrink: 0; }
-    .buscador-sep--cal { font-size: 16px; }
-    .buscador-btn     { background: var(--navy); color: white; border: none; padding: 0 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: stretch; transition: background .2s; flex-shrink: 0; }
-    .buscador-btn:hover { background: var(--cyan); color: var(--navy); }
-    .buscador-reset   { text-align: center; margin-top: 8px; font-size: 12px; color: var(--cyan); cursor: pointer; font-weight: 600; }
-    .buscador-reset span:hover { text-decoration: underline; }
-
-    /* RETORNOS */
-    .retornos-section { border-top: 2px dashed var(--gray-100); }
-    .retornos-hdr     { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .retornos-badge   { background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; flex-shrink: 0; }
-    .viaje-retorno-tag { display: inline-block; background: #dcfce7; color: #15803d; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 100px; margin-bottom: 8px; }
-
-    @media(max-width:700px) {
-      .buscador-bar   { flex-direction: column; border-radius: 12px; }
-      .buscador-field { border-bottom: 1px solid var(--gray-100); width: 100%; }
-      .buscador-sep   { display: none; }
-      .buscador-btn   { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
-    }
-
-    .section     { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
-    .section-hdr { margin-bottom: 1.5rem; }
-    .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
-    .section-hdr p  { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
-
-    /* ═══════════════════════════════════════════════════════════
-       TARJETAS DE VIAJE
-       auto-fill: crea columnas automáticamente según el espacio.
-       minmax(300px, 1fr): mínimo 300px, máximo ocupa el espacio disponible.
-    ═══════════════════════════════════════════════════════════ */
-    .viajes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 12px;
-      margin-bottom: 1rem;
-    }
-
-    .viaje-card {
-      background: white; border: 1px solid var(--gray-100);
-      border-radius: 16px; padding: 1.25rem;
-      transition: all 0.2s; cursor: pointer;
-    }
-    .viaje-card:hover { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,191,223,0.1); transform: translateY(-1px); }
-
-    .viaje-header  { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .viaje-ruta    { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; }
-    .viaje-badge   { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; white-space: nowrap; }
-    .badge-disponible { background: #e6f9f4; color: #00875a; }
-    .badge-pronto     { background: #fff3e6; color: #cc5500; }
-    .badge-subasta    { background: #e6f9f4; color: #00875a; }
-    .badge-urgente    { background: #ffe6e6; color: #cc0000; animation: badge-pulso 2s ease-in-out infinite; }
-    @keyframes badge-pulso { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-
-    .nuevos-banner { display: none; background: var(--navy); color: white; text-align: center; padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 12px; transition: background 0.2s; animation: banner-in 0.4s ease-out; }
-    .nuevos-banner:hover { background: var(--navy-dark); }
-    .nuevos-banner.visible { display: block; }
-    @keyframes banner-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .ofertas-count { margin-top: 8px; }
-    .mob-box {
-      background: #f0fdf4; border: 1px solid #86efac;
-      border-radius: 10px; padding: 8px 12px;
-    }
-    .mob-top  { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
-    .mob-dot  { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; animation: oc-pulse 2s infinite; flex-shrink: 0; }
-    .mob-tag  { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #15803d; }
-    .mob-precio { font-size: 14px; font-weight: 800; color: #166534; }
-    .mob-comp   { font-size: 10px; color: #15803d; margin-top: 1px; }
-    @keyframes oc-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-    .viaje-countdown { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; margin-top: 6px; }
-    .viaje-countdown .cd-icon { font-size: 13px; }
-    .viaje-countdown .cd-text { color: var(--gray-600); }
-    .viaje-countdown.cd-urgente .cd-text { color: #cc0000; }
-
-    /* Grid 2x2 para los metadatos del viaje */
-    .viaje-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .meta-label { font-size: 10px; color: var(--gray-400); margin-bottom: 2px; }
-    .meta-value { font-size: 13px; font-weight: 500; color: var(--gray-900); }
-
-    /* Footer de la tarjeta cuando NO hay precio */
-    .viaje-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--gray-100); padding-top: 10px; }
-    .precio-label { font-size: 10px; color: var(--gray-400); }
-    .precio-value { font-size: 16px; font-weight: 600; color: var(--navy); }
-
-    /* Botón genérico de ofertar (cuando no hay precio base) */
-    .btn-ofertar { padding: 7px 16px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
-    .btn-ofertar:hover { background: var(--cyan); color: var(--navy-dark); }
-
-    /* Tarjeta seleccionada */
-    .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 6px 24px rgba(0,191,223,0.2); background: #f5fdff; }
-
-    /* Pin de precio estilo Airbnb */
-    .precio-pin {
-      background: white;
-      border: 2.5px solid var(--navy);
-      border-radius: 20px;
-      padding: 5px 11px;
-      font-size: 11px; font-weight: 700;
-      color: var(--navy);
-      white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-      font-family: 'DM Sans', sans-serif;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: inline-block;
-      line-height: 1.4;
-    }
-    .precio-pin.activo {
-      background: var(--navy);
-      color: white;
-      box-shadow: 0 4px 16px rgba(27,42,107,0.35);
-      transform: scale(1.12);
-    }
-    .pin-preview-tooltip {
-      background: white;
-      border: 1.5px solid var(--gray-100);
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 12px;
-      color: var(--navy);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      white-space: nowrap;
-      pointer-events: none;
-    }
-    .pin-preview-tooltip::before { display: none; }
-    .pin-preview b { font-weight: 700; }
-    .pin-preview-dest { color: var(--gray-600); margin-top: 2px; font-size: 11px; }
-
-    /* Botón "Ver todos" flotante sobre el mapa */
-    .mapa-wrap { position: relative; }
-    .btn-ver-todos {
-      display: none;
-      position: absolute;
-      top: 12px; left: 12px;
-      z-index: 1000;
-      background: white;
-      border: 1.5px solid var(--navy);
-      border-radius: 100px;
-      padding: 7px 16px;
-      font-size: 12px; font-weight: 600;
-      color: var(--navy);
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-      transition: all 0.2s;
-    }
-    .btn-ver-todos.visible { display: block; }
-    .btn-ver-todos:hover { background: var(--navy); color: white; }
-
-    /* Caja de precio base (cuando SÍ hay precio calculado por n8n) */
-    .precio-base-box   { background: #f0f4ff; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
-    .precio-base-label { font-size: 10px; color: #5a6280; margin-bottom: 2px; }
-    .precio-base-value { font-size: 18px; font-weight: 600; color: var(--navy); }
-    .precio-base-sub   { font-size: 10px; color: #9aa0b8; margin-top: 1px; }
-
-    /* Botones de acción cuando hay precio */
-    .btn-aceptar { padding: 8px 14px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: "DM Sans", sans-serif; transition: all 0.2s; }
-    .btn-aceptar:hover { background: #00a87a; }
-    .btn-menor   { padding: 8px 14px; background: white; color: var(--navy); border: 1.5px solid var(--navy); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: "DM Sans", sans-serif; transition: all 0.2s; }
-    .btn-menor:hover { background: var(--navy); color: white; }
-
-    .loading-msg { text-align: center; padding: 3rem; color: var(--gray-400); font-size: 14px; }
-
-    /* ═══════════════════════════════════════════════════════════
-       MAPA — necesita altura explícita o Leaflet no se renderiza
-    ═══════════════════════════════════════════════════════════ */
-    .mapa-calc-section { display: block; padding: 0 2rem 2rem; max-width: 1100px; margin: 0 auto; }
-    .mapa-col { margin-bottom: 3rem; }
-    .calc-col { max-width: 680px; margin: 0 auto; }
-    /* #map styles moved to hero-visual */
-    .calc-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 20px; padding: 1.5rem; }
-    .calc-row { margin-bottom: 1.25rem; }
-    .calc-label { font-size: 12px; font-weight: 500; color: var(--gray-600); display: block; margin-bottom: 8px; }
-    .calc-slider-wrap { display: flex; align-items: center; gap: 12px; }
-    .calc-slider-wrap input[type=range] { flex: 1; accent-color: var(--navy); }
-    .calc-val { font-size: 13px; font-weight: 600; color: var(--navy); min-width: 80px; text-align: right; }
-    .calc-select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-100); border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231B2A6B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
-    .calc-select:focus { outline: none; border-color: var(--cyan); }
-    .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.25rem 0; }
-    .calc-result-card { background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 0.75rem; text-align: center; }
-    .calc-result-card.main { border-color: var(--cyan); background: var(--cyan-light); }
-    .calc-result-label { font-size: 11px; color: var(--gray-400); margin-bottom: 4px; }
-    .calc-result-val { font-size: 15px; font-weight: 600; color: var(--navy); }
-    .calc-result-card.main .calc-result-val { font-size: 17px; }
-    .calc-rango { margin-bottom: 1rem; }
-    .calc-rango-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
-    .calc-rango-label span { font-weight: 600; color: var(--navy); }
-    .calc-bar-track { height: 6px; background: var(--gray-100); border-radius: 3px; margin-bottom: 4px; }
-    .calc-bar-fill { height: 6px; border-radius: 3px; background: var(--cyan); transition: width 0.2s; }
-    .calc-bar-extremos { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-400); }
-    .calc-nota { font-size: 10px; color: var(--gray-400); line-height: 1.5; margin-bottom: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
-    .calc-cta { display: block; text-align: center; background: var(--navy); color: white; border-radius: 100px; padding: 10px 20px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
-    .calc-cta:hover { background: var(--navy-dark); }
-    .bpo-promo       { margin-top: 1.25rem; border-top: 1px dashed var(--gray-100); padding-top: 1.25rem; }
-    .bpo-promo-tag   { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
-    .bpo-promo-text  { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 0.75rem; }
-    .bpo-promo-text strong { color: var(--navy); }
-    .bpo-promo-link  { font-size: 12px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; transition: color 0.2s; }
-    .bpo-promo-link:hover { color: var(--cyan); }
-    @media (max-width: 768px) { .mapa-calc-section { grid-template-columns: 1fr; } #map { height: 280px; } }
-
-    /* ═══════════════════════════════════════════════════════════
-       SECCIÓN CÓMO FUNCIONA — TABS
-       Los tabs cambian entre "Para empresas" y "Para transportadores"
-    ═══════════════════════════════════════════════════════════ */
-    .como-section  { background: var(--gray-50); padding: 4.5rem 2rem; }
-    .como-inner    { max-width: 1100px; margin: 0 auto; }
-    .como-tabs     { display: flex; gap: 8px; margin-bottom: 2.5rem; }
-    .como-tab      { padding: 8px 20px; border-radius: 100px; border: 1.5px solid var(--gray-100); background: white; color: var(--gray-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
-    .como-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
-    .como-steps    { display: none; }
-    .como-steps.active { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-
-    .step          { display: flex; flex-direction: column; background: white; border-radius: 16px; padding: 1.75rem 1.5rem; border: 1px solid var(--gray-100); transition: box-shadow 0.2s; }
-    .step:hover    { box-shadow: 0 6px 24px rgba(0,0,0,0.07); }
-    .step-num      { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 1rem; }
-    .step-title    { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.3; }
-    .step-desc     { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
-
-    /* ═══════════════════════════════════════════════════════════
-       SECCIÓN DE TRANSPORTADORES
-    ═══════════════════════════════════════════════════════════ */
-    .transportadores { padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
-    .trans-logos     { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
-    .trans-logo      { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 16px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* ═══════════════════════════════════════════════════════════
-       FOOTER
-    ═══════════════════════════════════════════════════════════ */
-    /* CÓMO FUNCIONA — dos columnas */
-    .como-cols         { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0 40px; margin-top: 2.5rem; text-align: left; }
-    .como-col          { display: flex; flex-direction: column; }
-    .como-col-divider  { background: rgba(255,255,255,0.1); align-self: stretch; }
-    .como-col-tag      { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.75rem; }
-    .como-col-title    { font-size: clamp(1.3rem, 2.5vw, 1.7rem); font-weight: 800; color: white; line-height: 1.2; letter-spacing: -0.5px; margin-bottom: 1.75rem; }
-    .como-col-title span { color: var(--cyan); }
-    .como-col-steps    { display: flex; flex-direction: column; gap: 16px; flex: 1; }
-    .como-col-step     { display: flex; gap: 14px; align-items: flex-start; }
-    .como-col-num      { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--cyan); flex-shrink: 0; margin-top: 2px; min-width: 20px; }
-    .como-col-desc     { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; }
-    @media(max-width:700px) {
-      .como-cols       { grid-template-columns: 1fr; gap: 40px 0; }
-      .como-col-divider { height: 1px; width: 100%; }
-    }
-
-    /* BLOQUES UNIFICADOS — Empresas / Cómo funciona / Transportadores */
-    .bloque-claro         { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
-    .bloque-oscuro        { background: var(--navy); padding: 5rem 2rem; text-align: center; }
-    .bloque-inner         { max-width: 1000px; margin: 0 auto; }
-    .bloque-eyebrow       { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
-    .bloque-eyebrow--dark { color: var(--cyan); }
-    .bloque-title         { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; color: var(--navy); letter-spacing: -1px; line-height: 1.15; margin-bottom: 2.5rem; }
-    .bloque-title span    { color: var(--cyan); }
-    .bloque-title--dark   { color: white; }
-    .bloque-cards         { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
-
-    /* Card — versión clara */
-    .bloque-card          { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 28px 24px; transition: box-shadow .2s, transform .2s; }
-    .bloque-card:hover    { box-shadow: 0 8px 24px rgba(0,0,0,0.07); transform: translateY(-2px); }
-    .bloque-card-num      { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 12px; }
-    .bloque-card-title    { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); margin-bottom: 10px; }
-    .bloque-card-desc     { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
-
-    /* Card — versión oscura */
-    .bloque-card--dark        { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
-    .bloque-card--dark:hover  { box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-    .bloque-card-num--dark    { color: var(--cyan); }
-    .bloque-card-title--dark  { color: white; }
-    .bloque-card-desc--dark   { color: rgba(255,255,255,0.6); }
-
-    /* Chips de sectores */
-    .bloque-sectores      { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 2rem; }
-    .bloque-sector-chip   { background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 5px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gray-600); }
-
-    /* Logos en transportadores */
-    .bloque-logos         { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 2rem; }
-
-    @media(max-width:700px) { .bloque-cards { grid-template-columns: 1fr; } }
-
-    /* SECCIÓN CONTACTO */
-    .contacto-section     { background: var(--gray-50); padding: 5rem 2rem; text-align: center; }
-    .contacto-inner       { max-width: 600px; margin: 0 auto; }
-    .contacto-eyebrow     { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem; }
-    .contacto-title       { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.75rem; }
-    .contacto-sub         { font-size: 0.95rem; color: var(--gray-600); margin-bottom: 2rem; }
-    .contacto-opciones    { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .contacto-card        { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 28px 36px; text-decoration: none; transition: box-shadow .2s, transform .2s; min-width: 160px; }
-    .contacto-card:hover  { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
-    .contacto-card-icon   { font-size: 28px; margin-bottom: 10px; }
-    .contacto-card-label  { font-size: 14px; font-weight: 700; color: var(--navy); }
-    .contacto-card-desc   { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
-
-    /* FOOTER */
-    footer        { background: var(--navy-dark); padding: 2.5rem 2rem; text-align: center; }
-    .footer-logo  { font-size: 18px; font-weight: 600; color: white; letter-spacing: -0.5px; }
-    .footer-logo span { color: var(--cyan); }
-    .footer-links { display: flex; gap: 24px; justify-content: center; margin: 14px 0 10px; flex-wrap: wrap; }
-    .footer-links a { font-size: 12px; color: rgba(255,255,255,0.4); text-decoration: none; transition: color .2s; }
-    .footer-links a:hover { color: rgba(255,255,255,0.8); }
-    .footer-sub   { font-size: 11px; color: rgba(255,255,255,0.25); }
-
-    /* ═══════════════════════════════════════════════════════════
-       TOAST — Mensaje temporal de confirmación
-       Aparece en la esquina inferior derecha por 2.5 segundos.
-    ═══════════════════════════════════════════════════════════ */
-    .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--navy); color: white; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s; z-index: 3000; white-space: normal; max-width: calc(100vw - 2rem); box-shadow: 0 8px 32px rgba(0,0,0,0.25); text-align: center; }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    /* ═══════════════════════════════════════════════════════════
-       RESPONSIVE — Ajustes para pantallas pequeñas (<640px)
-    ═══════════════════════════════════════════════════════════ */
-    /* ═══════════════════════════════════════════════════════════
-       AUTH MODAL
-    ═══════════════════════════════════════════════════════════ */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; padding:1rem; }
-    .modal-overlay.open { display:flex; }
-    .modal-box { background:white; border-radius:20px; padding:2rem; width:100%; max-width:420px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
-    .modal-close { position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:22px; color:var(--gray-400); cursor:pointer; line-height:1; }
-    .modal-close:hover { color:var(--gray-900); }
-    .modal-tabs { display:flex; gap:4px; background:var(--gray-50); border-radius:10px; padding:4px; margin-bottom:1.5rem; }
-    .modal-tab { flex:1; padding:8px; border:none; background:none; border-radius:8px; font-size:13px; font-weight:500; color:var(--gray-600); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
-    .modal-tab.active { background:white; color:var(--navy); box-shadow:0 1px 4px rgba(0,0,0,0.1); font-weight:600; }
-    .modal-form h3 { font-size:18px; font-weight:600; color:var(--navy); margin-bottom:1.25rem; }
-    .modal-input { width:100%; padding:10px 14px; border:1.5px solid var(--gray-100); border-radius:10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--gray-900); margin-bottom:10px; outline:none; transition:border-color 0.2s; }
-    .modal-input:focus { border-color:var(--cyan); }
-    .modal-btn-primary { width:100%; padding:12px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.2s; margin-top:4px; }
-    .modal-btn-primary:hover { background:var(--navy-dark); }
-    .modal-link { font-size:12px; color:var(--gray-400); text-align:center; margin-top:12px; }
-    .modal-link a { color:var(--cyan); cursor:pointer; font-weight:500; }
-    .modal-error { background:#fff0f0; color:#cc0000; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
-    .modal-success { background:#f0fff8; color:#00875a; border-radius:8px; padding:10px 14px; font-size:12px; margin-top:10px; }
-    /* Selector modal — empresa / transportadora */
-    .selector-card { display:flex; align-items:center; gap:1rem; background:var(--gray-50); border:2px solid var(--gray-100); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.75rem; text-decoration:none; color:inherit; transition:border-color 0.2s,background 0.2s; text-align:left; }
-    .selector-card:hover { border-color:var(--navy); background:var(--cyan-light); }
-    .selector-icon { font-size:2rem; flex-shrink:0; }
-    .selector-text { display:flex; flex-direction:column; flex:1; gap:2px; }
-    .selector-title { font-size:0.95rem; font-weight:700; color:var(--navy); }
-    .selector-sub { font-size:0.75rem; color:var(--gray-400); }
-    .selector-arrow { font-size:1.2rem; color:var(--gray-400); flex-shrink:0; transition:transform 0.2s; }
-    .selector-card:hover .selector-arrow { transform:translateX(4px); color:var(--navy); }
-    .selector-login { display:flex; align-items:center; gap:1rem; width:100%; background:var(--gray-50); border:2px solid var(--gray-100); border-radius:14px; padding:1rem 1.1rem; margin-top:0; font-family:'DM Sans',sans-serif; cursor:pointer; transition:border-color 0.2s,background 0.2s; text-align:left; }
-    .selector-login:hover { border-color:var(--navy); background:var(--cyan-light); }
-    .selector-login-icon { font-size:2rem; flex-shrink:0; }
-    .selector-login-text { display:flex; flex-direction:column; flex:1; gap:2px; }
-    .selector-login-title { font-size:0.95rem; font-weight:700; color:var(--navy); }
-    .selector-login-sub { font-size:0.75rem; color:var(--gray-400); }
-    .selector-login-arrow { font-size:1.2rem; color:var(--gray-400); flex-shrink:0; transition:transform 0.2s; }
-    .selector-login:hover .selector-login-arrow { transform:translateX(4px); color:var(--navy); }
-    /* Nav usuario logueado */
-    .nav-user { display:flex; align-items:center; gap:10px; }
-    .nav-user-name { font-size:13px; font-weight:500; color:var(--navy); }
-    .nav-user-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:100px; background:var(--cyan-light); color:var(--navy); }
-    .nav-user-badge.pendiente { background:#fff3e6; color:#cc5500; }
-
-    /* Ticker en vivo */
-    .ticker-bar { background: #0a0a0a; height: 42px; display: flex; align-items: center; overflow: hidden; position: relative; border-bottom: 1px solid rgba(255,0,50,0.2); }
-    .ticker-label { display: flex; align-items: center; gap: 7px; padding: 0 18px; background: #FF0032; color: white; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; height: 42px; z-index: 2; flex-shrink: 0; }
-    .ticker-dot { width: 7px; height: 7px; background: white; border-radius: 50%; animation: pulse-dot 1s infinite; }
-    @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-    .ticker-track { display: flex; align-items: center; gap: 0; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
-    .ticker-track:hover { animation-play-state: paused; }
-    @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-    .ticker-item { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; padding: 0 28px; cursor: default; }
-    .ticker-item .ti-precio { color: var(--cyan); font-weight: 700; }
-    .ticker-item .ti-sep { color: rgba(255,255,255,0.3); margin: 0 4px; }
-    .ticker-item .ti-badge { font-size: 10px; }
-
-    @media (max-width: 768px) {
-      .nav-menu      { display: none; }
-      .hero-inner    { flex-direction: column; gap: 2.5rem; }
-      .hero-ctas     { align-items: stretch; max-width: 380px; }
-      .btn-primary-cta, .btn-secondary-cta { text-align: center; width: 100%; }
-      .sectores-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 640px) {
-      .bifurcacion   { grid-template-columns: 1fr; }
-      .viajes-grid   { grid-template-columns: 1fr; }
-      .sectores-grid { grid-template-columns: 1fr; }
-      .como-steps.active { grid-template-columns: 1fr; }
-      nav            { padding: 0 1rem; }
-      .hero          { padding: 3rem 1rem 2.5rem; }
-    }
-
-    /* ── BIFURCACIÓN ── */
-    .bifurcacion-section { padding: 64px 48px 56px; text-align: center; background: var(--navy); border-bottom: none; margin-bottom: 0; margin-top: 0; border-radius: 0; }
-    .bifurcacion-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 32px; }
-    .bifurcacion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto; }
-    .bifurcacion-card { padding: 36px 32px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; display: block; text-align: left; }
-    .bifurcacion-card:hover, .bifurcacion-card.activa { border-color: var(--cyan); background: rgba(0,191,223,0.06); }
-    .bifurcacion-card-icon { font-size: 32px; margin-bottom: 16px; display: block; }
-    .bifurcacion-card-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 10px; line-height: 1.2; }
-    .bifurcacion-card-desc { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 20px; }
-    .bifurcacion-card-cta { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cyan); }
-    .bifurcacion-card.activa .bifurcacion-card-title { color: #fff; }
-    .bifurcacion-card.activa .bifurcacion-card-cta { color: var(--cyan); }
-    @media (max-width: 640px) { .bifurcacion-grid { grid-template-columns: 1fr; } .bifurcacion-section { padding: 48px 24px; } }
-    /* Banner generador en sección viajes */
-    .banner-generador { background: rgba(0,191,223,0.08); border: 1px solid rgba(0,191,223,0.25); border-radius: 8px; padding: 12px 20px; font-size: 13px; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 24px; }
-    /* CTA bajo el mapa */
-    .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
-    #cta-mapa { display: inline-block; background: var(--navy); color: white; font-size: 13px; font-weight: 700; padding: 11px 24px; border-radius: 10px; text-decoration: none; transition: background 0.2s; }
-    #cta-mapa:hover { background: var(--cyan); color: var(--navy); }
-    .cta-mapa-micro { font-size: 11px; color: var(--gray-400); text-align: center; margin-top: 6px; }
-    /* Ticker rol label */
-    .ticker-label-rol { font-size: 10px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: uppercase; }
-
-    /* ── SECTORES CARDS GRID ── */
-    .sectores-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
-    @media (max-width: 768px) { .sectores-cards { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 480px) { .sectores-cards { grid-template-columns: 1fr; } }
-
-    /* ── PREVENIR DESBORDAMIENTO HORIZONTAL EN MÓVIL ── */
-    @media (max-width: 768px) {
-      body, html { max-width: 100vw; }
-      section, .section, .bloque-oscuro, .hero, .ticker-bar,
-      .contacto-section, .buscador-wrap, .mapa-calc-section,
-      .stats-trust, .sectores-section, .bifurcacion-section,
-      #sectores { overflow-x: hidden; max-width: 100vw; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NETFLEET by Logxie — Deja de pagar de más por tu logística</title>
+<meta name="description" content="Publica tu carga. Solo transportadores certificados MinTransporte compiten por ella. Precios reales de mercado, sin intermediarios. Colombia.">
+<meta property="og:title" content="NETFLEET — Deja de pagar de más por tu logística">
+<meta property="og:description" content="Publica tu carga y deja que transportadores certificados compitan por ella.">
+<meta property="og:url" content="https://netfleet.app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./supabase.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root {
+  --navy:      #0E1B4D;
+  --navy2:     #1B2A6B;
+  --cyan:      #00BFDF;
+  --cyan-dim:  rgba(0,191,223,0.12);
+  --white:     #ffffff;
+  --off:       #F5F6FA;
+  --gray:      #8892B0;
+  --gray2:     #E2E5F0;
+  --green:     #00C48C;
+  --red:       #EF4444;
+  --serif:     'DM Sans', sans-serif;
+  --sans:      'DM Sans', sans-serif;
+  --mono:      'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body { font-family: var(--sans); background: var(--white); color: var(--navy); overflow-x: clip; }
+
+/* ── NAV ─────────────────────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--gray2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3rem; height: 68px;
+}
+.nav-logo { font-family: var(--serif); font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; }
+.nav-logo em { color: var(--cyan); font-style: normal; }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+.nav-links a { font-size: 13px; font-weight: 500; color: var(--gray); text-decoration: none; transition: color .2s; }
+.nav-links a:hover { color: var(--navy); }
+.nav-links a.ghost { opacity: 0.4; font-size: 12px; }
+.nav-cta {
+  background: var(--navy); color: white;
+  border: none; border-radius: 8px;
+  padding: 10px 24px; font-size: 13px; font-weight: 700;
+  font-family: var(--sans); cursor: pointer;
+  transition: background .2s, transform .15s;
+  text-decoration: none; display: inline-block;
+  letter-spacing: 0.02em;
+}
+.nav-cta:hover { background: var(--cyan); color: var(--navy); transform: translateY(-1px); }
+
+/* ── TICKER ──────────────────────────────────────── */
+.ticker {
+  background: #0a0a0a; border-bottom: 1px solid rgba(255,0,50,0.2); height: 42px;
+  display: flex; align-items: center; gap: 20px;
+  overflow: hidden; padding: 0 1.5rem;
+}
+.ticker-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 9px; font-weight: 800; letter-spacing: 1.8px;
+  text-transform: uppercase; color: white; background: #FF0032; white-space: nowrap; flex-shrink: 0; padding: 0 18px; height: 42px; margin-left: -1.5rem;
+}
+.ticker-dot { width: 7px; height: 7px; background: white; border-radius: 50%; animation: pulse 1.4s infinite; box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+.ticker-track { display: flex; white-space: nowrap; animation: scroll 14s linear infinite; }
+@keyframes scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.ticker-item { font-size: 12px; color: rgba(255,255,255,0.9); padding: 0 28px; font-weight: 500; }
+.ticker-item strong { color: var(--cyan); font-weight: 700; }
+@media (max-width: 600px) {
+  .ticker-label {
+    font-size: 0.65rem;
+    padding: 0 10px;
+    letter-spacing: 1px;
+  }
+  .ticker-item {
+    font-size: 0.7rem;
+    padding: 0 12px;
+  }
+  .ticker {
+    height: 32px;
+  }
+}
+
+/* ── HERO ────────────────────────────────────────── */
+.hero {
+  background: var(--navy);
+  padding: 40px 3rem 40px;
+  position: relative; overflow: hidden;
+  text-align: center;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,191,223,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 85% 80%, rgba(0,191,223,0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--cyan-dim); color: var(--cyan);
+  border: 1px solid rgba(0,191,223,0.25);
+  padding: 5px 16px; border-radius: 100px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+.hero-badge-pulse { width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; animation: pulse 2s infinite; }
+
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+  font-weight: 800; color: white;
+  line-height: 1.0; letter-spacing: -2px;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.hero h1 em { color: var(--cyan); font-style: normal; display: block; }
+
+.hero-sub {
+  font-size: 1.05rem; color: rgba(255,255,255,0.55);
+  line-height: 1.75; max-width: 560px;
+  margin: 0 auto 2.5rem; font-weight: 300;
+}
+.hero-sub strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+
+/* Hero CTAs */
+.hero-ctas { display: flex; gap: 12px; justify-content: center; align-items: center; margin-bottom: 3rem; flex-wrap: wrap; }
+.btn-primary {
+  background: #22c55e; color: #fff;
+  border: none; border-radius: 10px;
+  padding: 16px 32px; font-size: 1.05rem; font-weight: 700;
+  font-family: var(--sans); cursor: pointer;
+  transition: filter .2s, transform .15s;
+  text-decoration: none; letter-spacing: -0.2px;
+  box-shadow: 0 4px 24px rgba(34,197,94,0.35);
+  display: inline-block;
+}
+.btn-primary:hover { filter: brightness(1.08); transform: translateY(-2px); }
+.btn-ghost {
+  background: transparent; color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; padding: 15px 28px;
+  font-size: 14px; font-weight: 500;
+  font-family: var(--sans); cursor: pointer;
+  transition: all .2s; text-decoration: none;
+}
+.btn-ghost:hover { border-color: rgba(255,255,255,0.4); color: white; }
+
+/* Hero proof */
+.hero-proof {
+  display: flex;
+  gap: 24px;
+  margin: 16px 0 24px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.7);
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+.hero-proof span {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .hero-proof {
+    gap: 10px;
+    font-size: 0.7rem;
+  }
+}
+
+/* ── STATS BAR ───────────────────────────────────── */
+.stats-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; gap: 0; }
+.stat { text-align: center; padding: 0 3rem; }
+.stat-n { font-family: var(--serif); font-size: 22px; font-weight: 800; color: white; }
+.stat-l { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 3px; }
+.stat-div { width: 1px; background: rgba(255,255,255,0.07); }
+@media(max-width:700px) { .stats-inner { flex-wrap: wrap; gap: 1.5rem; } .stat-div { display: none; } .stat { padding: 0 1.5rem; } }
+
+/* ── MAPA — ancho completo ───────────────────────── */
+.mapa-section { background: var(--off); padding: 4rem 3rem; }
+.mapa-header { max-width: 1100px; margin: 0 auto 1.5rem; }
+.section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--cyan); margin-bottom: 6px; }
+.section-title { font-family: var(--serif); font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; color: var(--navy); letter-spacing: -0.5px; line-height: 1.15; }
+.section-title em { color: var(--cyan); font-style: normal; }
+.section-sub { font-size: 14px; color: var(--gray); line-height: 1.65; margin-top: 6px; max-width: 520px; }
+
+.mapa-wrap {
+  max-width: 1100px; margin: 0 auto; position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--gray2);
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start;
+}
+@media (max-width: 768px) {
+  .mapa-wrap { grid-template-columns: 1fr; }
+}
+#map { height: 480px; border-radius: 16px; }
+.mapa-cta { text-align: center; margin-top: 1.5rem; }
+.mapa-cta a { font-size: 13px; font-weight: 700; color: var(--navy); text-decoration: none; border-bottom: 2px solid var(--cyan); padding-bottom: 2px; transition: color .2s; }
+.mapa-cta a:hover { color: var(--cyan); }
+
+/* Live pill sobre el mapa */
+.live-pill {
+  position: absolute; top: 16px; left: 16px; z-index: 10;
+  background: rgba(7,14,46,0.9); border: 1px solid rgba(0,191,223,0.3);
+  border-radius: 100px; padding: 6px 14px;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 700; color: white;
+  backdrop-filter: blur(8px);
+}
+.live-pill-dot { width: 7px; height: 7px; background: var(--red); border-radius: 50%; animation: pulse 1.4s infinite; flex-shrink: 0; }
+.live-pill-text { color: rgba(255,255,255,0.7); font-weight: 500; }
+.live-pill-text strong { color: white; }
+
+/* ── CALCULADORA ─────────────────────────────────── */
+.calc-section { background: var(--navy); padding: 5rem 3rem; }
+.calc-inner { max-width: 680px; margin: 0 auto; }
+.calc-header { text-align: center; margin-bottom: 2.5rem; }
+.calc-header .section-eyebrow { color: var(--cyan); }
+.calc-header .section-title { color: white; }
+.calc-header .section-sub { color: rgba(255,255,255,0.45); margin: 6px auto 0; }
+
+.calc-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px; padding: 2rem;
+}
+.calc-row { margin-bottom: 1.25rem; }
+.calc-lbl-row { display: flex; justify-content: space-between; margin-bottom: 7px; }
+.calc-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); }
+.calc-val { font-size: 12px; font-weight: 700; color: var(--cyan); }
+input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+.calc-result {
+  background: rgba(0,0,0,0.3); border-radius: 14px;
+  padding: 1.1rem 1.5rem; margin: 1.25rem 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.calc-price-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); margin-bottom: 4px; }
+.calc-price { font-family: var(--mono); font-size: 28px; font-weight: 500; color: white; }
+.calc-savings { text-align: right; }
+.calc-pct { font-family: var(--serif); font-size: 26px; font-weight: 800; color: #4ade80; }
+.calc-pct-lbl { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+.calc-cta {
+  display: block; width: 100%; background: var(--cyan); color: var(--navy);
+  border: none; border-radius: 10px; padding: 14px;
+  font-size: 15px; font-weight: 800; font-family: var(--sans);
+  cursor: pointer; transition: filter .2s, transform .15s;
+  text-align: center; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(0,191,223,0.3);
+}
+.calc-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ── SECTORES ────────────────────────────────────── */
+.sectores-section { background: var(--off); padding: 5rem 3rem; }
+.sectores-inner { max-width: 1100px; margin: 0 auto; }
+.sectores-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; margin-top: 2.5rem; }
+.sector-card {
+  background: white; border: 1px solid var(--gray2);
+  border-radius: 16px; padding: 1.5rem 1.25rem;
+  transition: box-shadow .2s, transform .2s, border-color .2s;
+}
+.sector-card:hover { box-shadow: 0 8px 28px rgba(14,27,77,0.09); transform: translateY(-3px); border-color: var(--cyan); }
+.sector-icon { font-size: 26px; margin-bottom: 0.75rem; display: block; }
+.sector-name { font-family: var(--serif); font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 0.4rem; }
+.sector-desc { font-size: 11px; color: var(--gray); line-height: 1.5; margin-bottom: 0.85rem; }
+.sector-tags { display: flex; flex-direction: column; gap: 5px; padding-top: 0.75rem; border-top: 1px solid var(--gray2); }
+.sector-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy2); display: flex; align-items: center; gap: 5px; }
+.sector-tag::before { content: '✓'; color: var(--cyan); }
+@media(max-width:900px) { .sectores-grid { grid-template-columns: repeat(3,1fr); } }
+@media(max-width:580px) { .sectores-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── CÓMO FUNCIONA ───────────────────────────────── */
+.como-section { background: white; padding: 5rem 3rem; }
+.como-inner { max-width: 1000px; margin: 0 auto; }
+.como-header { text-align: center; margin-bottom: 3rem; }
+.como-steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 2rem; }
+.como-step {
+  background: var(--off); border: 1px solid var(--gray2);
+  border-radius: 20px; padding: 2rem;
+  transition: box-shadow .2s;
+}
+.como-step:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.06); }
+.como-num { font-family: var(--serif); font-size: 40px; font-weight: 800; color: var(--cyan); opacity: 0.3; margin-bottom: 1rem; line-height: 1; }
+.como-title { font-family: var(--serif); font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+.como-desc { font-size: 13px; color: var(--gray); line-height: 1.65; }
+.como-cta { text-align: center; margin-top: 3rem; }
+@media(max-width:700px) { .como-steps { grid-template-columns: 1fr; } }
+
+/* ── CERT STRIP ──────────────────────────────────── */
+.cert-strip { background: var(--navy2); padding: 1.5rem 3rem; }
+.cert-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.cert-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--cyan); white-space: nowrap; }
+.cert-items { display: flex; flex-wrap: wrap; gap: 10px 24px; flex: 1; }
+.cert-item { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 6px; }
+.cert-item::before { content: '✓'; color: var(--cyan); font-size: 12px; }
+
+/* ── FORM SECTION ────────────────────────────────── */
+.form-section { background: var(--off); padding: 5rem 3rem; }
+.form-inner { max-width: 520px; margin: 0 auto; }
+.form-header { text-align: center; margin-bottom: 2.5rem; }
+.form-card {
+  background: white; border: 1px solid var(--gray2);
+  border-radius: 20px; padding: 2.5rem;
+  box-shadow: 0 4px 32px rgba(14,27,77,0.07);
+}
+.form-field { margin-bottom: 1.1rem; }
+.form-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gray); display: block; margin-bottom: 6px; }
+.form-input {
+  width: 100%; padding: 12px 16px;
+  border: 1.5px solid var(--gray2); border-radius: 10px;
+  font-size: 14px; font-family: var(--sans); color: var(--navy);
+  background: var(--off); transition: border-color .2s, background .2s;
+}
+.form-input:focus { outline: none; border-color: var(--cyan); background: white; }
+.form-select {
+  width: 100%; padding: 12px 16px;
+  border: 1.5px solid var(--gray2); border-radius: 10px;
+  font-size: 14px; font-family: var(--sans); color: var(--navy);
+  background: var(--off); cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230E1B4D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+  transition: border-color .2s;
+}
+.form-select:focus { outline: none; border-color: var(--cyan); }
+.form-btn {
+  display: block; width: 100%; background: var(--navy); color: white;
+  border: none; border-radius: 10px; padding: 15px;
+  font-size: 15px; font-weight: 800; font-family: var(--sans);
+  cursor: pointer; margin-top: 0.5rem;
+  transition: background .2s, transform .15s;
+  letter-spacing: -0.2px;
+}
+.form-btn:hover { background: var(--cyan); color: var(--navy); transform: translateY(-1px); }
+.form-micro { font-size: 11px; color: var(--gray); text-align: center; margin-top: 0.85rem; line-height: 1.5; }
+.form-error { font-size: 12px; color: #dc2626; margin-bottom: 8px; display: none; }
+.form-success { text-align: center; padding: 1rem 0; display: none; }
+.form-success-icon { font-size: 44px; margin-bottom: 0.75rem; }
+.form-success-title { font-family: var(--serif); font-size: 1.4rem; font-weight: 800; color: var(--navy); margin-bottom: 0.5rem; }
+.form-success-sub { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+/* ── FOOTER ──────────────────────────────────────── */
+footer { background: var(--navy); padding: 3rem; }
+.footer-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
+.footer-logo { font-family: var(--serif); font-size: 20px; font-weight: 800; color: white; }
+.footer-logo em { color: var(--cyan); font-style: normal; }
+.footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+.footer-links a { font-size: 12px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color .2s; }
+.footer-links a:hover { color: rgba(255,255,255,0.7); }
+.footer-copy { font-size: 11px; color: rgba(255,255,255,0.2); width: 100%; text-align: center; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 1rem; }
+
+/* ── FAB ─────────────────────────────────────────── */
+.fab-wa {
+  position: fixed; bottom: 24px; right: 24px; z-index: 999;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #25D366; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(37,211,102,0.45);
+  transition: transform .2s; text-decoration: none;
+}
+.fab-wa:hover { transform: scale(1.1); }
+
+/* ── TOAST ───────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: var(--navy); color: white; padding: 14px 28px;
+  border-radius: 12px; font-size: 14px; opacity: 0;
+  transition: all .3s; z-index: 3000; text-align: center;
+  max-width: calc(100vw - 2rem); box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── RESPONSIVE ──────────────────────────────────── */
+@media(max-width:768px) {
+  .nav { padding: 0 1.25rem; }
+  .nav-links { display: none; }
+  .hero { padding: 4rem 1.5rem 3.5rem; }
+  .stats-bar, .mapa-section, .calc-section, .sectores-section, .como-section, .form-section { padding: 3rem 1.5rem; }
+  .mapa-wrap #map { height: 320px; }
+  .calc-price { font-size: 22px; }
+  footer { padding: 2rem 1.5rem; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+}
+
+/* Pin de precio estilo Airbnb */
+.precio-pin {
+  background: white;
+  border: 2.5px solid var(--navy);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 11px; font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-block;
+  line-height: 1.4;
+}
+.precio-pin.activo {
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 4px 16px rgba(27,42,107,0.35);
+  transform: scale(1.12);
+}
+.pin-preview-tooltip {
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: var(--navy);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pin-preview-tooltip::before { display: none; }
+.pin-preview b { font-weight: 700; }
+.pin-preview-dest { color: #6b7280; margin-top: 2px; font-size: 11px; }
+
+/* Botón "Ver todos" flotante sobre el mapa */
+.mapa-wrap { position: relative; }
+.btn-ver-todos {
+  display: none;
+  position: absolute;
+  top: 12px; left: 12px;
+  z-index: 1000;
+  background: white;
+  border: 1.5px solid var(--navy);
+  border-radius: 100px;
+  padding: 7px 16px;
+  font-size: 12px; font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  transition: all 0.2s;
+}
+.btn-ver-todos.visible { display: block; }
+.btn-ver-todos:hover { background: var(--navy); color: white; }
+
+.calc-co2 {
+  text-align: right;
+  color: #22c55e;
+}
+.calc-co2 .calc-pct {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 800;
+}
+.calc-co2 .calc-pct-lbl {
+  color: rgba(255,255,255,0.3);
+}
+
+@media (max-width: 600px) {
+  .calc-result {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .calc-savings, .calc-co2 {
+    flex: 1 1 40%;
+  }
+}
+
+.viajes-preview {
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+</style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════════════════════
-       ESTRUCTURA HTML
-       El orden importa: nav → hero → secciones → footer
-  ═══════════════════════════════════════════════════════════ -->
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">NET<em>FLEET</em><br><span style="font-weight:400;font-size:0.45em;opacity:0.6;letter-spacing:0.05em;line-height:1">by Logxie</span></div>
+  <div class="nav-links">
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#sectores">Sectores</a>
+    <a href="#calculadora">Calcular flete</a>
+    <a href="#contacto">Contacto</a>
+    <a href="transportador.html" class="ghost">¿Eres transportador?</a>
+  </div>
+  <a href="#form-cta" class="nav-cta">Publicar mi carga →</a>
+</nav>
 
-  <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
-  <nav>
-    <div class="nav-logo">
-      <div class="logo-main">NET<span>FLEET</span></div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><span class="hero-badge-pulse"></span>marketplace de carga b2b · colombia</div>
+    <h1>Deja de pagar<br>de más por<br><em>tu logística.</em></h1>
+    <p class="hero-sub">
+      Publica tu carga y deja que <strong>transportadores certificados</strong> compitan por ella.
+      Descubre el precio real de mercado en minutos — sin intermediarios, sin sorpresas.
+    </p>
+    <div class="hero-proof">
+      <span>✓ 2.000+ viajes</span>
+      <span>✓ 9.9M kg movidos</span>
+      <span>✓ 98% a tiempo</span>
     </div>
-    <nav-menu class="nav-menu">
-      <a href="#como-funciona">Cómo funciona</a>
-      <a href="#sectores">Sectores</a>
-      <a href="#contacto">Contacto</a>
-      <a href="transportador.html" style="opacity:0.4;font-size:13px">¿Eres transportador?</a>
-    </nav-menu>
-    <div class="nav-links">
-      <div id="nav-auth-buttons">
-        <a href="empresa.html" class="btn-nav-access" style="text-decoration:none">Publicar mi carga →</a>
-      </div>
-      <div id="nav-user-info" class="nav-user" style="display:none">
-        <span class="nav-user-name" id="nav-user-name"></span>
-        <span class="nav-user-badge" id="nav-user-badge"></span>
-        <a href="mis-ofertas.html" class="btn-outline">Mis ofertas</a>
-        <button class="btn-outline" onclick="cerrarSesion()">Salir</button>
-      </div>
-    </div>
-  </nav>
-
-  <!-- TICKER EN VIVO -->
-  <div class="ticker-bar" id="ticker-bar" style="display:none">
-    <div class="ticker-label">
-      <div class="ticker-dot"></div>
-      subastas en vivo
-    </div>
-    <div style="overflow:hidden;flex:1">
-      <div class="ticker-track" id="ticker-track"></div>
+    <div class="hero-ctas">
+      <a href="#form-cta" class="btn-primary">Publicar mi carga →</a>
+      <a href="#calculadora" class="btn-ghost">Calcular mi flete primero</a>
     </div>
   </div>
+</section>
 
-  <!-- HERO: primera sección visible al entrar -->
-  <section class="hero">
-    <div class="hero-inner">
+<!-- TICKER -->
+<div class="ticker" id="ticker-bar" style="display:none">
+  <div class="ticker-label"><div class="ticker-dot"></div>subastas en vivo</div>
+  <div style="overflow:hidden;flex:1"><div class="ticker-track" id="ticker-track"></div></div>
+</div>
 
-      <div class="hero-content">
 
-        <div class="hero-badge">marketplace de carga b2b · colombia</div>
-        <h1>Deja de pagar<br>de más por<br><span>tu logística.</span></h1>
-        <p class="hero-sub">Publica tu carga y deja que <strong>transportadores certificados MinTransporte</strong> compitan por ella. Descubre el precio real de mercado en minutos.</p>
+<!-- MAPA — ancho completo -->
+<section class="mapa-section">
+  <div class="mapa-header">
+    <div class="section-eyebrow">red activa ahora</div>
+    <div class="section-title">Rutas en subasta <em>en este momento</em></div>
+    <p class="section-sub">Transportadores certificados compitiendo por estas rutas. Tu carga aparecería aquí.</p>
+  </div>
+  <div class="mapa-wrap">
+    <div class="live-pill">
+      <div class="live-pill-dot"></div>
+      <div class="live-pill-text"><strong id="viajes-count">—</strong> subastas activas</div>
+    </div>
+    <div id="map"></div>
+    <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
+    <div class="viajes-preview">
+      <h3 style="color:#0E1B4D;font-size:1.1rem;margin-bottom:12px;opacity:0.9">Por qué confiar en NETFLEET</h3>
+      <div id="viajes-preview-grid"></div>
+    </div>
+  </div>
+  <div class="mapa-cta"><a href="#form-cta">Publicar mi carga en una de estas rutas →</a></div>
+</section>
 
-        <div class="hero-sectores">
-          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Oil & Gas</span>
-          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Agroquímicos</span>
-          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Health & Nutrition</span>
-          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Farmacéutico</span>
-          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px 11px;">Reciclables</span>
+<!-- CALCULADORA -->
+<section class="calc-section" id="calculadora">
+  <div class="calc-inner">
+    <div class="calc-header">
+      <div class="section-eyebrow">estimador de flete</div>
+      <div class="section-title" style="color:white">¿Cuánto <em>deberías</em> pagar?</div>
+      <p class="section-sub">Basado en +1.015 viajes reales. Mismo modelo que usa nuestra red.</p>
+    </div>
+    <div class="calc-card">
+      <div class="calc-row">
+        <div class="calc-lbl-row">
+          <span class="calc-lbl">Distancia</span>
+          <span class="calc-val" id="cc-km-out">400 km</span>
         </div>
+        <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
+      </div>
+      <div class="calc-row">
+        <div class="calc-lbl-row">
+          <span class="calc-lbl">Peso</span>
+          <span class="calc-val" id="cc-kg-out">5.000 kg</span>
+        </div>
+        <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
+      </div>
+      <div class="calc-result">
+        <div>
+          <div class="calc-price-lbl">tu flete estimado</div>
+          <div class="calc-price" id="cc-base">—</div>
+        </div>
+        <div class="calc-savings" id="cc-ahorro-card" style="display:none">
+          <div class="calc-pct" id="cc-ahorro">—</div>
+          <div class="calc-pct-lbl">menos que el mercado</div>
+        </div>
+        <div class="calc-co2" id="cc-co2-card" style="display:none">
+          <div class="calc-pct" id="cc-co2">🌳 3</div>
+          <div class="calc-pct-lbl">árboles salvados</div>
+        </div>
+      </div>
+      <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>
+      <input type="range" id="cc-paradas" style="display:none" min="1" max="10" value="1">
+      <select id="cc-zona" style="display:none"><option value="">Sin especificar</option></select>
+    </div>
+  </div>
+</section>
 
-        <!-- MINI-CALCULADORA -->
-        <div class="hero-calc">
-          <div class="hero-calc-row">
-            <div class="hero-calc-label-row">
-              <label class="hero-calc-label">Distancia</label>
-              <span class="hero-calc-val" id="hc-km-out">400 km</span>
-            </div>
-            <input type="range" class="hero-calc-slider" id="hc-km" min="10" max="1200" step="10" value="400" oninput="hcCalc()">
+<!-- SECTORES -->
+<section class="sectores-section" id="sectores">
+  <div class="sectores-inner">
+    <div class="section-eyebrow">operamos en</div>
+    <div class="section-title">Sectores <em>regulados y de alto valor</em></div>
+    <p class="section-sub">Transportadores con experiencia específica en tu tipo de carga. Cada sector tiene sus requerimientos — nuestra red los cumple.</p>
+    <div class="sectores-grid">
+      <div class="sector-card">
+        <span class="sector-icon">🛢️</span>
+        <div class="sector-name">Oil &amp; Gas</div>
+        <div class="sector-desc">Insumos, equipos y materiales para operaciones de exploración y producción.</div>
+        <div class="sector-tags">
+          <span class="sector-tag">Carga pesada</span>
+          <span class="sector-tag">Rutas de campo</span>
+        </div>
+      </div>
+      <div class="sector-card">
+        <span class="sector-icon">🌿</span>
+        <div class="sector-name">Agroquímicos</div>
+        <div class="sector-desc">Fertilizantes, plaguicidas y productos agrícolas con requerimientos ADR.</div>
+        <div class="sector-tags">
+          <span class="sector-tag">Carga peligrosa ADR</span>
+          <span class="sector-tag">Documentación MSDS</span>
+        </div>
+      </div>
+      <div class="sector-card">
+        <span class="sector-icon">💊</span>
+        <div class="sector-name">Health &amp; Nutrition</div>
+        <div class="sector-desc">Suplementos, alimentos funcionales y productos de salud y bienestar.</div>
+        <div class="sector-tags">
+          <span class="sector-tag">Temperatura controlada</span>
+          <span class="sector-tag">BPD / BPM</span>
+        </div>
+      </div>
+      <div class="sector-card">
+        <span class="sector-icon">🏥</span>
+        <div class="sector-name">Farmacéutico</div>
+        <div class="sector-desc">Medicamentos e insumos médicos regulados por INVIMA.</div>
+        <div class="sector-tags">
+          <span class="sector-tag">Trazabilidad total</span>
+          <span class="sector-tag">Cadena de custodia</span>
+        </div>
+      </div>
+      <div class="sector-card">
+        <span class="sector-icon">♻️</span>
+        <div class="sector-name">Reciclables</div>
+        <div class="sector-desc">Cartón, plástico, metales y materiales de recuperación.</div>
+        <div class="sector-tags">
+          <span class="sector-tag">Alto volumen</span>
+          <span class="sector-tag">Frecuencia recurrente</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="#form-cta" style="background:#22c55e;color:#fff;padding:14px 28px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;display:inline-block">¿Tu sector está aquí? Publica tu carga →</a>
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section class="como-section" id="como-funciona">
+  <div class="como-inner">
+    <div class="como-header">
+      <div class="section-eyebrow">el proceso</div>
+      <div class="section-title">Publica. Recibe ofertas. <em>El mejor precio gana.</em></div>
+      <p class="section-sub" style="margin:6px auto 0;max-width:480px">Sin favoritismos. Sin intermediarios que se queden con tu margen.</p>
+    </div>
+    <div class="como-steps">
+      <div class="como-step">
+        <div class="como-num">01</div>
+        <div class="como-title">Publicas tu carga</div>
+        <div class="como-desc">Ruta, peso, fecha y tipo de mercancía. Menos de 3 minutos. Sin papelería ni trámites previos.</div>
+      </div>
+      <div class="como-step">
+        <div class="como-num">02</div>
+        <div class="como-title">Los transportadores pujan</div>
+        <div class="como-desc">Solo empresas habilitadas MinTransporte. Cada una oferta sin ver las propuestas de las demás. Tú ves todo en tiempo real.</div>
+      </div>
+      <div class="como-step">
+        <div class="como-num">03</div>
+        <div class="como-title">Eliges, nosotros coordinamos</div>
+        <div class="como-desc">Seleccionas la mejor oferta. NETFLEET gestiona seguimiento, cumplidos y soporte operativo completo.</div>
+      </div>
+    </div>
+    <div class="como-cta">
+      <a href="#form-cta" class="btn-primary" style="display:inline-block">Publicar mi primera carga →</a>
+    </div>
+  </div>
+</section>
+
+<!-- CERT STRIP -->
+<div class="cert-strip">
+  <div class="cert-inner">
+    <div class="cert-tag">red certificada</div>
+    <div class="cert-items">
+      <span class="cert-item">habilitación mintransporte</span>
+      <span class="cert-item">conductores certificados</span>
+      <span class="cert-item">vehículos inspeccionados</span>
+      <span class="cert-item">pólizas vigentes</span>
+      <span class="cert-item">mercancía asegurada</span>
+      <span class="cert-item">seguimiento GPS en tiempo real</span>
+    </div>
+  </div>
+</div>
+
+<!-- FORM -->
+<section class="form-section" id="form-cta">
+  <div class="form-inner">
+    <div class="form-header">
+      <div class="section-eyebrow">empieza hoy</div>
+      <div class="section-title">¿Cuánto estás pagando hoy <em>por tu logística?</em></div>
+      <p class="section-sub" style="margin:6px auto 0;max-width:420px;text-align:center">Cuéntanos tu operación y te mostramos en menos de 2 horas cuánto podrías ahorrar.</p>
+    </div>
+    <div class="form-card" id="contacto">
+      <div id="form-state">
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <label class="form-label">Nombre y empresa</label>
+            <input id="f-nombre" class="form-input" placeholder="Ej: María González · Grupo Nutresa">
           </div>
-          <div class="hero-calc-row">
-            <div class="hero-calc-label-row">
-              <label class="hero-calc-label">Peso de la carga</label>
-              <span class="hero-calc-val" id="hc-kg-out">5.000 kg</span>
-            </div>
-            <input type="range" class="hero-calc-slider" id="hc-kg" min="100" max="50000" step="100" value="5000" oninput="hcCalc()">
+          <div>
+            <label class="form-label">WhatsApp</label>
+            <input id="f-whatsapp" class="form-input" type="tel" placeholder="+57 300 000 0000">
           </div>
-          <div class="hero-calc-result">
-            <div class="hero-calc-result-main">
-              <span class="hero-calc-label-sm">tu flete estimado</span>
-              <span class="hero-calc-price" id="hc-price">—</span>
-            </div>
-            <div class="hero-calc-result-savings" id="hc-savings-wrap">
-              <span class="hero-calc-savings-pct" id="hc-savings-pct">—</span>
-              <span class="hero-calc-label-sm">menos que el mercado</span>
-            </div>
+          <div>
+            <label class="form-label">Ciudad origen</label>
+            <input id="f-origen" class="form-input" placeholder="Ej: Bogotá">
           </div>
-          <a href="empresa.html" class="hero-cta-main" id="hc-cta">Publicar mi carga a este precio →</a>
+          <div>
+            <label class="form-label">Ciudad destino</label>
+            <input id="f-destino" class="form-input" placeholder="Ej: Barranquilla">
+          </div>
+          <div>
+            <label class="form-label">Peso aproximado (kg)</label>
+            <input id="f-peso" class="form-input" type="number" placeholder="Ej: 5000">
+          </div>
+          <div>
+            <label class="form-label">Sector</label>
+            <select id="f-sector" class="form-select">
+              <option value="">Selecciona…</option>
+              <option>Oil &amp; Gas</option>
+              <option>Agroquímicos</option>
+              <option>Health &amp; Nutrition</option>
+              <option>Farmacéutico</option>
+              <option>Reciclables</option>
+              <option>Otro</option>
+            </select>
+          </div>
         </div>
-
-        <p class="hero-proof">red verificada MinTransporte · +1.000 viajes completados · cobertura nacional</p>
-
+        <button class="form-btn" onclick="enviarForm()">Publicar mi carga gratis →</button>
+        <p class="form-micro">Recibes ofertas de transportadores certificados en menos de 2 horas · Sin compromiso</p>
       </div>
-
-      <!-- COLUMNA DERECHA: mapa de rutas activas -->
-      <!-- hero-visual oculto, mapa movido a mapa-calc-section -->
-      <div class="hero-visual" id="hero-visual"></div>
-
-    </div>
-  </section>
-
-  <!-- BARRA DE CONFIANZA B2B -->
-  <div class="trust-bar">
-    <div class="trust-bar-inner">
-      <div class="trust-item">
-        <div class="trust-num">2.000+</div>
-        <div class="trust-label">viajes gestionados</div>
-      </div>
-      <div class="trust-div"></div>
-      <div class="trust-item">
-        <div class="trust-num">9.9M kg</div>
-        <div class="trust-label">carga transportada</div>
-      </div>
-      <div class="trust-div"></div>
-      <div class="trust-item">
-        <div class="trust-num">98%</div>
-        <div class="trust-label">entregas a tiempo</div>
-      </div>
-      <div class="trust-div"></div>
-      <div class="trust-item">
-        <div class="trust-num">$0</div>
-        <div class="trust-label">comisión oculta</div>
-      </div>
-      <div class="trust-div"></div>
-      <div class="trust-item">
-        <div class="trust-num">Todo el país</div>
-        <div class="trust-label">cobertura nacional</div>
+      <div class="form-success" id="form-success">
+        <div class="form-success-icon">✅</div>
+        <div class="form-success-title">¡Listo!</div>
+        <p class="form-success-sub">Un asesor de NETFLEET te escribirá por WhatsApp en menos de <strong>2 horas</strong> para mostrarte cuánto puedes ahorrar en tu operación.</p>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
-  <div class="propval-section" style="display:none">
-    <div class="propval-grid">
-      <div class="propval-item">
-        <div class="propval-icon">🏆</div>
-        <div class="propval-title">Tú pones las condiciones</div>
-        <div class="propval-desc">Publica la ruta, la carga y la fecha. Los transportadores te hacen sus mejores ofertas. Tú eliges.</div>
-      </div>
-      <div class="propval-item">
-        <div class="propval-icon">🔒</div>
-        <div class="propval-title">Red verificada MinTransporte</div>
-        <div class="propval-desc">Solo transportadores habilitados, con vehículos inspeccionados, pólizas vigentes y seguimiento GPS.</div>
-      </div>
-      <div class="propval-item">
-        <div class="propval-icon">💸</div>
-        <div class="propval-title">$0 comisiones ocultas</div>
-        <div class="propval-desc">Sin intermediarios que se queden con tu margen. El precio que acuerdas es el precio que pagas.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SECCIÓN SECTORES -->
-  <section id="sectores" style="background:#f8f9fc;padding:4rem 2rem;overflow:hidden;">
-    <div style="max-width:1100px;margin:0 auto;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#00BFDF;margin-bottom:0.5rem;">operaciones activas por sector</div>
-      <h2 style="font-size:clamp(1.5rem,3.5vw,2.2rem);font-weight:800;color:#1B2A6B;letter-spacing:-0.5px;margin-bottom:0.5rem;">Gestionamos carga en sectores <span style="color:#00BFDF;">regulados y de alto valor</span></h2>
-      <p style="font-size:14px;color:#5a6280;line-height:1.6;margin-bottom:2.5rem;max-width:560px;">Transportadores con experiencia específica en el manejo de tu tipo de carga. Cada sector tiene sus requerimientos y nuestra red los cumple.</p>
-      <div class="sectores-cards">
-        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
-          <div style="font-size:24px;margin-bottom:0.75rem;">🛢️</div>
-          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Oil & Gas</div>
-          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Insumos, equipos y materiales para operaciones de exploración y producción.</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Carga pesada</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Rutas de campo</div>
-        </div>
-        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
-          <div style="font-size:24px;margin-bottom:0.75rem;">🌿</div>
-          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Agroquímicos</div>
-          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Fertilizantes, plaguicidas y productos de uso agrícola con requerimientos ADR.</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Carga peligrosa ADR</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Documentación MSDS</div>
-        </div>
-        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
-          <div style="font-size:24px;margin-bottom:0.75rem;">💊</div>
-          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Health & Nutrition</div>
-          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Suplementos, alimentos funcionales y productos de salud y bienestar.</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Temperatura controlada</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ BPD / BPM</div>
-        </div>
-        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
-          <div style="font-size:24px;margin-bottom:0.75rem;">🏥</div>
-          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Farmacéutico</div>
-          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Medicamentos, insumos médicos y productos regulados por INVIMA.</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Trazabilidad total</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Cadena de custodia</div>
-        </div>
-        <div style="background:white;border:1px solid #eef0f6;border-radius:16px;padding:1.5rem 1.25rem;">
-          <div style="font-size:24px;margin-bottom:0.75rem;">♻️</div>
-          <div style="font-size:13px;font-weight:700;color:#1B2A6B;margin-bottom:0.35rem;">Reciclables</div>
-          <div style="font-size:11px;color:#5a6280;line-height:1.5;margin-bottom:0.75rem;">Cartón, plástico, metales y materiales de recuperación con alto volumen.</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;margin-bottom:4px;">✓ Alto volumen</div>
-          <div style="font-size:9px;font-weight:700;color:#1B2A6B;display:flex;align-items:center;gap:5px;">✓ Frecuencia recurrente</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MAPA + CALCULADORA -->
-  <div class="mapa-calc-section">
-    <div class="mapa-col">
-      <div class="section-hdr">
-        <h2>Capacidad disponible en la red</h2>
-        <p>Transportadores activos hoy con espacio para tu carga</p>
-      </div>
-      <div class="mapa-wrap">
-        <div id="map"></div>
-        <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
-      </div>
-      <div class="cta-mapa-wrap">
-        <a id="cta-mapa" href="#lead-modal" onclick="abrirLeadModal()">Publicar mi carga en esta ruta →</a>
-      </div>
-    </div>
-    <div class="calc-col">
-      <div class="section-hdr">
-        <h2>Estimador de flete</h2>
-        <p>Basado en más de 1.000 viajes reales en Colombia</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- SECCIÓN DE VIAJES DISPONIBLES -->
-  <div class="section" id="viajes" style="display:none">
-    <div class="section-hdr">
-      <h2 id="viajes-titulo">Así compiten los transportadores por tu carga</h2>
-      <p id="viajes-subtitle">Subastas activas ahora — precios reales de mercado</p>
-    </div>
-    <div class="nuevos-banner" id="nuevos-banner" onclick="aplicarNuevosViajes()">
-      🔔 <span id="nuevos-banner-text">Hay nuevos viajes disponibles</span> — <u>Ver ahora</u>
-    </div>
-    <div class="viajes-grid" id="viajes-grid">
-      <div class="loading-msg">Cargando viajes disponibles...</div>
-    </div>
-  </div>
-
-  <!-- SECCIÓN DE RETORNOS (aparece solo al buscar) -->
-  <div class="section retornos-section" id="retornos-section" style="display:none">
-    <div class="section-hdr retornos-hdr">
-      <div class="retornos-badge">retorno</div>
-      <h2 id="retornos-titulo">Retornos disponibles</h2>
-      <p id="retornos-subtitle">Carga disponible para el viaje de vuelta</p>
-    </div>
-    <div class="viajes-grid" id="retornos-grid"></div>
-  </div>
-
-  <!-- RED CERTIFICADA — sección ancho completo -->
-  <div class="cert-badge">
-    <div class="cert-badge-inner">
-      <div class="cert-badge-title">red certificada</div>
-      <p class="cert-badge-desc">Solo transportadores verificados y habilitados ante el MinTransporte</p>
-      <ul class="cert-badge-list">
-        <li>habilitación mintransporte</li>
-        <li>conductores certificados</li>
-        <li>vehículos inspeccionados</li>
-        <li>pólizas vigentes</li>
-        <li>mercancía asegurada</li>
-        <li>seguimiento GPS en tiempo real</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- CÓMO FUNCIONA — solo para generador, ancho completo -->
-  <div class="bloque-oscuro" id="como-funciona">
-    <div class="bloque-inner bloque-inner--generador">
-      <div class="bloque-eyebrow bloque-eyebrow--dark">cómo funciona</div>
-      <h3 class="como-solo-title">Publica.<br>Recibe ofertas.<br><span>El mejor precio gana.</span></h3>
-      <div class="como-solo-steps">
-        <div class="como-solo-step">
-          <div class="como-col-num">01</div>
-          <div class="como-col-desc">Publicas tu operación — ruta, carga y fecha en minutos.</div>
-        </div>
-        <div class="como-solo-step">
-          <div class="como-col-num">02</div>
-          <div class="como-col-desc">Transportadores verificados pujan por tu carga. Sin favoritismos, sin intermediarios.</div>
-        </div>
-        <div class="como-solo-step">
-          <div class="como-col-num">03</div>
-          <div class="como-col-desc">Eliges la mejor oferta. NETFLEET coordina todo lo demás.</div>
-        </div>
-      </div>
-      <a href="empresa.html" class="btn-primary-cta" style="margin-top:2rem;display:inline-block;text-decoration:none">Publicar mi carga →</a>
-    </div>
-  </div>
-
-  <!-- CONTACTO -->
-  <div class="contacto-section" id="contacto">
-    <div class="contacto-inner">
-      <div class="contacto-eyebrow">contacto</div>
-      <h2 class="contacto-title">¿Hablamos?</h2>
-      <p class="contacto-sub">Nuestro equipo responde en menos de 2 horas en días hábiles.</p>
-      <div class="contacto-opciones">
-        <a class="contacto-card" href="https://wa.me/573214401975?text=Hola%2C+quiero+saber+m%C3%A1s+sobre+NETFLEET" target="_blank">
-          <div class="contacto-card-icon">💬</div>
-          <div class="contacto-card-label">WhatsApp</div>
-          <div class="contacto-card-desc">+57 321 440 1975</div>
-        </a>
-        <a class="contacto-card" href="mailto:bernardoaristizabal@logxie.com">
-          <div class="contacto-card-icon">✉️</div>
-          <div class="contacto-card-label">Email</div>
-          <div class="contacto-card-desc">bernardoaristizabal@logxie.com</div>
-        </a>
-      </div>
-
-      <div style="margin-top:2rem;background:white;border:1px solid #eef0f6;border-radius:16px;padding:2rem;max-width:480px;margin-left:auto;margin-right:auto;text-align:left;">
-        <div style="margin-bottom:1rem;">
-          <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5a6280;display:block;margin-bottom:5px;">Nombre y empresa</label>
-          <input type="text" id="lead-nombre-new" style="width:100%;padding:11px 14px;border:1.5px solid #eef0f6;border-radius:10px;font-size:14px;font-family:inherit;color:#1a1d2e;background:#f8f9fc;" placeholder="Ej: María González · Grupo Nutresa">
-        </div>
-        <div style="margin-bottom:1rem;">
-          <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5a6280;display:block;margin-bottom:5px;">WhatsApp</label>
-          <input type="tel" id="lead-whatsapp-new" style="width:100%;padding:11px 14px;border:1.5px solid #eef0f6;border-radius:10px;font-size:14px;font-family:inherit;color:#1a1d2e;background:#f8f9fc;" placeholder="+57 300 000 0000">
-        </div>
-        <div style="margin-bottom:1rem;">
-          <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5a6280;display:block;margin-bottom:5px;">Sector</label>
-          <select id="lead-sector-new" style="width:100%;padding:11px 14px;border:1.5px solid #eef0f6;border-radius:10px;font-size:14px;font-family:inherit;color:#1a1d2e;background:#f8f9fc;appearance:none;cursor:pointer;">
-            <option value="">Selecciona tu sector…</option>
-            <option value="og">Oil & Gas</option>
-            <option value="agro">Agroquímicos</option>
-            <option value="health">Health & Nutrition</option>
-            <option value="farma">Farmacéutico</option>
-            <option value="reciclables">Reciclables</option>
-            <option value="otro">Otro</option>
-          </select>
-        </div>
-        <div id="lead-error-form" style="font-size:12px;color:#dc2626;margin-bottom:8px;display:none;"></div>
-        <button onclick="enviarLeadNuevo()" style="width:100%;background:#1B2A6B;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">Quiero ver cuánto ahorro →</button>
-        <p style="font-size:11px;color:#9aa0b8;text-align:center;margin-top:0.75rem;">Te contactamos por WhatsApp en menos de 2 horas · Sin compromisos</p>
-        <div id="lead-success-form" style="display:none;text-align:center;padding:1rem 0;">
-          <div style="font-size:40px;margin-bottom:0.5rem;">✅</div>
-          <div style="font-size:1.1rem;font-weight:700;color:#1B2A6B;">¡Listo! Te contactamos pronto.</div>
-          <p style="font-size:13px;color:#5a6280;margin-top:0.5rem;">Un asesor te escribirá por WhatsApp en menos de 2 horas.</p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-logo">NET<span>FLEET</span></div>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">NET<em>FLEET</em><br><span style="font-weight:400;font-size:0.45em;opacity:0.6;letter-spacing:0.05em;line-height:1">by Logxie</span></div>
     <div class="footer-links">
       <a href="#como-funciona">Cómo funciona</a>
       <a href="#sectores">Sectores</a>
-      <a href="#empresas">Empresas</a>
-      <a href="#transportadores">Transportadores</a>
+      <a href="#calculadora">Calculadora</a>
+      <a href="transportador.html">¿Eres transportador?</a>
       <a href="#contacto">Contacto</a>
     </div>
-    <div class="footer-sub">© 2026 NETFLEET · Marketplace de carga B2B · Colombia</div>
-  </footer>
-
-  <!-- MODAL LEAD CALCULADORA -->
-  <div class="modal-overlay" id="lead-modal" onclick="if(event.target===this)cerrarLeadModal()">
-    <div class="modal-box lead-box" id="lead-box">
-
-      <!-- ESTADO: formulario -->
-      <div id="lead-form-state">
-        <button class="modal-close" onclick="cerrarLeadModal()">×</button>
-        <div class="vinc-tag">solicitud de cotización</div>
-        <h3 class="vinc-title">Cuéntanos sobre tu operación</h3>
-        <p class="vinc-intro">Un asesor de NETFLEET te contactará en menos de 24 horas con una propuesta.</p>
-
-        <div class="lead-field">
-          <label class="calc-label">Nombre y empresa</label>
-          <input type="text" id="lead-nombre" class="modal-input" placeholder="Ej: Carlos Pérez · Grupo Nutresa">
-        </div>
-        <div class="lead-field">
-          <label class="calc-label">WhatsApp</label>
-          <input type="tel" id="lead-whatsapp" class="modal-input" placeholder="+57 300 000 0000">
-        </div>
-        <div class="lead-field">
-          <label class="calc-label">Sector</label>
-          <select id="lead-sector" class="modal-input"><option value="">Sector...</option><option value="og">Oil & Gas</option><option value="agro">Agroquímicos</option><option value="health">Health & Nutrition</option><option value="farma">Farmacéutico</option><option value="reciclables">Reciclables</option><option value="otro">Otro</option></select>
-        </div>
-        <div class="lead-field">
-          <label class="calc-label">Volumen mensual estimado</label>
-          <select id="lead-volumen" class="calc-select" style="width:100%">
-            <option value="">Selecciona...</option>
-            <option value="1-5">Menos de 5 viajes / mes</option>
-            <option value="5-20">5 – 20 viajes / mes</option>
-            <option value="20-50">20 – 50 viajes / mes</option>
-            <option value="50+">Más de 50 viajes / mes</option>
-          </select>
-        </div>
-
-        <div id="lead-error" style="font-size:12px;color:#e53e3e;margin-bottom:10px;display:none"></div>
-        <button class="calc-cta" style="border:none;cursor:pointer;width:100%;font-size:14px;padding:12px" onclick="enviarLead()">
-          Quiero ver cuánto ahorro →
-        </button>
-      </div>
-
-      <!-- ESTADO: éxito -->
-      <div id="lead-success-state" style="display:none;text-align:center;padding:1rem 0">
-        <div style="font-size:40px;margin-bottom:1rem">✓</div>
-        <div class="vinc-tag" style="justify-content:center">solicitud enviada</div>
-        <h3 class="vinc-title" style="margin-top:0.5rem">¡Listo!</h3>
-        <p class="vinc-intro">Un asesor de NETFLEET te contactará en menos de <strong>24 horas</strong> para presentarte una propuesta.</p>
-        <button class="calc-cta" style="border:none;cursor:pointer;width:100%;font-size:14px;padding:12px;margin-top:0.5rem" onclick="cerrarLeadModal()">Cerrar</button>
-      </div>
-
-    </div>
+    <div class="footer-copy">© 2026 NETFLEET · Logxie Connect S.A.S. · Marketplace de carga B2B · Colombia</div>
   </div>
+</footer>
 
-  <!-- MODAL DE VINCULACIÓN (empresa / transportador) -->
-  <div class="modal-overlay" id="vinculacion-modal" onclick="if(event.target===this)cerrarVinculacionModal()">
-    <div class="modal-box vinc-box">
-      <button class="modal-close" onclick="cerrarVinculacionModal()">×</button>
-      <div class="vinc-tag" id="vinc-tag"></div>
-      <h3 class="vinc-title" id="vinc-title"></h3>
-      <p class="vinc-intro" id="vinc-intro"></p>
-      <div class="vinc-list-label">Lo que verificamos:</div>
-      <ul class="vinc-list" id="vinc-list"></ul>
-      <a class="btn-vinc-wa" id="vinc-wa-btn" href="#" target="_blank" rel="noopener">
-        <span id="vinc-wa-label"></span>
-      </a>
-    </div>
-  </div>
+<!-- FAB WhatsApp -->
+<a class="fab-wa" href="https://wa.me/573214401975?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20NETFLEET" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="white">
+    <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.648 4.831 1.783 6.865L2 30l7.347-1.745A13.94 13.94 0 0016 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.56 11.56 0 01-5.89-1.608l-.422-.25-4.36 1.036 1.072-4.245-.275-.437A11.56 11.56 0 014.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.326-8.664c-.347-.174-2.05-1.01-2.368-1.126-.317-.115-.548-.174-.778.174-.23.347-.894 1.126-1.097 1.357-.202.23-.404.26-.75.087-.347-.174-1.464-.54-2.788-1.72-1.03-.918-1.726-2.052-1.928-2.4-.202-.347-.022-.534.152-.707.156-.155.347-.404.52-.606.174-.202.23-.347.347-.578.115-.23.058-.433-.029-.606-.087-.174-.778-1.878-1.067-2.572-.28-.675-.566-.584-.778-.595l-.663-.011c-.23 0-.606.086-.923.433-.317.347-1.21 1.183-1.21 2.884s1.24 3.346 1.413 3.577c.174.23 2.44 3.726 5.91 5.226.826.356 1.47.569 1.973.729.829.264 1.584.226 2.18.137.665-.1 2.05-.838 2.34-1.648.29-.81.29-1.504.202-1.648-.086-.145-.317-.23-.664-.404z"/>
+  </svg>
+</a>
 
-  <!-- Toast de notificaciones (mensajes temporales) -->
-  <div class="toast" id="toast"></div>
+<div id="viajes-grid" style="display:none"></div>
+<div id="nuevos-banner" style="display:none"></div>
+<div id="retornos-section" style="display:none"></div>
+<div class="toast" id="toast"></div>
 
-  <!-- AUTH MODAL -->
-  <!-- MODAL DE OFERTA -->
-  <div class="modal-overlay" id="oferta-modal" onclick="if(event.target===this)cerrarOfertaModal()">
-    <div class="modal-box">
-      <button class="modal-close" onclick="cerrarOfertaModal()">×</button>
-      <div class="modal-form">
-        <h3 id="oferta-titulo">Hacer oferta</h3>
-        <div id="oferta-resumen" style="background:var(--gray-50);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--gray-600);line-height:1.6;"></div>
-        <label style="font-size:11px;font-weight:500;color:var(--gray-600);display:block;margin-bottom:6px;">Tu oferta (COP)</label>
-        <input type="text" id="oferta-precio" class="modal-input" placeholder="Ej: 2.500.000" inputmode="numeric" oninput="formatPrecioInput(this)" onkeydown="if(event.key==='Enter')enviarOferta()">
-        <label style="font-size:11px;font-weight:500;color:var(--gray-600);display:block;margin-bottom:6px;">Comentario (opcional)</label>
-        <input type="text" id="oferta-comentario" class="modal-input" placeholder="Ej: Tengo camión disponible mañana">
-        <button class="modal-btn-primary" id="oferta-btn" onclick="enviarOferta()">Enviar oferta →</button>
-        <div id="oferta-error" class="modal-error" style="display:none"></div>
-        <div id="oferta-success" class="modal-success" style="display:none"></div>
-      </div>
-    </div>
-  </div>
+<!-- LEAFLET JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- MODAL SELECTOR — ¿Empresa o Transportadora? -->
-  <div class="modal-overlay" id="selector-modal" onclick="if(event.target===this)cerrarSelectorModal()">
-    <div class="modal-box" style="max-width:380px;text-align:center">
-      <button class="modal-close" onclick="cerrarSelectorModal()">×</button>
-      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;color:var(--cyan);text-transform:uppercase;margin-bottom:0.5rem">NETFLEET</p>
-      <h3 style="font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:0.35rem">¿Cómo quieres usar la plataforma?</h3>
-      <p style="font-size:0.85rem;color:var(--gray-400);margin-bottom:1.5rem">Elige tu perfil para comenzar</p>
-
-      <a href="empresa.html" class="selector-card" onclick="cerrarSelectorModal()">
-        <span class="selector-icon">📦</span>
-        <span class="selector-text">
-          <span class="selector-title">Tengo carga para mover</span>
-          <span class="selector-sub">Publica tu carga · recibe propuestas · escoge la mejor oferta</span>
-        </span>
-        <span class="selector-arrow">→</span>
-      </a>
-
-      <a href="transportador.html" class="selector-card" onclick="cerrarSelectorModal()">
-        <span class="selector-icon">🚛</span>
-        <span class="selector-text">
-          <span class="selector-title">Soy transportadora</span>
-          <span class="selector-sub">Explora viajes disponibles · haz tu oferta · gana contratos</span>
-        </span>
-        <span class="selector-arrow">→</span>
-      </a>
-
-      <button class="selector-login" onclick="cerrarSelectorModal();abrirAuthModal('login')">
-        <span class="selector-login-icon">🔑</span>
-        <span class="selector-login-text">
-          <span class="selector-login-title">Ya tengo cuenta</span>
-          <span class="selector-login-sub">Ingresar a mi panel</span>
-        </span>
-        <span class="selector-login-arrow">→</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="auth-modal" onclick="cerrarModalOverlay(event)">
-    <div class="modal-box">
-      <button class="modal-close" onclick="cerrarAuthModal()">×</button>
-      <div class="modal-tabs">
-        <button class="modal-tab active" id="tab-login"    onclick="cambiarAuthTab('login')">Ingresar</button>
-        <button class="modal-tab"        id="tab-registro" onclick="cambiarAuthTab('registro')">Registrarse</button>
-      </div>
-
-      <!-- LOGIN -->
-      <div id="form-login" class="modal-form">
-        <h3>Bienvenido de nuevo</h3>
-        <input type="email"    id="login-email"    class="modal-input" placeholder="Email" onkeydown="if(event.key==='Enter')iniciarSesion()">
-        <div style="position:relative">
-          <input type="password" id="login-password" class="modal-input" placeholder="Contraseña" style="padding-right:40px;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')iniciarSesion()">
-          <span onclick="togglePass('login-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;color:#9aa0b8">👁</span>
-        </div>
-        <button class="modal-btn-primary" onclick="iniciarSesion()">Ingresar →</button>
-        <p class="modal-link">¿No tienes cuenta? <a onclick="cambiarAuthTab('registro')">Regístrate aquí</a></p>
-      </div>
-
-      <!-- REGISTRO -->
-      <div id="form-registro" class="modal-form" style="display:none">
-        <h3>Crear cuenta</h3>
-        <input type="text"     id="reg-nombre"   class="modal-input" placeholder="Nombre completo">
-        <input type="text"     id="reg-empresa"  class="modal-input" placeholder="Empresa / Razón social">
-        <input type="text"     id="reg-telefono" class="modal-input" placeholder="Teléfono">
-        <input type="text"     id="reg-nit"      class="modal-input" placeholder="NIT">
-        <select id="reg-tipo" class="modal-input">
-          <option value="">¿Cómo usarás NETFLEET?</option>
-          <option value="transportador">Soy transportador (empresa o independiente)</option>
-          <option value="empresa">Soy generador de carga (empresa)</option>
-        </select>
-        <input type="email"    id="reg-email"    class="modal-input" placeholder="Email">
-        <div style="position:relative">
-          <input type="password" id="reg-password" class="modal-input" placeholder="Contraseña (mín. 8 caracteres)" style="padding-right:40px;width:100%;box-sizing:border-box">
-          <span onclick="togglePass('reg-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;color:#9aa0b8">👁</span>
-        </div>
-        <button class="modal-btn-primary" onclick="registrarse()">Crear cuenta →</button>
-        <p class="modal-link">¿Ya tienes cuenta? <a onclick="cambiarAuthTab('login')">Inicia sesión</a></p>
-      </div>
-
-      <div id="auth-error"   class="modal-error"   style="display:none"></div>
-      <div id="auth-success" class="modal-success"  style="display:none"></div>
-    </div>
-  </div>
-
-  <!-- Leaflet JS — debe cargarse al final del body -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <script>
+<script>
     // ================================================================
     // SUPABASE — AUTH
     // ================================================================
@@ -1368,6 +792,7 @@
     // ── ESTADO GLOBAL DE ROL ──────────────────────────────────────
     let rolActivo = localStorage.getItem('netfleet_rol') || null;
     let tickerRolAplicado = false; // evitar doble replace en ticker
+    let _viajesCargados = false;
 
     function setRol(rol) {
       rolActivo = rol;
@@ -1513,6 +938,7 @@
     });
 
     function actualizarNav(perfil) {
+      if (!document.getElementById('nav-auth-buttons')) return;
       const btnArea  = document.getElementById('nav-auth-buttons');
       const userArea = document.getElementById('nav-user-info');
       if (!perfil) {
@@ -2338,12 +1764,14 @@
       const bar   = document.getElementById('ticker-bar');
       if (!viajes || viajes.length === 0) return;
 
+
       const items = viajes.map(v => {
         const origen   = (v.origen  || '').split(',')[0].trim();
         const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-        const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1} destinos` : destinos[0] || '—';
+        const isMobile = window.innerWidth < 600;
+        const dest     = isMobile ? (destinos[0] || '—') : (destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : destinos[0] || '—');
         const precio   = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
-        const precioTxt = precio > 0 ? formatPrecioCorto(precio) : 'A convenir';
+        const precioTxt = precio > 0 ? formatPrecioCorto(precio) : '';
 
         const hoy   = new Date(); hoy.setHours(0,0,0,0);
         const partes = (v.fecha_cargue || '').split('/');
@@ -2351,21 +1779,28 @@
         const dias  = fecha ? Math.ceil((fecha - hoy) / 86400000) : 99;
         const badge = dias <= 0 ? '⚡' : dias <= 2 ? '🔥' : '📦';
 
-        return `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
+        return isMobile
+          ? `<span class="ticker-item">${badge} ${origen}→${dest} ${precioTxt}</span>`
+          : `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
       }).join('<span class="ticker-item" style="color:rgba(255,255,255,0.2)">|</span>');
 
-      // Duplicar para loop infinito
-      track.innerHTML = items + items;
+      // Repetir contenido suficiente para que el scroll se vea fluido
+      var repeat = items;
+      // Si hay pocos viajes, repetir más veces para llenar pantalla
+      var testDiv = document.createElement('div');
+      testDiv.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;display:flex;';
+      testDiv.innerHTML = items;
+      document.body.appendChild(testDiv);
+      var itemsWidth = testDiv.scrollWidth;
+      document.body.removeChild(testDiv);
+      var screenW = window.innerWidth;
+      var copias = Math.max(2, Math.ceil((screenW * 2) / Math.max(1, itemsWidth)));
+      repeat = Array(copias).fill(items).join('');
+      track.innerHTML = repeat + repeat;
       bar.style.display = 'flex';
 
-      // Velocidad basada en píxeles/segundo — se adapta a cualquier pantalla
-      track.style.animationDuration = '9999s'; // temporal para medir
-      requestAnimationFrame(() => {
-        const contentWidth = track.scrollWidth / 2; // mitad porque está duplicado
-        const pxPerSec = 110; // velocidad cómoda de lectura
-        const duracion = Math.max(8, contentWidth / pxPerSec);
-        track.style.animationDuration = duracion + 's';
-      });
+      // Velocidad fija: 15s en mobile, 20s en desktop
+      track.style.animationDuration = (window.innerWidth < 600) ? '3s' : '20s';
     }
 
     // Parsear fecha DD/MM/YYYY → Date
@@ -2567,9 +2002,15 @@
 
     async function initMapa(viajes) {
       if (!document.getElementById('map')) return;
+      if (window._mapaIniciado) {
+        // Solo actualizar marcadores sin reinicializar el mapa
+        if (typeof actualizarMarcadores === 'function') actualizarMarcadores(viajes);
+        return;
+      }
       console.log(`[MAPA] initMapa llamado con ${viajes.length} viajes:`, viajes.map(v => v.origen + ' → ' + v.destino));
       mapaLeaflet = L.map('map', { zoomControl: true })
         .setView([4.5709, -74.2973], 6);
+      window._mapaIniciado = true;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO',
@@ -2778,6 +2219,8 @@
      * no quede en blanco durante desarrollo o si Sheets no responde.
      */
     async function cargarViajes() {
+      if (_viajesCargados) return;
+      _viajesCargados = true;
       try {
         const respuesta = await fetch(CSV_URL);
         if (!respuesta.ok) throw new Error('No se pudo cargar el CSV');
@@ -2805,6 +2248,27 @@
         await initMapa(viajesData);
         cargarConteosOfertas();
         if (typeof _heroDrawFn === 'function') _heroDrawFn(viajesData);
+
+        // Badges de confianza
+        const previewGrid = document.getElementById('viajes-preview-grid');
+        if (previewGrid) {
+          previewGrid.innerHTML = '';
+          const badges = [
+            { icon: '🛡️', title: 'Transportadoras habilitadas', sub: 'Verificadas ante el Ministerio de Transporte' },
+            { icon: '🎓', title: 'Conductores certificados', sub: 'Formación para mercancías especiales' },
+            { icon: '📋', title: 'Pólizas vigentes', sub: 'Mercancía y responsabilidad civil extracontractual' },
+            { icon: '📡', title: 'Rastreo GPS en tiempo real', sub: 'Sabes dónde está tu carga en todo momento' },
+            { icon: '💰', title: 'Subasta inversa transparente', sub: 'Transportadores compiten · Tú eliges la mejor oferta' }
+          ];
+          badges.forEach(b => {
+            const d = document.createElement('div');
+            d.style.cssText = 'background:#fff;border:1px solid #e2e5eb;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);';
+            d.innerHTML = '<span style="font-size:1.5em">' + b.icon + '</span>' +
+              '<div><div style="font-weight:700;color:#0E1B4D;font-size:0.9em">' + b.title + '</div>' +
+              '<div style="font-size:0.78em;color:#666">' + b.sub + '</div></div>';
+            previewGrid.appendChild(d);
+          });
+        }
 
       } catch (error) {
         console.warn('Error al cargar viajes:', error);
@@ -2977,8 +2441,7 @@
     // Aplicar rol guardado después de que el DOM y los viajes carguen
     if (rolActivo) setTimeout(aplicarRol, 800);
 
-  </script>
-  <script>
+
     // CALCULADORA DE FLETE — modelo polinomial grado 2 + paradas + zona (Ridge, n=1.015 viajes reales)
     // Misma fórmula que n8n v2 para que los precios coincidan
     const CC_RANGOS = [
@@ -3051,29 +2514,6 @@
     }
 
     // ── MINI-CALC HERO ────────────────────────────────────────────
-    function hcCalc() {
-      const km = parseInt(document.getElementById('hc-km').value);
-      const kg = parseInt(document.getElementById('hc-kg').value);
-      document.getElementById('hc-km-out').textContent = km.toLocaleString('es-CO') + ' km';
-      document.getElementById('hc-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
-      const base = estimarPrecio(km, kg, 1, '', '');
-      document.getElementById('hc-price').textContent = ccFmt(base);
-      const r = ccRango(km);
-      const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
-      const wrap = document.getElementById('hc-savings-wrap');
-      if (ahorroPct > 0) {
-        document.getElementById('hc-savings-pct').textContent = ahorroPct + '%';
-        wrap.style.display = 'flex';
-      } else {
-        wrap.style.display = 'none';
-      }
-      // Actualizar CTA con precio
-      document.getElementById('hc-cta').textContent = `Publicar mi carga · ${ccFmt(base)} →`;
-    }
-    hcCalc();
-  </script>
-
-  <script>
     // ── HERO CARD ROTATIVO — usa datos de viajesData (cargados por cargarViajes) ──
     let _heroDrawFn = function(viajes) {
       const viajesHero = [];
@@ -3102,60 +2542,130 @@
         setInterval(() => { idx = (idx+1) % viajesHero.length; actualizarHeroCard(); }, 3000);
       }
     };
-  </script>
 
-  <!-- BOTONES FLOTANTES -->
-  <style>
-    .fab-stack { position:fixed; bottom:24px; right:6px; z-index:9999; display:flex; flex-direction:column; align-items:center; gap:12px; }
-    @media (min-width: 769px) { .fab-stack { right:24px; bottom:24px; } }
-    .fab-wa { width:56px; height:56px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(37,211,102,0.45); transition:transform 0.2s,box-shadow 0.2s; text-decoration:none; flex-shrink:0; }
-    .fab-wa:hover { transform:scale(1.1); box-shadow:0 6px 24px rgba(37,211,102,0.6); }
-    .fab-main { width:56px; height:56px; border-radius:50%; background:var(--cyan); border:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,191,223,0.4); cursor:pointer; flex-shrink:0; transition:transform 0.25s,background 0.2s; }
-    .fab-main:hover { background:#00a8c4; }
-    .fab-main.open { transform:rotate(45deg); background:#00a8c4; }
-    .fab-main svg { transition:inherit; }
-    .fab-menu { display:flex; flex-direction:column; align-items:flex-end; gap:8px; overflow:hidden; max-height:0; opacity:0; transition:max-height 0.35s ease, opacity 0.25s ease; pointer-events:none; }
-    .fab-menu.open { max-height:300px; opacity:1; pointer-events:auto; }
-    .fab-item { display:flex; align-items:center; gap:10px; text-decoration:none; background:white; color:var(--navy); font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; padding:9px 16px 9px 14px; border-radius:50px; box-shadow:0 2px 10px rgba(0,0,0,0.13); white-space:nowrap; transition:background 0.2s,transform 0.2s; }
-    .fab-item:hover { background:var(--cyan-light); transform:translateX(-3px); }
-    .fab-item-icon { font-size:16px; }
-  </style>
+    // ── LANDING: CALCULADORA (usa estimarPrecio del core) ──
+    function fmtCOP(n) { return ccFmt(n); }
+    function rango(km) { return ccRango(km); }
 
-  <div class="fab-stack">
-    <!-- Menú expandible -->
-    <div class="fab-menu" id="fab-menu">
-      <a class="fab-item" href="#como-funciona"><span class="fab-item-icon">❓</span> Cómo funciona</a>
-      <a class="fab-item" href="#lead-modal" onclick="abrirLeadModal()"><span class="fab-item-icon">📦</span> Publicar mi carga</a>
-      <a class="fab-item" href="#"><span class="fab-item-icon">🏠</span> Ir al inicio</a>
-    </div>
-    <!-- Botón + -->
-    <button class="fab-main" id="fab-main" onclick="toggleFab()" aria-label="Menú rápido">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-    </button>
-    <!-- WhatsApp -->
-    <a class="fab-wa" href="https://wa.me/573214401975?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20NETFLEET" target="_blank" rel="noopener" aria-label="WhatsApp">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="white">
-        <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.648 4.831 1.783 6.865L2 30l7.347-1.745A13.94 13.94 0 0016 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.6a11.56 11.56 0 01-5.89-1.608l-.422-.25-4.36 1.036 1.072-4.245-.275-.437A11.56 11.56 0 014.4 16C4.4 9.593 9.593 4.4 16 4.4S27.6 9.593 27.6 16 22.407 27.6 16 27.6zm6.326-8.664c-.347-.174-2.05-1.01-2.368-1.126-.317-.115-.548-.174-.778.174-.23.347-.894 1.126-1.097 1.357-.202.23-.404.26-.75.087-.347-.174-1.464-.54-2.788-1.72-1.03-.918-1.726-2.052-1.928-2.4-.202-.347-.022-.534.152-.707.156-.155.347-.404.52-.606.174-.202.23-.347.347-.578.115-.23.058-.433-.029-.606-.087-.174-.778-1.878-1.067-2.572-.28-.675-.566-.584-.778-.595l-.663-.011c-.23 0-.606.086-.923.433-.317.347-1.21 1.183-1.21 2.884s1.24 3.346 1.413 3.577c.174.23 2.44 3.726 5.91 5.226.826.356 1.47.569 1.973.729.829.264 1.584.226 2.18.137.665-.1 2.05-.838 2.34-1.648.29-.81.29-1.504.202-1.648-.086-.145-.317-.23-.664-.404z"/>
-      </svg>
-    </a>
-  </div>
+    // ── LANDING: FORM ──
+    async function enviarForm() {
+      const nombre = document.getElementById('f-nombre')?.value?.trim();
+      const whatsapp = document.getElementById('f-whatsapp')?.value?.trim();
+      const origen = document.getElementById('f-origen')?.value?.trim();
+      const destino = document.getElementById('f-destino')?.value?.trim();
+      const peso = document.getElementById('f-peso')?.value?.trim();
+      const sector = document.getElementById('f-sector')?.value;
 
-  <script>
-    function toggleFab() {
-      const menu = document.getElementById('fab-menu');
-      const btn  = document.getElementById('fab-main');
-      const open = menu.classList.toggle('open');
-      btn.classList.toggle('open', open);
-    }
-    // Cerrar al hacer clic fuera
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.fab-stack')) {
-        document.getElementById('fab-menu').classList.remove('open');
-        document.getElementById('fab-main').classList.remove('open');
+      if (!nombre || !whatsapp || !origen || !destino) {
+        showToast('Completa al menos nombre, WhatsApp, origen y destino', 'error');
+        return;
       }
-    });
-  </script>
+
+      const btn = document.querySelector('.form-btn');
+      const btnText = btn.textContent;
+      btn.textContent = 'Publicando…';
+      btn.disabled = true;
+
+      try {
+        const { data: lead, error: errLead } = await sb.from('leads').insert({
+          nombre,
+          whatsapp,
+          sector: sector || null,
+          fuente: 'landing'
+        }).select().single();
+
+        if (errLead) throw errLead;
+
+        const pesoNum = parseFloat(peso) || null;
+        const precioEst = pesoNum ? estimarPrecio(400, pesoNum, 1, '') : null;
+
+        const { error: errCarga } = await sb.from('cargas').insert({
+          lead_id: lead.id,
+          origen,
+          destino,
+          peso_kg: pesoNum || 0,
+          tipo_carga: sector || null,
+          precio_estimado: precioEst,
+          estado: 'abierta'
+        });
+
+        if (errCarga) throw errCarga;
+
+        showToast('¡Carga publicada! Te contactamos por WhatsApp pronto.', 'success');
+        btn.textContent = '✓ Carga publicada';
+
+        const msg = encodeURIComponent(
+          'Hola NETFLEET, publiqué mi carga:\n' +
+          '📦 ' + origen + ' → ' + destino + '\n' +
+          '⚖️ ' + (peso || 'Por definir') + ' kg\n' +
+          '🏢 ' + nombre + '\n' +
+          'Quiero recibir ofertas.'
+        );
+        setTimeout(function(){ window.open('https://wa.me/573214401975?text=' + msg, '_blank'); }, 1500);
+
+      } catch (e) {
+        console.error('Error enviarForm:', e);
+        showToast('Error al publicar. Intenta de nuevo.', 'error');
+        btn.textContent = btnText;
+        btn.disabled = false;
+      }
+    }
+
+    function calcLanding() {
+      const km = parseInt(document.getElementById('cc-km')?.value) || 400;
+      const kg = parseInt(document.getElementById('cc-kg')?.value) || 5000;
+      const kmOut = document.getElementById('cc-km-out');
+      const kgOut = document.getElementById('cc-kg-out');
+      const baseEl = document.getElementById('cc-base');
+      const ahorroCard = document.getElementById('cc-ahorro-card');
+      const ahorroEl = document.getElementById('cc-ahorro');
+      const ctaEl = document.getElementById('cc-cta-landing');
+      if (kmOut) kmOut.textContent = km.toLocaleString('es-CO') + ' km';
+      if (kgOut) kgOut.textContent = kg.toLocaleString('es-CO') + ' kg';
+      if (typeof estimarPrecio !== 'function') return;
+      const precio = estimarPrecio(km, kg, 1, '', '');
+      if (baseEl) baseEl.textContent = '$' + Math.round(precio).toLocaleString('es-CO');
+      // Ahorro estimado: 20% promedio por subasta inversa
+      if (ahorroCard && ahorroEl) {
+        var ahorroBase = 15 + Math.min(10, Math.round(km / 200) + Math.round(kg / 10000));
+        ahorroEl.textContent = ahorroBase + '%';
+        ahorroCard.style.display = '';
+      }
+      if (ctaEl) ctaEl.textContent = 'Publicar mi carga a $' + Math.round(precio).toLocaleString('es-CO') + ' →';
+
+      // CO₂: 0.9 kg CO₂/km ahorrado × 20% optimización → árboles (1 árbol ≈ 22 kg CO₂/año)
+      var co2 = km * (0.5 + (kg / 30000) * 0.8) * 0.2;
+      var arboles = Math.max(1, Math.round(co2 / 22));
+      var co2Card = document.getElementById('cc-co2-card');
+      var co2El = document.getElementById('cc-co2');
+      if (co2Card && co2El) {
+        co2El.textContent = '🌳 ' + arboles;
+        co2Card.style.display = '';
+      }
+    }
+
+    // ── LANDING: TOAST ──
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); }, 4000);
+    }
+
+    // ── INICIO ──
+    // Calculadora — independiente del mapa
+    try {
+      document.getElementById('cc-km')?.addEventListener('input', calcLanding);
+      document.getElementById('cc-kg')?.addEventListener('input', calcLanding);
+      document.getElementById('cc-paradas')?.addEventListener('input', calcLanding);
+      document.getElementById('cc-zona')?.addEventListener('change', calcLanding);
+      calcLanding();
+    } catch(e) { console.error('calcLanding init error:', e); }
+
+    // Mapa y viajes — separado
+    try {
+      cargarViajes();
+      setInterval(revisarNuevosViajes, 180000);
+    } catch(e) { console.error('cargarViajes init error:', e); }
+</script>
 </body>
 </html>

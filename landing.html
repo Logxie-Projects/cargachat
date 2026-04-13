@@ -351,6 +351,65 @@ footer { background: var(--navy); padding: 3rem; }
   footer { padding: 2rem 1.5rem; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
 }
+
+/* Pin de precio estilo Airbnb */
+.precio-pin {
+  background: white;
+  border: 2.5px solid var(--navy);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 11px; font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-block;
+  line-height: 1.4;
+}
+.precio-pin.activo {
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 4px 16px rgba(27,42,107,0.35);
+  transform: scale(1.12);
+}
+.pin-preview-tooltip {
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: var(--navy);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pin-preview-tooltip::before { display: none; }
+.pin-preview b { font-weight: 700; }
+.pin-preview-dest { color: #6b7280; margin-top: 2px; font-size: 11px; }
+
+/* Botón "Ver todos" flotante sobre el mapa */
+.mapa-wrap { position: relative; }
+.btn-ver-todos {
+  display: none;
+  position: absolute;
+  top: 12px; left: 12px;
+  z-index: 1000;
+  background: white;
+  border: 1.5px solid var(--navy);
+  border-radius: 100px;
+  padding: 7px 16px;
+  font-size: 12px; font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  transition: all 0.2s;
+}
+.btn-ver-todos.visible { display: block; }
+.btn-ver-todos:hover { background: var(--navy); color: white; }
 </style>
 </head>
 <body>

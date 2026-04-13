@@ -640,29 +640,42 @@ footer { background: var(--navy); padding: 3rem; }
     </div>
     <div class="form-card" id="contacto">
       <div id="form-state">
-        <div class="form-field">
-          <label class="form-label">Nombre y empresa</label>
-          <input type="text" id="f-nombre" class="form-input" placeholder="Ej: María González · Grupo Nutresa">
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <label class="form-label">Nombre y empresa</label>
+            <input id="f-nombre" class="form-input" placeholder="Ej: María González · Grupo Nutresa">
+          </div>
+          <div>
+            <label class="form-label">WhatsApp</label>
+            <input id="f-whatsapp" class="form-input" type="tel" placeholder="+57 300 000 0000">
+          </div>
+          <div>
+            <label class="form-label">Ciudad origen</label>
+            <input id="f-origen" class="form-input" placeholder="Ej: Bogotá">
+          </div>
+          <div>
+            <label class="form-label">Ciudad destino</label>
+            <input id="f-destino" class="form-input" placeholder="Ej: Barranquilla">
+          </div>
+          <div>
+            <label class="form-label">Peso aproximado (kg)</label>
+            <input id="f-peso" class="form-input" type="number" placeholder="Ej: 5000">
+          </div>
+          <div>
+            <label class="form-label">Sector</label>
+            <select id="f-sector" class="form-select">
+              <option value="">Selecciona…</option>
+              <option>Oil &amp; Gas</option>
+              <option>Agroquímicos</option>
+              <option>Health &amp; Nutrition</option>
+              <option>Farmacéutico</option>
+              <option>Reciclables</option>
+              <option>Otro</option>
+            </select>
+          </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">WhatsApp</label>
-          <input type="tel" id="f-whatsapp" class="form-input" placeholder="+57 300 000 0000">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Sector</label>
-          <select id="f-sector" class="form-select">
-            <option value="">Selecciona tu sector…</option>
-            <option value="og">Oil &amp; Gas</option>
-            <option value="agro">Agroquímicos</option>
-            <option value="health">Health &amp; Nutrition</option>
-            <option value="farma">Farmacéutico</option>
-            <option value="reciclables">Reciclables</option>
-            <option value="otro">Otro</option>
-          </select>
-        </div>
-        <div class="form-error" id="f-error"></div>
-        <button class="form-btn" onclick="enviarForm()">Quiero ver cuánto ahorro →</button>
-        <p class="form-micro">Te contactamos por WhatsApp en menos de 2 horas · Sin compromisos · Sin costos ocultos</p>
+        <button class="form-btn" onclick="enviarForm()">Publicar mi carga gratis →</button>
+        <p class="form-micro">Recibes ofertas de transportadores certificados en menos de 2 horas · Sin compromiso</p>
       </div>
       <div class="form-success" id="form-success">
         <div class="form-success-icon">✅</div>
@@ -2466,24 +2479,66 @@ footer { background: var(--navy); padding: 3rem; }
 
     // ── LANDING: FORM ──
     async function enviarForm() {
-      const nombre   = document.getElementById('f-nombre').value.trim();
-      const whatsapp = document.getElementById('f-whatsapp').value.trim();
-      const sector   = document.getElementById('f-sector').value;
-      const errEl    = document.getElementById('f-error');
-      if (!nombre || !whatsapp || !sector) {
-        errEl.textContent = 'Por favor completa todos los campos.';
-        errEl.style.display = 'block'; return;
+      const nombre = document.getElementById('f-nombre')?.value?.trim();
+      const whatsapp = document.getElementById('f-whatsapp')?.value?.trim();
+      const origen = document.getElementById('f-origen')?.value?.trim();
+      const destino = document.getElementById('f-destino')?.value?.trim();
+      const peso = document.getElementById('f-peso')?.value?.trim();
+      const sector = document.getElementById('f-sector')?.value;
+
+      if (!nombre || !whatsapp || !origen || !destino) {
+        showToast('Completa al menos nombre, WhatsApp, origen y destino', 'error');
+        return;
       }
-      errEl.style.display = 'none';
+
+      const btn = document.querySelector('.form-btn');
+      const btnText = btn.textContent;
+      btn.textContent = 'Publicando…';
+      btn.disabled = true;
+
       try {
-        await fetch(SUPABASE_URL + '/rest/v1/leads', {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ nombre_empresa: nombre, whatsapp, sector, fuente: 'landing_v3' })
+        const { data: lead, error: errLead } = await sb.from('leads').insert({
+          nombre,
+          whatsapp,
+          sector: sector || null,
+          fuente: 'landing'
+        }).select().single();
+
+        if (errLead) throw errLead;
+
+        const pesoNum = parseFloat(peso) || null;
+        const precioEst = pesoNum ? estimarPrecio(400, pesoNum, 1, '') : null;
+
+        const { error: errCarga } = await sb.from('cargas').insert({
+          lead_id: lead.id,
+          origen,
+          destino,
+          peso_kg: pesoNum || 0,
+          tipo_carga: sector || null,
+          precio_estimado: precioEst,
+          estado: 'abierta'
         });
-      } catch(e) {}
-      document.getElementById('form-state').style.display = 'none';
-      document.getElementById('form-success').style.display = 'block';
+
+        if (errCarga) throw errCarga;
+
+        showToast('¡Carga publicada! Te contactamos por WhatsApp pronto.', 'success');
+        btn.textContent = '✓ Carga publicada';
+
+        const msg = encodeURIComponent(
+          'Hola NETFLEET, publiqué mi carga:\n' +
+          '📦 ' + origen + ' → ' + destino + '\n' +
+          '⚖️ ' + (peso || 'Por definir') + ' kg\n' +
+          '🏢 ' + nombre + '\n' +
+          'Quiero recibir ofertas.'
+        );
+        setTimeout(function(){ window.open('https://wa.me/573214401975?text=' + msg, '_blank'); }, 1500);
+
+      } catch (e) {
+        console.error('Error enviarForm:', e);
+        showToast('Error al publicar. Intenta de nuevo.', 'error');
+        btn.textContent = btnText;
+        btn.disabled = false;
+      }
     }
 
     function calcLanding() {

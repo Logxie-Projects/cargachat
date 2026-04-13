@@ -634,58 +634,7 @@ footer { background: var(--navy); padding: 3rem; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ── CONSTANTES ──────────────────────────────────────
-const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
-const GMAPS_KEY = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
-
-// ── MODELO DE PRECIOS ────────────────────────────────
-const RANGOS = [
-  { min:0,    max:100,  p25:380000,   p75:800000   },
-  { min:100,  max:300,  p25:900000,   p75:1695000  },
-  { min:300,  max:600,  p25:1500000,  p75:2602500  },
-  { min:600,  max:1000, p25:1040025,  p75:4506945  },
-  { min:1000, max:9999, p25:4250000,  p75:11030000 },
-];
-const ZONA_AJUSTE = {
-  'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
-  'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,
-  'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226
-};
-
-function estimarPrecio(km, kg, paradas) {
-  km = parseInt(km)||0; kg = parseInt(kg)||0; paradas = parseInt(paradas)||1;
-  if (!km || !kg) return 0;
-  if (km < 50) return Math.max(300000, 260000 + kg*28 + 63186*(paradas-1));
-  return Math.max(950000, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas - 306248);
-}
-
-function fmtCOP(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
-function rango(km) { return RANGOS.find(r => km >= r.min && km < r.max) || RANGOS[RANGOS.length-1]; }
-
-// ── CALCULADORA ──────────────────────────────────────
-function calcUpdate() {
-  const km = parseInt(document.getElementById('c-km').value);
-  const kg = parseInt(document.getElementById('c-kg').value);
-  document.getElementById('c-km-out').textContent = km.toLocaleString('es-CO') + ' km';
-  document.getElementById('c-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
-  const precio = estimarPrecio(km, kg, 1);
-  document.getElementById('c-price').textContent = fmtCOP(precio);
-  const r = rango(km);
-  const pct = Math.round(Math.max(0, (1 - precio/r.p75)*100));
-  const savEl = document.getElementById('c-savings');
-  if (pct > 0) {
-    document.getElementById('c-pct').textContent = pct + '%';
-    savEl.style.display = 'block';
-  } else {
-    savEl.style.display = 'none';
-  }
-  document.getElementById('c-cta').textContent = `Publicar mi carga a ${fmtCOP(precio)} →`;
-}
-calcUpdate();
-
-// ── FORM ─────────────────────────────────────────────
+// ── FORM (propio del landing) ────────────────────────
 async function enviarForm() {
   const nombre   = document.getElementById('f-nombre').value.trim();
   const whatsapp = document.getElementById('f-whatsapp').value.trim();
@@ -714,161 +663,37 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-// ── CIUDADES ─────────────────────────────────────────
-const CIUDADES = {
-  'funza':[4.7132,-74.1966],'yumbo':[3.5928,-76.4944],'espinal':[4.1544,-74.8864],
-  'bogota':[4.7110,-74.0721],'bogotá':[4.7110,-74.0721],'cali':[3.4516,-76.5319],
-  'medellin':[6.2442,-75.5812],'medellín':[6.2442,-75.5812],
-  'barranquilla':[10.9685,-74.7813],'cartagena':[10.3910,-75.4794],
-  'cucuta':[7.8939,-72.5078],'cúcuta':[7.8939,-72.5078],
-  'bucaramanga':[7.1253,-73.1198],'santa marta':[11.2408,-74.2110],
-  'pereira':[4.8087,-75.6906],'armenia':[4.5339,-75.6811],'manizales':[5.0703,-75.5138],
-  'tunja':[5.5353,-73.3678],'duitama':[5.8281,-73.0297],'sogamoso':[5.7150,-72.9267],
-  'paipa':[5.7833,-73.1167],'villavicencio':[4.1420,-73.6266],'yopal':[5.3378,-72.3952],
-  'neiva':[2.9273,-75.2820],'ibague':[4.4389,-75.2322],'ibagué':[4.4389,-75.2322],
-  'pasto':[1.2136,-77.2811],'popayan':[2.4448,-76.6147],'popayán':[2.4448,-76.6147],
-  'monteria':[8.7575,-75.8906],'montería':[8.7575,-75.8906],'valledupar':[10.4631,-73.2532],
-  'sincelejo':[9.3047,-75.3978],'florencia':[1.6144,-75.6062],'quibdo':[5.6919,-76.6583],
-  'aguachica':[8.3081,-73.6189],'barrancabermeja':[7.0653,-73.8546],
-  'giron':[7.0725,-73.1686],'girón':[7.0725,-73.1686],
-  'zipaquira':[5.0228,-74.0061],'zipaquirá':[5.0228,-74.0061],
-  'facatativa':[4.8142,-74.3597],'facatativá':[4.8142,-74.3597],
-  'mosquera':[4.7066,-74.2303],'soacha':[4.5797,-74.2167],
-  'chia':[4.8614,-73.9314],'chía':[4.8614,-73.9314],
-  'el tigre':[0.3500,-75.1833],'villagarzon':[1.0333,-76.6167],
-  'siberia':[4.8856,-74.1483],'palmira':[3.5322,-76.3036],'buga':[3.9003,-76.2971],
-  'tulua':[4.0840,-76.1960],'tuluá':[4.0840,-76.1960],
-};
-
-function norm(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
-function getCoords(ciudad) {
-  if (!ciudad) return null;
-  const n = norm(ciudad);
-  for (const [k,v] of Object.entries(CIUDADES)) { if (norm(k) === n || n.includes(norm(k))) return v; }
-  return null;
-}
-const geocodeCache = {};
-async function geocode(ciudad) {
-  if (!ciudad) return null;
-  const k = norm(ciudad);
-  if (geocodeCache[k]) return geocodeCache[k];
-  try {
-    const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ciudad+', Colombia')}&key=${GMAPS_KEY}`);
-    const d = await r.json();
-    if (d.results?.length) {
-      const loc = d.results[0].geometry.location;
-      geocodeCache[k] = [loc.lat, loc.lng];
-      return geocodeCache[k];
+// ── CONECTAR CON NETFLEET-CORE.JS ───────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Conectar calculadora del core usando IDs del landing
+  const kmSlider = document.getElementById('c-km');
+  const kgSlider = document.getElementById('c-kg');
+  if (kmSlider && kgSlider && typeof estimarPrecio === 'function') {
+    function calcLanding() {
+      const km = parseInt(kmSlider.value);
+      const kg = parseInt(kgSlider.value);
+      document.getElementById('c-km-out').textContent = km.toLocaleString('es-CO') + ' km';
+      document.getElementById('c-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
+      const precio = estimarPrecio(km, kg, 1, '', '');
+      document.getElementById('c-price').textContent = '$' + Math.round(precio).toLocaleString('es-CO');
+      const rangos = [{min:0,max:100,p75:800000},{min:100,max:300,p75:1695000},{min:300,max:600,p75:2602500},{min:600,max:1000,p75:4506945},{min:1000,max:9999,p75:11030000}];
+      const r = rangos.find(x => km >= x.min && km < x.max) || rangos[rangos.length-1];
+      const pct = Math.round(Math.max(0,(1-precio/r.p75)*100));
+      const savEl = document.getElementById('c-savings');
+      if (pct > 0) { document.getElementById('c-pct').textContent = pct+'%'; if(savEl) savEl.style.display='block'; }
+      else { if(savEl) savEl.style.display='none'; }
+      const cta = document.getElementById('c-cta');
+      if(cta) cta.textContent = 'Publicar mi carga a $' + Math.round(precio).toLocaleString('es-CO') + ' →';
     }
-  } catch(e) {}
-  return null;
-}
-
-// ── CSV ──────────────────────────────────────────────
-function parseCSV(txt) {
-  const lines = txt.split('\n').filter(l => l.trim());
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase()
-    .replace('fecha_cargue','fecha_cargue').replace('peso_kg','peso_kg'));
-  return lines.slice(1).map(line => {
-    const vals = []; let cur = ''; let inQ = false;
-    for (const c of line) {
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
-      else { cur += c; }
-    }
-    vals.push(cur.trim());
-    const obj = {};
-    headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/"/g,'').trim(); });
-    return obj;
-  });
-}
-
-// ── TICKER ───────────────────────────────────────────
-function buildTicker(viajes) {
-  if (!viajes.length) return;
-  const items = viajes.map(v => {
-    const orig = (v.origen||'').split(',')[0].trim();
-    const dests = (v.destino||'').split(',').map(d=>d.trim()).filter(Boolean);
-    const dest = dests.length > 1 ? `${dests[0]} +${dests.length-1}` : dests[0]||'—';
-    const p = estimarPrecio(v.km, v.peso_kg, dests.length);
-    const pTxt = p > 0 ? `<strong>$${Math.round(p/1000000*10)/10}M</strong>` : '';
-    return `<span class="ticker-item">⚡ ${orig} → ${dest} · ${pTxt}</span>`;
-  }).join('<span class="ticker-item" style="color:rgba(255,255,255,0.15)">|</span>');
-  const track = document.getElementById('ticker-track');
-  track.innerHTML = items + items;
-  document.getElementById('ticker').style.display = 'flex';
-  requestAnimationFrame(() => {
-    const w = track.scrollWidth / 2;
-    track.style.animationDuration = Math.max(10, w/90) + 's';
-  });
-}
-
-// ── MAPA ─────────────────────────────────────────────
-let mapaLanding;
-async function initMapa(viajes) {
-  mapaLanding = L.map('map', { zoomControl: true })
-    .setView([4.5709, -74.2973], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 18
-  }).addTo(mapaLanding);
-
-  const puntos = [];
-  const rtVisto = {};
-  for (const v of viajes) {
-    if (rtVisto[v.rt_total]) continue;
-    rtVisto[v.rt_total] = true;
-    const orig = (v.origen||'').split(',')[0].trim();
-    const dests = (v.destino||'').split(',').map(d=>d.trim()).filter(Boolean);
-    const oc = getCoords(orig) || await geocode(orig);
-    if (!oc) continue;
-    puntos.push(oc);
-    const precio = estimarPrecio(v.km, v.peso_kg, dests.length);
-    const pTxt = precio > 0 ? '$' + Math.round(precio/1000000*10)/10 + 'M' : '—';
-    const pin = L.divIcon({
-      html: `<div style="background:white;border:2.5px solid #1B2A6B;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#1B2A6B;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.18);font-family:DM Sans,sans-serif">${pTxt}</div>`,
-      iconAnchor: [30,36], className: ''
-    });
-    L.marker(oc, {icon:pin}).addTo(mapaLanding)
-      .bindPopup(`<b>${orig} → ${dests[0]||'—'}</b><br>${v.peso_kg ? parseInt(v.peso_kg).toLocaleString('es-CO')+' kg' : ''}`);
-    for (const d of dests.slice(0,3)) {
-      const dc = getCoords(d) || await geocode(d);
-      if (!dc) continue;
-      puntos.push(dc);
-      L.polyline([oc,dc],{color:'#1B2A6B',weight:2.5,opacity:0.6,dashArray:'6 4'}).addTo(mapaLanding);
-      L.circleMarker(dc,{radius:5,fillColor:'#1B2A6B',color:'white',fillOpacity:1,weight:2}).addTo(mapaLanding);
-    }
+    kmSlider.addEventListener('input', calcLanding);
+    kgSlider.addEventListener('input', calcLanding);
+    calcLanding();
   }
-  if (puntos.length > 1) mapaLanding.fitBounds(puntos, {padding:[40,40], maxZoom:12});
-  document.getElementById('viajes-count').textContent = Object.keys(rtVisto).length;
-}
-
-// ── CARGAR DATOS ─────────────────────────────────────
-async function cargar() {
-  try {
-    const resp = await fetch(CSV_URL);
-    const txt  = await resp.text();
-    const rows = parseCSV(txt);
-    const rtVisto = {};
-    const viajes = [];
-    rows.forEach(v => {
-      if (!v.rt_total) {
-        const raw = `${v.origen}|${v.destino}|${v.fecha_cargue}|${v.peso_kg}`.toLowerCase();
-        let h = 0; for (const c of raw) h = ((h<<5)-h+c.charCodeAt(0))|0;
-        v.rt_total = 'v-' + Math.abs(h).toString(36);
-      }
-      if (!rtVisto[v.rt_total]) { rtVisto[v.rt_total]=true; viajes.push(v); }
-    });
-    buildTicker(viajes);
-    await initMapa(viajes);
-  } catch(e) {
-    // Fallback: mapa vacío centrado en Colombia
-    mapaLanding = L.map('map').setView([4.5709,-74.2973],6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapaLanding);
-    document.getElementById('viajes-count').textContent = '—';
-  }
-}
-cargar();
+  // Iniciar mapa y viajes
+  if (typeof cargarViajes === 'function') cargarViajes();
+  setInterval(function(){ if(typeof revisarNuevosViajes==='function') revisarNuevosViajes(); }, 180000);
+});
 </script>
+<script src="./netfleet-core.js"></script>
 </body>
 </html>

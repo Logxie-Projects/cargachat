@@ -2646,8 +2646,6 @@ footer { background: var(--navy); padding: 3rem; }
       document.getElementById('cc-paradas')?.addEventListener('input', calcLanding);
       document.getElementById('cc-zona')?.addEventListener('change', calcLanding);
       calcLanding();
-      var ahorroCard = document.getElementById('cc-ahorro-card');
-      if (ahorroCard) ahorroCard.style.display = '';
     } catch(e) { console.error('calcLanding init error:', e); }
 
     // Mapa y viajes — separado

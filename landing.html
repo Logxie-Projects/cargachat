@@ -421,19 +421,29 @@ footer { background: var(--navy); padding: 3rem; }
   max-height: 480px;
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
+  padding-right: 8px;
 }
+
 .viajes-preview .viaje-card {
-  font-size: 0.85em;
+  font-size: 0.78em;
   margin-bottom: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
   pointer-events: none;
-  opacity: 0.95;
 }
-.viajes-preview .viaje-actions,
-.viajes-preview .btn-aceptar,
-.viajes-preview .btn-oferta,
-.viajes-preview button[onclick*="aceptar"],
-.viajes-preview button[onclick*="oferta"] {
+
+.viajes-preview .viaje-card .viaje-actions,
+.viajes-preview .viaje-card .btn-aceptar,
+.viajes-preview .viaje-card .btn-oferta,
+.viajes-preview .viaje-card button {
   display: none !important;
+}
+
+.viajes-preview .viaje-card .viaje-meta {
+  gap: 6px;
 }
 </style>
 </head>
@@ -2212,7 +2222,7 @@ footer { background: var(--navy); padding: 3rem; }
         const previewGrid = document.getElementById('viajes-preview-grid');
         if (previewGrid && document.getElementById('viajes-grid')) {
           const cards = document.getElementById('viajes-grid').children;
-          for (let i = 0; i < Math.min(4, cards.length); i++) {
+          for (let i = 0; i < Math.min(3, cards.length); i++) {
             const clone = cards[i].cloneNode(true);
             clone.querySelectorAll('.viaje-actions, .btn-aceptar, .btn-oferta, button').forEach(b => b.remove());
             previewGrid.appendChild(clone);

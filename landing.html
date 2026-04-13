@@ -1778,6 +1778,7 @@ footer { background: var(--navy); padding: 3rem; }
       const track = document.getElementById('ticker-track');
       const bar   = document.getElementById('ticker-bar');
       if (!viajes || viajes.length === 0) return;
+      console.log('[TICKER] viajes recibidos:', viajes.length, viajes.map(v => v.origen + '→' + v.destino));
 
       const items = viajes.map(v => {
         const origen   = (v.origen  || '').split(',')[0].trim();

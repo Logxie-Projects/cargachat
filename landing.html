@@ -920,8 +920,11 @@ async function cargar() {
     document.getElementById('viajes-count').textContent = '—';
   }
 }
-cargarViajes();
 </script>
 <script src="./netfleet-core.js"></script>
+<script>
+  cargarViajes();
+  setInterval(revisarNuevosViajes, 180000);
+</script>
 </body>
 </html>

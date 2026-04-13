@@ -436,10 +436,10 @@ footer { background: var(--navy); padding: 3rem; }
 @media (max-width: 600px) {
   .calc-result {
     flex-wrap: wrap;
+    gap: 8px;
   }
-  .calc-co2 {
-    width: 100%;
-    margin-top: 8px;
+  .calc-savings, .calc-co2 {
+    flex: 1 1 40%;
   }
 }
 
@@ -558,10 +558,10 @@ footer { background: var(--navy); padding: 3rem; }
           <div class="calc-pct" id="cc-ahorro">—</div>
           <div class="calc-pct-lbl">menos que el mercado</div>
         </div>
-      </div>
-      <div class="calc-co2" id="cc-co2-card" style="display:none">
-        <div class="calc-pct" id="cc-co2">🌳 3</div>
-        <div class="calc-pct-label">árboles salvados</div>
+        <div class="calc-co2" id="cc-co2-card" style="display:none">
+          <div class="calc-pct" id="cc-co2">🌳 3</div>
+          <div class="calc-pct-label">árboles salvados</div>
+        </div>
       </div>
       <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>
       <input type="range" id="cc-paradas" style="display:none" min="1" max="10" value="1">

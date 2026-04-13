@@ -483,7 +483,7 @@ footer { background: var(--navy); padding: 3rem; }
   <div class="mapa-header">
     <div class="section-eyebrow">red activa ahora</div>
     <div class="section-title">Rutas en subasta <em>en este momento</em></div>
-    <p class="section-sub">Transportadores certificados están ofertando en estas rutas. Tu carga aparecería aquí, visible para toda la red.</p>
+    <p class="section-sub">Transportadores certificados compitiendo por estas rutas. Tu carga aparecería aquí.</p>
   </div>
   <div class="mapa-wrap">
     <div class="live-pill">
@@ -493,7 +493,7 @@ footer { background: var(--navy); padding: 3rem; }
     <div id="map"></div>
     <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">← Ver todos</button>
     <div class="viajes-preview">
-      <h3 style="color:#0E1B4D;font-size:1.1rem;margin-bottom:12px;opacity:0.9">Tus viajes se verán así</h3>
+      <h3 style="color:#0E1B4D;font-size:1.1rem;margin-bottom:12px;opacity:0.9">Por qué confiar en NETFLEET</h3>
       <div id="viajes-preview-grid"></div>
     </div>
   </div>
@@ -2196,27 +2196,24 @@ footer { background: var(--navy); padding: 3rem; }
         cargarConteosOfertas();
         if (typeof _heroDrawFn === 'function') _heroDrawFn(viajesData);
 
-        // Tarjetas preview para la sección del mapa
+        // Badges de confianza
         const previewGrid = document.getElementById('viajes-preview-grid');
-        if (previewGrid && viajesData && viajesData.length > 0) {
+        if (previewGrid) {
           previewGrid.innerHTML = '';
-          const muestra = viajesData.slice(0, 4);
-          muestra.forEach(v => {
-            const precioEst = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
-            const precio = precioEst > 0 ? '$' + Math.round(precioEst).toLocaleString('es-CO') : '';
-            const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
-            const pesoTxt = pesoKg > 0 ? Number(pesoKg).toLocaleString('es-CO') + ' kg' : '—';
-            const kmTxt = v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—';
-            const card = document.createElement('div');
-            card.style.cssText = 'background:#fff;border:1px solid #e2e5eb;border-radius:12px;padding:12px 14px;margin-bottom:10px;color:#0E1B4D;font-size:0.82em;box-shadow:0 2px 8px rgba(0,0,0,0.06);';
-            card.innerHTML =
-              '<div style="font-weight:700;margin-bottom:4px;color:#0E1B4D">' + (v.origen || '') + ' → ' + (v.destino || '') + '</div>' +
-              '<div style="display:flex;gap:16px;color:#0E1B4D;opacity:0.6;font-size:0.88em;margin-bottom:8px">' +
-                '<span>⚖️ ' + pesoTxt + '</span>' +
-                '<span>📏 ' + kmTxt + '</span>' +
-              '</div>' +
-              (precio ? '<div style="color:#22c55e;font-weight:700;padding-top:6px;border-top:1px solid #e2e5eb">' + precio + '</div>' : '');
-            previewGrid.appendChild(card);
+          const badges = [
+            { icon: '🛡️', title: 'Transportadoras habilitadas', sub: 'Verificadas ante el Ministerio de Transporte' },
+            { icon: '🎓', title: 'Conductores certificados', sub: 'Formación para mercancías especiales' },
+            { icon: '📋', title: 'Pólizas vigentes', sub: 'Mercancía y responsabilidad civil extracontractual' },
+            { icon: '📡', title: 'Rastreo GPS en tiempo real', sub: 'Sabes dónde está tu carga en todo momento' },
+            { icon: '💰', title: 'Subasta inversa transparente', sub: 'Transportadores compiten · Tú eliges el mejor precio' }
+          ];
+          badges.forEach(b => {
+            const d = document.createElement('div');
+            d.style.cssText = 'background:#fff;border:1px solid #e2e5eb;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);';
+            d.innerHTML = '<span style="font-size:1.5em">' + b.icon + '</span>' +
+              '<div><div style="font-weight:700;color:#0E1B4D;font-size:0.9em">' + b.title + '</div>' +
+              '<div style="font-size:0.78em;color:#666">' + b.sub + '</div></div>';
+            previewGrid.appendChild(d);
           });
         }
 

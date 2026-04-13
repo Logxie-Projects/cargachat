@@ -2511,7 +2511,11 @@ footer { background: var(--navy); padding: 3rem; }
 
     document.getElementById('cc-km')?.addEventListener('input', calcLanding);
     document.getElementById('cc-kg')?.addEventListener('input', calcLanding);
-    setTimeout(calcLanding, 500);
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        if (typeof calcLanding === 'function') calcLanding();
+      }, 1500);
+    });
 </script>
 </body>
 </html>

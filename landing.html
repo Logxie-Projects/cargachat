@@ -2614,8 +2614,6 @@ footer { background: var(--navy); padding: 3rem; }
       const precio = estimarPrecio(km, kg, 1, '', '');
       if (baseEl) baseEl.textContent = '$' + Math.round(precio).toLocaleString('es-CO');
       // Ahorro estimado: 20% promedio por subasta inversa
-      var ahorroCard = document.getElementById('cc-ahorro-card');
-      var ahorroEl = document.getElementById('cc-ahorro');
       if (ahorroCard && ahorroEl) {
         ahorroEl.textContent = '~20%';
         ahorroCard.style.display = '';

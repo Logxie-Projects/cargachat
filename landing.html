@@ -1786,12 +1786,14 @@ footer { background: var(--navy); padding: 3rem; }
       bar.style.display = 'flex';
 
       // Velocidad basada en píxeles/segundo — se adapta a cualquier pantalla
-      track.style.animationDuration = '9999s'; // temporal para medir
+      track.style.animationPlayState = 'paused';
+      track.style.animationDuration = '1s';
       requestAnimationFrame(() => {
         const contentWidth = track.scrollWidth / 2; // mitad porque está duplicado
         const pxPerSec = 110; // velocidad cómoda de lectura
-        const duracion = Math.max(8, contentWidth / pxPerSec);
+        const duracion = Math.max(8, Math.min(20, contentWidth / pxPerSec));
         track.style.animationDuration = duracion + 's';
+        track.style.animationPlayState = 'running';
       });
     }
 

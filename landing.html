@@ -718,6 +718,7 @@ footer { background: var(--navy); padding: 3rem; }
     // ── ESTADO GLOBAL DE ROL ──────────────────────────────────────
     let rolActivo = localStorage.getItem('netfleet_rol') || null;
     let tickerRolAplicado = false; // evitar doble replace en ticker
+    let _viajesCargados = false;
 
     function setRol(rol) {
       rolActivo = rol;
@@ -2134,6 +2135,8 @@ footer { background: var(--navy); padding: 3rem; }
      * no quede en blanco durante desarrollo o si Sheets no responde.
      */
     async function cargarViajes() {
+      if (_viajesCargados) return;
+      _viajesCargados = true;
       try {
         const respuesta = await fetch(CSV_URL);
         if (!respuesta.ok) throw new Error('No se pudo cargar el CSV');

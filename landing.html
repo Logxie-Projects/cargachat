@@ -2419,7 +2419,7 @@ footer { background: var(--navy); padding: 3rem; }
       // Actualizar CTA con precio
       document.getElementById('hc-cta').textContent = `Publicar mi carga · ${ccFmt(base)} →`;
     }
-    hcCalc();
+    try { hcCalc(); } catch(e) {}
 
     // ── HERO CARD ROTATIVO — usa datos de viajesData (cargados por cargarViajes) ──
     let _heroDrawFn = function(viajes) {

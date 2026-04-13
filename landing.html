@@ -81,6 +81,13 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
     padding: 0 10px;
     letter-spacing: 1px;
   }
+  .ticker-item {
+    font-size: 0.7rem;
+    padding: 0 12px;
+  }
+  .ticker {
+    height: 32px;
+  }
 }
 
 /* ── HERO ────────────────────────────────────────── */
@@ -1797,7 +1804,7 @@ footer { background: var(--navy); padding: 3rem; }
       bar.style.display = 'flex';
 
       // Velocidad fija: 15s en mobile, 20s en desktop
-      var duracion = screenW < 768 ? 15 : 20;
+      var duracion = screenW < 768 ? 10 : 20;
       track.style.animationDuration = duracion + 's';
     }
 

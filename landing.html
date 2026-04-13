@@ -563,11 +563,6 @@ footer { background: var(--navy); padding: 3rem; }
       <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>
       <input type="range" id="cc-paradas" style="display:none" min="1" max="10" value="1">
       <select id="cc-zona" style="display:none"><option value="">Sin especificar</option></select>
-      <span id="cc-paradas-out" style="display:none">1</span>
-      <span id="cc-zona-badge" style="display:none"></span>
-      <div id="cc-bar" style="display:none"></div>
-      <span id="cc-hist-min" style="display:none"></span>
-      <span id="cc-hist-max" style="display:none"></span>
     </div>
   </div>
 </section>
@@ -2488,27 +2483,6 @@ footer { background: var(--navy); padding: 3rem; }
     }
 
     // ── MINI-CALC HERO ────────────────────────────────────────────
-    function hcCalc() {
-      const km = parseInt(document.getElementById('hc-km').value);
-      const kg = parseInt(document.getElementById('hc-kg').value);
-      document.getElementById('hc-km-out').textContent = km.toLocaleString('es-CO') + ' km';
-      document.getElementById('hc-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
-      const base = estimarPrecio(km, kg, 1, '', '');
-      document.getElementById('hc-price').textContent = ccFmt(base);
-      const r = ccRango(km);
-      const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
-      const wrap = document.getElementById('hc-savings-wrap');
-      if (ahorroPct > 0) {
-        document.getElementById('hc-savings-pct').textContent = ahorroPct + '%';
-        wrap.style.display = 'flex';
-      } else {
-        wrap.style.display = 'none';
-      }
-      // Actualizar CTA con precio
-      document.getElementById('hc-cta').textContent = `Publicar mi carga · ${ccFmt(base)} →`;
-    }
-    try { hcCalc(); } catch(e) {}
-
     // ── HERO CARD ROTATIVO — usa datos de viajesData (cargados por cargarViajes) ──
     let _heroDrawFn = function(viajes) {
       const viajesHero = [];

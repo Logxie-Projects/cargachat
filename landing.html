@@ -2476,6 +2476,28 @@ footer { background: var(--navy); padding: 3rem; }
       document.getElementById('form-success').style.display = 'block';
     }
 
+    function calcLanding() {
+      const km = parseInt(document.getElementById('cc-km')?.value) || 400;
+      const kg = parseInt(document.getElementById('cc-kg')?.value) || 5000;
+      const kmOut = document.getElementById('cc-km-out');
+      const kgOut = document.getElementById('cc-kg-out');
+      const baseEl = document.getElementById('cc-base');
+      const ahorroCard = document.getElementById('cc-ahorro-card');
+      const ahorroEl = document.getElementById('cc-ahorro');
+      const ctaEl = document.getElementById('cc-cta-landing');
+      if (kmOut) kmOut.textContent = km.toLocaleString('es-CO') + ' km';
+      if (kgOut) kgOut.textContent = kg.toLocaleString('es-CO') + ' kg';
+      if (typeof estimarPrecio !== 'function') return;
+      const precio = estimarPrecio(km, kg, 1, '', '');
+      if (baseEl) baseEl.textContent = '$' + Math.round(precio).toLocaleString('es-CO');
+      const rangos = [{min:0,max:100,p75:800000},{min:100,max:300,p75:1695000},{min:300,max:600,p75:2602500},{min:600,max:1000,p75:4506945},{min:1000,max:9999,p75:11030000}];
+      const r = rangos.find(x => km >= x.min && km < x.max) || rangos[rangos.length-1];
+      const pct = Math.round(Math.max(0,(1-precio/r.p75)*100));
+      if (ahorroCard) ahorroCard.style.display = pct > 0 ? '' : 'none';
+      if (ahorroEl) ahorroEl.textContent = pct + '%';
+      if (ctaEl) ctaEl.textContent = 'Publicar mi carga a $' + Math.round(precio).toLocaleString('es-CO') + ' →';
+    }
+
     // ── LANDING: TOAST ──
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -2487,9 +2509,9 @@ footer { background: var(--navy); padding: 3rem; }
     cargarViajes();
     setInterval(revisarNuevosViajes, 180000);
 
-    document.getElementById('cc-km')?.addEventListener('input', function(){ if(typeof ccCalc==='function') ccCalc(); });
-    document.getElementById('cc-kg')?.addEventListener('input', function(){ if(typeof ccCalc==='function') ccCalc(); });
-    setTimeout(function(){ if(typeof ccCalc==='function') ccCalc(); }, 1000);
+    document.getElementById('cc-km')?.addEventListener('input', calcLanding);
+    document.getElementById('cc-kg')?.addEventListener('input', calcLanding);
+    setTimeout(calcLanding, 500);
 </script>
 </body>
 </html>

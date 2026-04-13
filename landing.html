@@ -1783,9 +1783,10 @@ footer { background: var(--navy); padding: 3rem; }
       const items = viajes.map(v => {
         const origen   = (v.origen  || '').split(',')[0].trim();
         const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-        const dest     = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1} destinos` : destinos[0] || '—';
+        const isMobile = window.innerWidth < 600;
+        const dest     = isMobile ? (destinos[0] || '—') : (destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : destinos[0] || '—');
         const precio   = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
-        const precioTxt = precio > 0 ? formatPrecioCorto(precio) : 'A convenir';
+        const precioTxt = precio > 0 ? formatPrecioCorto(precio) : '';
 
         const hoy   = new Date(); hoy.setHours(0,0,0,0);
         const partes = (v.fecha_cargue || '').split('/');
@@ -1793,7 +1794,9 @@ footer { background: var(--navy); padding: 3rem; }
         const dias  = fecha ? Math.ceil((fecha - hoy) / 86400000) : 99;
         const badge = dias <= 0 ? '⚡' : dias <= 2 ? '🔥' : '📦';
 
-        return `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
+        return isMobile
+          ? `<span class="ticker-item">${badge} ${origen}→${dest} ${precioTxt}</span>`
+          : `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
       }).join('<span class="ticker-item" style="color:rgba(255,255,255,0.2)">|</span>');
 
       // Repetir contenido suficiente para que el scroll se vea fluido

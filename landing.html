@@ -179,7 +179,6 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
 }
 
 /* ── STATS BAR ───────────────────────────────────── */
-.stats-bar { background: #070E2E; padding: 1.5rem 3rem; display: none; }
 .stats-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; gap: 0; }
 .stat { text-align: center; padding: 0 3rem; }
 .stat-n { font-family: var(--serif); font-size: 22px; font-weight: 800; color: white; }
@@ -520,20 +519,6 @@ footer { background: var(--navy); padding: 3rem; }
   <div style="overflow:hidden;flex:1"><div class="ticker-track" id="ticker-track"></div></div>
 </div>
 
-<!-- STATS BAR -->
-<div class="stats-bar">
-  <div class="stats-inner">
-    <div class="stat"><div class="stat-n">2.000+</div><div class="stat-l">viajes gestionados</div></div>
-    <div class="stat-div"></div>
-    <div class="stat"><div class="stat-n">9.9M kg</div><div class="stat-l">carga transportada</div></div>
-    <div class="stat-div"></div>
-    <div class="stat"><div class="stat-n">7</div><div class="stat-l">transportadoras activas</div></div>
-    <div class="stat-div"></div>
-    <div class="stat"><div class="stat-n">98%</div><div class="stat-l">entregas a tiempo</div></div>
-    <div class="stat-div"></div>
-    <div class="stat"><div class="stat-n">$0</div><div class="stat-l">comisión oculta</div></div>
-  </div>
-</div>
 
 <!-- MAPA — ancho completo -->
 <section class="mapa-section">
@@ -1778,7 +1763,7 @@ footer { background: var(--navy); padding: 3rem; }
       const track = document.getElementById('ticker-track');
       const bar   = document.getElementById('ticker-bar');
       if (!viajes || viajes.length === 0) return;
-      console.log('[TICKER] viajes recibidos:', viajes.length, viajes.map(v => v.origen + '→' + v.destino));
+
 
       const items = viajes.map(v => {
         const origen   = (v.origen  || '').split(',')[0].trim();

@@ -1781,20 +1781,24 @@ footer { background: var(--navy); padding: 3rem; }
         return `<span class="ticker-item">${badge} ${origen} <span class="ti-sep">→</span> ${dest} <span class="ti-sep">·</span> <span class="ti-precio">${precioTxt}</span></span>`;
       }).join('<span class="ticker-item" style="color:rgba(255,255,255,0.2)">|</span>');
 
-      // Duplicar para loop infinito
-      track.innerHTML = items + items;
+      // Repetir contenido suficiente para que el scroll se vea fluido
+      var repeat = items;
+      // Si hay pocos viajes, repetir más veces para llenar pantalla
+      var testDiv = document.createElement('div');
+      testDiv.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;display:flex;';
+      testDiv.innerHTML = items;
+      document.body.appendChild(testDiv);
+      var itemsWidth = testDiv.scrollWidth;
+      document.body.removeChild(testDiv);
+      var screenW = window.innerWidth;
+      var copias = Math.max(2, Math.ceil((screenW * 2) / Math.max(1, itemsWidth)));
+      repeat = Array(copias).fill(items).join('');
+      track.innerHTML = repeat + repeat;
       bar.style.display = 'flex';
 
-      // Velocidad basada en píxeles/segundo — se adapta a cualquier pantalla
-      track.style.animationPlayState = 'paused';
-      track.style.animationDuration = '1s';
-      requestAnimationFrame(() => {
-        const contentWidth = track.scrollWidth / 2; // mitad porque está duplicado
-        const pxPerSec = 150; // velocidad rápida para mobile
-        const duracion = Math.max(10, Math.min(20, contentWidth / pxPerSec));
-        track.style.animationDuration = duracion + 's';
-        track.style.animationPlayState = 'running';
-      });
+      // Velocidad fija: 15s en mobile, 20s en desktop
+      var duracion = screenW < 768 ? 15 : 20;
+      track.style.animationDuration = duracion + 's';
     }
 
     // Parsear fecha DD/MM/YYYY → Date

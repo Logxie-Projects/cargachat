@@ -79,7 +79,7 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
 /* ── HERO ────────────────────────────────────────── */
 .hero {
   background: var(--navy);
-  padding: 6rem 3rem 5rem;
+  padding: 40px 3rem 40px;
   position: relative; overflow: hidden;
   text-align: center;
 }
@@ -123,13 +123,14 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
 /* Hero CTAs */
 .hero-ctas { display: flex; gap: 12px; justify-content: center; align-items: center; margin-bottom: 3rem; flex-wrap: wrap; }
 .btn-primary {
-  background: var(--cyan); color: var(--navy);
+  background: #22c55e; color: #fff;
   border: none; border-radius: 10px;
-  padding: 16px 36px; font-size: 15px; font-weight: 800;
+  padding: 16px 32px; font-size: 1.05rem; font-weight: 700;
   font-family: var(--sans); cursor: pointer;
   transition: filter .2s, transform .15s;
   text-decoration: none; letter-spacing: -0.2px;
-  box-shadow: 0 4px 24px rgba(0,191,223,0.35);
+  box-shadow: 0 4px 24px rgba(34,197,94,0.35);
+  display: inline-block;
 }
 .btn-primary:hover { filter: brightness(1.08); transform: translateY(-2px); }
 .btn-ghost {
@@ -144,12 +145,20 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
 
 /* Hero proof */
 .hero-proof {
-  font-size: 10px; color: rgba(255,255,255,0.2);
-  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
+  display: flex;
+  gap: 24px;
+  margin: 16px 0 24px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.7);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hero-proof span {
+  white-space: nowrap;
 }
 
 /* ── STATS BAR ───────────────────────────────────── */
-.stats-bar { background: #070E2E; padding: 1.5rem 3rem; }
+.stats-bar { background: #070E2E; padding: 1.5rem 3rem; display: none; }
 .stats-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; gap: 0; }
 .stat { text-align: center; padding: 0 3rem; }
 .stat-n { font-family: var(--serif); font-size: 22px; font-weight: 800; color: white; }
@@ -463,12 +472,6 @@ footer { background: var(--navy); padding: 3rem; }
   <a href="#form-cta" class="nav-cta">Publicar mi carga →</a>
 </nav>
 
-<!-- TICKER -->
-<div class="ticker" id="ticker-bar" style="display:none">
-  <div class="ticker-label"><div class="ticker-dot"></div>subastas en vivo</div>
-  <div style="overflow:hidden;flex:1"><div class="ticker-track" id="ticker-track"></div></div>
-</div>
-
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
@@ -482,9 +485,19 @@ footer { background: var(--navy); padding: 3rem; }
       <a href="#form-cta" class="btn-primary">Publicar mi carga →</a>
       <a href="#calculadora" class="btn-ghost">Calcular mi flete primero</a>
     </div>
-    <p class="hero-proof">red verificada mintransporte · +2.000 viajes completados · 9.9m kg gestionados · cobertura nacional</p>
+    <div class="hero-proof">
+      <span>✓ 2.000+ viajes gestionados</span>
+      <span>✓ 9.9M kg transportados</span>
+      <span>✓ 98% entregas a tiempo</span>
+    </div>
   </div>
 </section>
+
+<!-- TICKER -->
+<div class="ticker" id="ticker-bar" style="display:none">
+  <div class="ticker-label"><div class="ticker-dot"></div>subastas en vivo</div>
+  <div style="overflow:hidden;flex:1"><div class="ticker-track" id="ticker-track"></div></div>
+</div>
 
 <!-- STATS BAR -->
 <div class="stats-bar">
@@ -619,6 +632,9 @@ footer { background: var(--navy); padding: 3rem; }
           <span class="sector-tag">Frecuencia recurrente</span>
         </div>
       </div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="#form-cta" style="background:#22c55e;color:#fff;padding:14px 28px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;display:inline-block">¿Tu sector está aquí? Publica tu carga →</a>
     </div>
   </div>
 </section>

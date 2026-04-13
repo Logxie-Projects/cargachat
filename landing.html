@@ -418,19 +418,16 @@ footer { background: var(--navy); padding: 3rem; }
 .btn-ver-todos:hover { background: var(--navy); color: white; }
 
 .calc-co2 {
-  margin-top: 10px;
-  text-align: center;
+  text-align: right;
   color: #22c55e;
 }
 .calc-co2 .calc-pct {
-  font-size: 1.8rem;
+  font-family: var(--serif);
+  font-size: 26px;
   font-weight: 800;
 }
-.calc-co2 .calc-pct-label {
-  font-size: 0.75rem;
-  opacity: 0.8;
-  text-transform: none;
-  letter-spacing: 0;
+.calc-co2 .calc-pct-lbl {
+  color: rgba(255,255,255,0.3);
 }
 
 @media (max-width: 600px) {
@@ -560,7 +557,7 @@ footer { background: var(--navy); padding: 3rem; }
         </div>
         <div class="calc-co2" id="cc-co2-card" style="display:none">
           <div class="calc-pct" id="cc-co2">🌳 3</div>
-          <div class="calc-pct-label">árboles salvados</div>
+          <div class="calc-pct-lbl">árboles salvados</div>
         </div>
       </div>
       <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>

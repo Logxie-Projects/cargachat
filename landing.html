@@ -164,11 +164,18 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
   margin: 16px 0 24px;
   font-size: 0.85rem;
   color: rgba(255,255,255,0.7);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 .hero-proof span {
   white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .hero-proof {
+    gap: 10px;
+    font-size: 0.7rem;
+  }
 }
 
 /* ── STATS BAR ───────────────────────────────────── */
@@ -496,9 +503,9 @@ footer { background: var(--navy); padding: 3rem; }
       Descubre el precio real de mercado en minutos — sin intermediarios, sin sorpresas.
     </p>
     <div class="hero-proof">
-      <span>✓ 2.000+ viajes gestionados</span>
-      <span>✓ 9.9M kg transportados</span>
-      <span>✓ 98% entregas a tiempo</span>
+      <span>✓ 2.000+ viajes</span>
+      <span>✓ 9.9M kg movidos</span>
+      <span>✓ 98% a tiempo</span>
     </div>
     <div class="hero-ctas">
       <a href="#form-cta" class="btn-primary">Publicar mi carga →</a>
@@ -1804,8 +1811,7 @@ footer { background: var(--navy); padding: 3rem; }
       bar.style.display = 'flex';
 
       // Velocidad fija: 15s en mobile, 20s en desktop
-      var duracion = screenW < 768 ? 10 : 20;
-      track.style.animationDuration = duracion + 's';
+      track.style.animationDuration = (window.innerWidth < 600) ? '8s' : '20s';
     }
 
     // Parsear fecha DD/MM/YYYY → Date

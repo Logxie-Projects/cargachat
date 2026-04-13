@@ -495,28 +495,35 @@ footer { background: var(--navy); padding: 3rem; }
       <div class="calc-row">
         <div class="calc-lbl-row">
           <span class="calc-lbl">Distancia</span>
-          <span class="calc-val" id="c-km-out">400 km</span>
+          <span class="calc-val" id="cc-km-out">400 km</span>
         </div>
-        <input type="range" id="c-km" min="10" max="1200" step="10" value="400" oninput="calcUpdate()">
+        <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
       </div>
       <div class="calc-row">
         <div class="calc-lbl-row">
           <span class="calc-lbl">Peso</span>
-          <span class="calc-val" id="c-kg-out">5.000 kg</span>
+          <span class="calc-val" id="cc-kg-out">5.000 kg</span>
         </div>
-        <input type="range" id="c-kg" min="100" max="50000" step="100" value="5000" oninput="calcUpdate()">
+        <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
       </div>
       <div class="calc-result">
         <div>
           <div class="calc-price-lbl">tu flete estimado</div>
-          <div class="calc-price" id="c-price">—</div>
+          <div class="calc-price" id="cc-base">—</div>
         </div>
-        <div class="calc-savings" id="c-savings" style="display:none">
-          <div class="calc-pct" id="c-pct">—</div>
+        <div class="calc-savings" id="cc-ahorro-card" style="display:none">
+          <div class="calc-pct" id="cc-ahorro">—</div>
           <div class="calc-pct-lbl">menos que el mercado</div>
         </div>
       </div>
-      <a href="#form-cta" class="calc-cta" id="c-cta">Publicar mi carga a este precio →</a>
+      <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>
+      <input type="range" id="cc-paradas" style="display:none" min="1" max="10" value="1">
+      <select id="cc-zona" style="display:none"><option value="">Sin especificar</option></select>
+      <span id="cc-paradas-out" style="display:none">1</span>
+      <span id="cc-zona-badge" style="display:none"></span>
+      <div id="cc-bar" style="display:none"></div>
+      <span id="cc-hist-min" style="display:none"></span>
+      <span id="cc-hist-max" style="display:none"></span>
     </div>
   </div>
 </section>
@@ -2447,26 +2454,6 @@ footer { background: var(--navy); padding: 3rem; }
     function fmtCOP(n) { return ccFmt(n); }
     function rango(km) { return ccRango(km); }
 
-    function calcUpdate() {
-      const km = parseInt(document.getElementById('c-km').value);
-      const kg = parseInt(document.getElementById('c-kg').value);
-      document.getElementById('c-km-out').textContent = km.toLocaleString('es-CO') + ' km';
-      document.getElementById('c-kg-out').textContent = kg.toLocaleString('es-CO') + ' kg';
-      const precio = estimarPrecio(km, kg, 1, '', '');
-      document.getElementById('c-price').textContent = fmtCOP(precio);
-      const r = rango(km);
-      const pct = Math.round(Math.max(0, (1 - precio/r.p75)*100));
-      const savEl = document.getElementById('c-savings');
-      if (pct > 0) {
-        document.getElementById('c-pct').textContent = pct + '%';
-        savEl.style.display = 'block';
-      } else {
-        savEl.style.display = 'none';
-      }
-      document.getElementById('c-cta').textContent = 'Publicar mi carga a ' + fmtCOP(precio) + ' →';
-    }
-    calcUpdate();
-
     // ── LANDING: FORM ──
     async function enviarForm() {
       const nombre   = document.getElementById('f-nombre').value.trim();
@@ -2499,6 +2486,10 @@ footer { background: var(--navy); padding: 3rem; }
     // ── INICIO ──
     cargarViajes();
     setInterval(revisarNuevosViajes, 180000);
+
+    document.getElementById('cc-km')?.addEventListener('input', function(){ if(typeof ccCalc==='function') ccCalc(); });
+    document.getElementById('cc-kg')?.addEventListener('input', function(){ if(typeof ccCalc==='function') ccCalc(); });
+    setTimeout(function(){ if(typeof ccCalc==='function') ccCalc(); }, 1000);
 </script>
 </body>
 </html>

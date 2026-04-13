@@ -422,53 +422,6 @@ footer { background: var(--navy); padding: 3rem; }
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.3) transparent;
-  padding-right: 8px;
-}
-
-#viajes-preview-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-#viajes-preview-grid > .viaje-card {
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid rgba(255,255,255,0.18) !important;
-  border-radius: 14px !important;
-  padding: 14px 16px !important;
-  color: #fff !important;
-  font-size: 0.8em !important;
-}
-
-#viajes-preview-grid > .viaje-card > * {
-  color: #fff !important;
-}
-
-#viajes-preview-grid .viaje-countdown,
-#viajes-preview-grid .viaje-badge,
-#viajes-preview-grid .viaje-offer-section,
-#viajes-preview-grid .viaje-actions,
-#viajes-preview-grid button {
-  display: none !important;
-}
-
-#viajes-preview-grid .meta-label {
-  color: rgba(255,255,255,0.5) !important;
-  font-size: 0.7em !important;
-  text-transform: uppercase !important;
-}
-
-#viajes-preview-grid .meta-value {
-  color: #fff !important;
-  font-weight: 600 !important;
-}
-
-#viajes-preview-grid .precio-base-box {
-  color: #22c55e !important;
-  font-weight: 700 !important;
-  border-top: 1px solid rgba(255,255,255,0.1) !important;
-  padding-top: 8px !important;
-  margin-top: 6px !important;
 }
 </style>
 </head>
@@ -2243,15 +2196,28 @@ footer { background: var(--navy); padding: 3rem; }
         cargarConteosOfertas();
         if (typeof _heroDrawFn === 'function') _heroDrawFn(viajesData);
 
-        // Copiar las primeras 4 tarjetas al preview del mapa
+        // Tarjetas preview para la sección del mapa
         const previewGrid = document.getElementById('viajes-preview-grid');
-        if (previewGrid && document.getElementById('viajes-grid')) {
-          const cards = document.getElementById('viajes-grid').children;
-          for (let i = 0; i < Math.min(4, cards.length); i++) {
-            const clone = cards[i].cloneNode(true);
-            clone.querySelectorAll('.viaje-actions, .btn-aceptar, .btn-oferta, button').forEach(b => b.remove());
-            previewGrid.appendChild(clone);
-          }
+        if (previewGrid && viajesData && viajesData.length > 0) {
+          previewGrid.innerHTML = '';
+          const muestra = viajesData.slice(0, 4);
+          muestra.forEach(v => {
+            const precioEst = estimarPrecio(v.km, v.peso_kg, (v.destino||'').split(',').length, v.destino, v.origen);
+            const precio = precioEst > 0 ? '$' + Math.round(precioEst).toLocaleString('es-CO') : '';
+            const pesoKg = parseFloat((v.peso_kg || '0').toString().replace(/[^\d.]/g,'')) || 0;
+            const pesoTxt = pesoKg > 0 ? Number(pesoKg).toLocaleString('es-CO') + ' kg' : '—';
+            const kmTxt = v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—';
+            const card = document.createElement('div');
+            card.style.cssText = 'background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:12px 14px;margin-bottom:10px;color:#fff;font-size:0.82em;';
+            card.innerHTML =
+              '<div style="font-weight:700;margin-bottom:4px">' + (v.origen || '') + ' → ' + (v.destino || '') + '</div>' +
+              '<div style="display:flex;gap:16px;opacity:0.7;font-size:0.88em;margin-bottom:8px">' +
+                '<span>⚖️ ' + pesoTxt + '</span>' +
+                '<span>📏 ' + kmTxt + '</span>' +
+              '</div>' +
+              (precio ? '<div style="color:#22c55e;font-weight:700;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1)">' + precio + '</div>' : '');
+            previewGrid.appendChild(card);
+          });
         }
 
       } catch (error) {

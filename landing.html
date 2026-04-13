@@ -423,61 +423,76 @@ footer { background: var(--navy); padding: 3rem; }
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.3) transparent;
   padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .viajes-preview .viaje-card {
-  font-size: 0.78em;
-  margin-bottom: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  pointer-events: none;
-}
-
-.viajes-preview .viaje-card .viaje-actions,
-.viajes-preview .viaje-card .btn-aceptar,
-.viajes-preview .viaje-card .btn-oferta,
-.viajes-preview .viaje-card button {
-  display: none !important;
-}
-
-.viajes-preview .viaje-card .viaje-meta {
-  gap: 6px;
-}
-
-.viajes-preview .viaje-card .viaje-countdown,
-.viajes-preview .viaje-card .viaje-badge,
-.viajes-preview .viaje-card .viaje-meta .meta-item:nth-child(n+3),
-.viajes-preview .viaje-card .viaje-offer-section,
-.viajes-preview .viaje-card .viaje-actions,
-.viajes-preview .viaje-card button {
-  display: none !important;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 0.8em;
+  color: #fff;
 }
 
 .viajes-preview .viaje-card .viaje-header {
-  margin-bottom: 4px;
+  font-weight: 700;
+  font-size: 1.05em;
+  margin-bottom: 6px;
+  color: #fff;
 }
 
 .viajes-preview .viaje-card .viaje-ruta {
   font-size: 0.85em;
-  margin-bottom: 4px;
+  opacity: 0.65;
+  margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .viajes-preview .viaje-card .viaje-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-bottom: 6px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
-.viajes-preview .viaje-card .viaje-price-section {
-  font-size: 0.9em;
-  padding-top: 6px;
+.viajes-preview .viaje-card .meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.viajes-preview .viaje-card .meta-label {
+  font-size: 0.75em;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.viajes-preview .viaje-card .meta-value {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.viajes-preview .viaje-card .precio-base-box {
+  padding-top: 8px;
   border-top: 1px solid rgba(255,255,255,0.1);
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.viajes-preview .viaje-card .viaje-countdown,
+.viajes-preview .viaje-card .viaje-badge,
+.viajes-preview .viaje-card .viaje-offer-section,
+.viajes-preview .viaje-card .viaje-actions,
+.viajes-preview .viaje-card button,
+.viajes-preview .viaje-card .btn-aceptar,
+.viajes-preview .viaje-card .btn-oferta {
+  display: none !important;
 }
 </style>
 </head>

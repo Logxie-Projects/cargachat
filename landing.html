@@ -423,76 +423,52 @@ footer { background: var(--navy); padding: 3rem; }
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.3) transparent;
   padding-right: 8px;
+}
+
+#viajes-preview-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.viajes-preview .viaje-card {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 14px;
-  padding: 14px 16px;
-  font-size: 0.8em;
-  color: #fff;
-}
-
-.viajes-preview .viaje-card .viaje-header {
-  font-weight: 700;
-  font-size: 1.05em;
-  margin-bottom: 6px;
-  color: #fff;
-}
-
-.viajes-preview .viaje-card .viaje-ruta {
-  font-size: 0.85em;
-  opacity: 0.65;
-  margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.viajes-preview .viaje-card .viaje-meta {
-  display: flex;
   gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
 }
 
-.viajes-preview .viaje-card .meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+#viajes-preview-grid > .viaje-card {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+  color: #fff !important;
+  font-size: 0.8em !important;
 }
 
-.viajes-preview .viaje-card .meta-label {
-  font-size: 0.75em;
-  opacity: 0.5;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+#viajes-preview-grid > .viaje-card > * {
+  color: #fff !important;
 }
 
-.viajes-preview .viaje-card .meta-value {
-  font-weight: 600;
-  font-size: 0.95em;
-}
-
-.viajes-preview .viaje-card .precio-base-box {
-  padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  font-weight: 700;
-  color: #22c55e;
-}
-
-.viajes-preview .viaje-card .viaje-countdown,
-.viajes-preview .viaje-card .viaje-badge,
-.viajes-preview .viaje-card .viaje-offer-section,
-.viajes-preview .viaje-card .viaje-actions,
-.viajes-preview .viaje-card button,
-.viajes-preview .viaje-card .btn-aceptar,
-.viajes-preview .viaje-card .btn-oferta {
+#viajes-preview-grid .viaje-countdown,
+#viajes-preview-grid .viaje-badge,
+#viajes-preview-grid .viaje-offer-section,
+#viajes-preview-grid .viaje-actions,
+#viajes-preview-grid button {
   display: none !important;
+}
+
+#viajes-preview-grid .meta-label {
+  color: rgba(255,255,255,0.5) !important;
+  font-size: 0.7em !important;
+  text-transform: uppercase !important;
+}
+
+#viajes-preview-grid .meta-value {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+#viajes-preview-grid .precio-base-box {
+  color: #22c55e !important;
+  font-weight: 700 !important;
+  border-top: 1px solid rgba(255,255,255,0.1) !important;
+  padding-top: 8px !important;
+  margin-top: 6px !important;
 }
 </style>
 </head>

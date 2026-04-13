@@ -2511,14 +2511,11 @@ footer { background: var(--navy); padding: 3rem; }
 
     document.getElementById('cc-km')?.addEventListener('input', calcLanding);
     document.getElementById('cc-kg')?.addEventListener('input', calcLanding);
-    document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() {
-        if (typeof calcLanding === 'function') calcLanding();
-      }, 1500);
-      setTimeout(function() {
-        if (typeof calcLanding === 'function') calcLanding();
-      }, 3500);
-    });
+    document.getElementById('cc-paradas')?.addEventListener('input', calcLanding);
+    document.getElementById('cc-zona')?.addEventListener('change', calcLanding);
+
+    // Ejecutar inmediatamente — el DOM ya está listo porque el script está al final del body
+    calcLanding();
 </script>
 </body>
 </html>

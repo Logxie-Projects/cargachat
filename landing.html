@@ -2611,11 +2611,13 @@ footer { background: var(--navy); padding: 3rem; }
       if (typeof estimarPrecio !== 'function') return;
       const precio = estimarPrecio(km, kg, 1, '', '');
       if (baseEl) baseEl.textContent = '$' + Math.round(precio).toLocaleString('es-CO');
-      const rangos = [{min:0,max:100,p75:800000},{min:100,max:300,p75:1695000},{min:300,max:600,p75:2602500},{min:600,max:1000,p75:4506945},{min:1000,max:9999,p75:11030000}];
-      const r = rangos.find(x => km >= x.min && km < x.max) || rangos[rangos.length-1];
-      const pct = Math.round(Math.max(0,(1-precio/r.p75)*100));
-      if (ahorroCard) ahorroCard.style.display = pct > 0 ? '' : 'none';
-      if (ahorroEl) ahorroEl.textContent = pct + '%';
+      // Ahorro estimado: 20% promedio por subasta inversa
+      var ahorroCard = document.getElementById('cc-ahorro-card');
+      var ahorroEl = document.getElementById('cc-ahorro');
+      if (ahorroCard && ahorroEl) {
+        ahorroEl.textContent = '~20%';
+        ahorroCard.style.display = '';
+      }
       if (ctaEl) ctaEl.textContent = 'Publicar mi carga a $' + Math.round(precio).toLocaleString('es-CO') + ' →';
 
       // CO₂: 0.9 kg CO₂/km ahorrado × 20% optimización → árboles (1 árbol ≈ 22 kg CO₂/año)

@@ -71,10 +71,17 @@ body { font-family: var(--sans); background: var(--white); color: var(--navy); o
 }
 .ticker-dot { width: 7px; height: 7px; background: white; border-radius: 50%; animation: pulse 1.4s infinite; box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
-.ticker-track { display: flex; white-space: nowrap; animation: scroll 28s linear infinite; }
+.ticker-track { display: flex; white-space: nowrap; animation: scroll 14s linear infinite; }
 @keyframes scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 .ticker-item { font-size: 12px; color: rgba(255,255,255,0.9); padding: 0 28px; font-weight: 500; }
 .ticker-item strong { color: var(--cyan); font-weight: 700; }
+@media (max-width: 600px) {
+  .ticker-label {
+    font-size: 0.65rem;
+    padding: 0 10px;
+    letter-spacing: 1px;
+  }
+}
 
 /* ── HERO ────────────────────────────────────────── */
 .hero {

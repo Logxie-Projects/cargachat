@@ -1917,9 +1917,15 @@ footer { background: var(--navy); padding: 3rem; }
 
     async function initMapa(viajes) {
       if (!document.getElementById('map')) return;
+      if (window._mapaIniciado) {
+        // Solo actualizar marcadores sin reinicializar el mapa
+        if (typeof actualizarMarcadores === 'function') actualizarMarcadores(viajes);
+        return;
+      }
       console.log(`[MAPA] initMapa llamado con ${viajes.length} viajes:`, viajes.map(v => v.origen + ' → ' + v.destino));
       mapaLeaflet = L.map('map', { zoomControl: true })
         .setView([4.5709, -74.2973], 6);
+      window._mapaIniciado = true;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CARTO',

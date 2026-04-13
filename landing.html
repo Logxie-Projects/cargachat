@@ -418,16 +418,19 @@ footer { background: var(--navy); padding: 3rem; }
 .btn-ver-todos:hover { background: var(--navy); color: white; }
 
 .calc-co2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 10px 16px;
-  background: rgba(34,197,94,0.12);
-  border: 1px solid rgba(34,197,94,0.25);
-  border-radius: 10px;
+  margin-top: 10px;
+  text-align: center;
   color: #22c55e;
-  font-size: 0.95rem;
+}
+.calc-co2 .calc-pct {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+.calc-co2 .calc-pct-label {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .viajes-preview {
@@ -546,9 +549,8 @@ footer { background: var(--navy); padding: 3rem; }
           <div class="calc-pct-lbl">menos que el mercado</div>
         </div>
         <div class="calc-co2" id="cc-co2-card" style="display:none">
-          <span style="font-size:1.3em">🌳</span>
-          <span id="cc-co2" style="font-weight:700;font-size:1.2em">—</span>
-          <span style="opacity:0.85">árboles salvados con este viaje</span>
+          <div class="calc-pct" id="cc-co2">🌳 3</div>
+          <div class="calc-pct-label">árboles salvados</div>
         </div>
       </div>
       <a href="#form-cta" class="calc-cta" id="cc-cta-landing">Publicar mi carga a este precio →</a>
@@ -2626,7 +2628,7 @@ footer { background: var(--navy); padding: 3rem; }
       var co2Card = document.getElementById('cc-co2-card');
       var co2El = document.getElementById('cc-co2');
       if (co2Card && co2El) {
-        co2El.textContent = arboles;
+        co2El.textContent = '🌳 ' + arboles;
         co2Card.style.display = '';
       }
     }

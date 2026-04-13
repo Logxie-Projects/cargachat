@@ -143,7 +143,7 @@
     ═══════════════════════════════════════════════════════════ */
     .hero {
       background: var(--navy);
-      padding: 4rem 2rem 3rem;
+      padding: 6rem 2rem 5rem;
       position: relative;
       overflow: hidden;
     }
@@ -159,9 +159,8 @@
     }
 
     .hero-inner {
-      max-width: 1100px; margin: 0 auto;
-      display: flex; align-items: flex-start; gap: 3rem;
-      text-align: left;
+      max-width: 860px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: center; text-align: center; flex-direction: column;
     }
     .hero-content { flex: 1; min-width: 0; }
 
@@ -186,12 +185,12 @@
 
     .hero-sub {
       font-size: 0.9rem; color: rgba(255,255,255,0.55);
-      margin: 0 0 0.75rem;
+      margin: 0 auto 0.75rem;
       line-height: 1.6; font-weight: 300;
       max-width: 480px;
     }
     .hero-sub strong { color: rgba(255,255,255,0.9); font-weight: 600; }
-    .hero-sectores { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .hero-sectores { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; justify-content: center; }
 
     .hero-proof {
       font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
@@ -204,7 +203,7 @@
     .hero-cta-main:hover { filter:brightness(1.08); }
 
     /* Mini-calculadora del hero */
-    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:1rem 1.25rem; margin-top:0.75rem; }
+    .hero-calc { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:1rem 1.25rem; margin-top:0.75rem; max-width:600px; margin-left:auto; margin-right:auto; }
     .hero-calc-row { margin-bottom:0.9rem; }
     .hero-calc-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
     .hero-calc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.5); }
@@ -238,7 +237,7 @@
     @media(max-width:768px){ .como-solo-steps { flex-direction:column; align-items:center; } .como-solo-step { max-width:100%; } .bloque-inner--generador { text-align:left; } }
 
     /* Mini-mapa hero */
-    .hero-visual { flex: 0 0 400px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,191,223,0.2); align-self: flex-start; margin-top: 1rem; }
+    .hero-visual { display: none !important; }
     #map { width: 100%; height: 420px; border-radius: 16px; z-index: 1; }
     .hero-map-card { position: absolute; top: 14px; left: 14px; z-index: 10; background: rgba(255,255,255,0.95); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
     .hero-map-card-pulse { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
@@ -762,8 +761,8 @@
     .nav-user-badge.pendiente { background:#fff3e6; color:#cc5500; }
 
     /* Ticker en vivo */
-    .ticker-bar { background: #0a0f1e; height: 36px; display: flex; align-items: center; overflow: hidden; position: relative; border-bottom: 1px solid rgba(255,30,30,0.2); }
-    .ticker-label { display: flex; align-items: center; gap: 7px; padding: 0 16px; background: #e51c1c; color: white; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; height: 100%; z-index: 2; flex-shrink: 0; }
+    .ticker-bar { background: #0a0a0a; height: 42px; display: flex; align-items: center; overflow: hidden; position: relative; border-bottom: 1px solid rgba(255,0,50,0.2); }
+    .ticker-label { display: flex; align-items: center; gap: 7px; padding: 0 18px; background: #FF0032; color: white; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; height: 42px; z-index: 2; flex-shrink: 0; }
     .ticker-dot { width: 7px; height: 7px; background: white; border-radius: 50%; animation: pulse-dot 1s infinite; }
     @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
     .ticker-track { display: flex; align-items: center; gap: 0; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
@@ -939,27 +938,6 @@
     </div>
   </section>
 
-  <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
-  <div class="propval-section">
-    <div class="propval-grid">
-      <div class="propval-item">
-        <div class="propval-icon">🏆</div>
-        <div class="propval-title">Tú pones las condiciones</div>
-        <div class="propval-desc">Publica la ruta, la carga y la fecha. Los transportadores te hacen sus mejores ofertas. Tú eliges.</div>
-      </div>
-      <div class="propval-item">
-        <div class="propval-icon">🔒</div>
-        <div class="propval-title">Red verificada MinTransporte</div>
-        <div class="propval-desc">Solo transportadores habilitados, con vehículos inspeccionados, pólizas vigentes y seguimiento GPS.</div>
-      </div>
-      <div class="propval-item">
-        <div class="propval-icon">💸</div>
-        <div class="propval-title">$0 comisiones ocultas</div>
-        <div class="propval-desc">Sin intermediarios que se queden con tu margen. El precio que acuerdas es el precio que pagas.</div>
-      </div>
-    </div>
-  </div>
-
   <!-- BARRA DE CONFIANZA B2B -->
   <div class="trust-bar">
     <div class="trust-bar-inner">
@@ -986,6 +964,27 @@
       <div class="trust-item">
         <div class="trust-num">Todo el país</div>
         <div class="trust-label">cobertura nacional</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPUESTA DE VALOR — 3 beneficios clave para el generador -->
+  <div class="propval-section">
+    <div class="propval-grid">
+      <div class="propval-item">
+        <div class="propval-icon">🏆</div>
+        <div class="propval-title">Tú pones las condiciones</div>
+        <div class="propval-desc">Publica la ruta, la carga y la fecha. Los transportadores te hacen sus mejores ofertas. Tú eliges.</div>
+      </div>
+      <div class="propval-item">
+        <div class="propval-icon">🔒</div>
+        <div class="propval-title">Red verificada MinTransporte</div>
+        <div class="propval-desc">Solo transportadores habilitados, con vehículos inspeccionados, pólizas vigentes y seguimiento GPS.</div>
+      </div>
+      <div class="propval-item">
+        <div class="propval-icon">💸</div>
+        <div class="propval-title">$0 comisiones ocultas</div>
+        <div class="propval-desc">Sin intermediarios que se queden con tu margen. El precio que acuerdas es el precio que pagas.</div>
       </div>
     </div>
   </div>

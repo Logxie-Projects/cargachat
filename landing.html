@@ -433,6 +433,16 @@ footer { background: var(--navy); padding: 3rem; }
   letter-spacing: 0.05em;
 }
 
+@media (max-width: 600px) {
+  .calc-result {
+    flex-wrap: wrap;
+  }
+  .calc-co2 {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
+
 .viajes-preview {
   max-height: 480px;
   overflow-y: auto;
@@ -2615,13 +2625,14 @@ footer { background: var(--navy); padding: 3rem; }
       if (baseEl) baseEl.textContent = '$' + Math.round(precio).toLocaleString('es-CO');
       // Ahorro estimado: 20% promedio por subasta inversa
       if (ahorroCard && ahorroEl) {
-        ahorroEl.textContent = '~20%';
+        var ahorroBase = 15 + Math.min(10, Math.round(km / 200) + Math.round(kg / 10000));
+        ahorroEl.textContent = ahorroBase + '%';
         ahorroCard.style.display = '';
       }
       if (ctaEl) ctaEl.textContent = 'Publicar mi carga a $' + Math.round(precio).toLocaleString('es-CO') + ' →';
 
       // CO₂: 0.9 kg CO₂/km ahorrado × 20% optimización → árboles (1 árbol ≈ 22 kg CO₂/año)
-      var co2 = km * 0.9 * 0.2;
+      var co2 = km * (0.5 + (kg / 30000) * 0.8) * 0.2;
       var arboles = Math.max(1, Math.round(co2 / 22));
       var co2Card = document.getElementById('cc-co2-card');
       var co2El = document.getElementById('cc-co2');

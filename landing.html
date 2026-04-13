@@ -29,8 +29,8 @@
   --mono:      'DM Mono', monospace;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; overflow-x: hidden; }
-body { font-family: var(--sans); background: var(--white); color: var(--navy); overflow-x: hidden; }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body { font-family: var(--sans); background: var(--white); color: var(--navy); overflow-x: clip; }
 
 /* ── NAV ─────────────────────────────────────────── */
 .nav {
@@ -481,14 +481,14 @@ footer { background: var(--navy); padding: 3rem; }
       Publica tu carga y deja que <strong>transportadores certificados</strong> compitan por ella.
       Descubre el precio real de mercado en minutos — sin intermediarios, sin sorpresas.
     </p>
-    <div class="hero-ctas">
-      <a href="#form-cta" class="btn-primary">Publicar mi carga →</a>
-      <a href="#calculadora" class="btn-ghost">Calcular mi flete primero</a>
-    </div>
     <div class="hero-proof">
       <span>✓ 2.000+ viajes gestionados</span>
       <span>✓ 9.9M kg transportados</span>
       <span>✓ 98% entregas a tiempo</span>
+    </div>
+    <div class="hero-ctas">
+      <a href="#form-cta" class="btn-primary">Publicar mi carga →</a>
+      <a href="#calculadora" class="btn-ghost">Calcular mi flete primero</a>
     </div>
   </div>
 </section>

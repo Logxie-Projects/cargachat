@@ -2514,7 +2514,10 @@ footer { background: var(--navy); padding: 3rem; }
     document.addEventListener('DOMContentLoaded', function() {
       setTimeout(function() {
         if (typeof calcLanding === 'function') calcLanding();
-        setTimeout(function(){ if(typeof calcLanding==='function') calcLanding(); }, 2000);
+      }, 1500);
+      setTimeout(function() {
+        if (typeof calcLanding === 'function') calcLanding();
+      }, 3500);
     });
 </script>
 </body>

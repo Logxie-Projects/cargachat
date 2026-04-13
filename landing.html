@@ -864,6 +864,7 @@ footer { background: var(--navy); padding: 3rem; }
     });
 
     function actualizarNav(perfil) {
+      if (!document.getElementById('nav-auth-buttons')) return;
       const btnArea  = document.getElementById('nav-auth-buttons');
       const userArea = document.getElementById('nav-user-info');
       if (!perfil) {

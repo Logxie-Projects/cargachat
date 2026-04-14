@@ -10,14 +10,19 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --navy: #0E1B4D; --cyan: #00BFDF;
+      --navy: #1B2A6B; --cyan: #00BFD8;
       --gray-50: #f8f9fa; --gray-100: #e9ecef;
       --gray-400: #868e96; --gray-600: #495057;
-      --green: #22c55e; --red: #dc2626; --orange: #ea580c;
+      --green: #16a34a; --red: #dc2626; --orange: #ea580c;
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: #1a1a2e; min-height: 100vh; }
 
-    /* ── LOGIN/AUTH INPUT STYLES (reutilizados en modal) ── */
+    /* ── LOGIN ── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy); }
+    .login-box  { background: white; border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .login-logo { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.25rem; }
+    .login-logo span { color: var(--cyan); }
+    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 1.5rem; }
     .login-tabs { display: flex; gap: 4px; background: var(--gray-50); border-radius: 10px; padding: 4px; margin-bottom: 1.5rem; }
     .login-tab  { flex: 1; border: none; background: none; border-radius: 8px; padding: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--gray-400); transition: all .2s; }
     .login-tab.active { background: white; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
@@ -39,27 +44,9 @@
     .nav-user  { font-size: 12px; color: rgba(255,255,255,0.5); }
     .nav-out   { font-size: 12px; color: var(--cyan); cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; font-weight: 600; }
     .nav-docs-badge { background: var(--orange); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
-    .nav-login-btn { background: var(--cyan); color: var(--navy); border: none; border-radius: 8px; padding: 7px 18px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s; }
-    .nav-login-btn:hover { background: white; }
-
-    /* ── HERO MINI ── */
-    .hero-mini { background: linear-gradient(135deg, var(--navy) 0%, #0a1240 100%); text-align: center; padding: 1.25rem 2rem; color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; }
-    .hero-mini strong { color: var(--cyan); font-size: 22px; font-weight: 800; margin-right: 4px; }
-    .hero-mini .hero-sep { display: inline-block; margin: 0 10px; opacity: 0.3; }
-
-    /* ── PERFIL BANNER ── */
-    .perfil-banner { background: #fff7ed; border-bottom: 1px solid #fed7aa; padding: 12px 2rem; display: none; }
-    .perfil-banner-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1000px; margin: 0 auto; }
-    .perfil-banner-text { font-size: 13px; color: #9a3412; font-weight: 500; }
-    .perfil-banner-btn { background: var(--navy); color: white; border: none; border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
-    .perfil-banner-btn:hover { background: var(--cyan); color: var(--navy); }
-    .perfil-form { max-width: 1000px; margin: 12px auto 0; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: start; }
-    .perfil-form .login-input { margin-bottom: 0; }
-    .perfil-form-btn { background: var(--green); color: white; border: none; border-radius: 10px; padding: 11px 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; height: 44px; }
-    @media(max-width:700px) { .perfil-form { grid-template-columns: 1fr; } }
 
     /* ── LAYOUT ── */
-    .panel-wrap { min-height: 100vh; }
+    .panel-wrap { display: none; min-height: 100vh; }
     .panel-body { max-width: 1000px; margin: 0 auto; padding: 2rem; }
 
     /* ── TABS ── */
@@ -173,7 +160,7 @@
       .oferta-row { grid-template-columns: 1fr 1fr; }
     }
 
-    /* ── BUSCADOR ── */
+    /* ── BUSCADOR (movido de index.html) ── */
     .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 1rem 2rem 1.25rem; position: sticky; top: 56px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
     @media(max-width:700px) { .buscador-wrap { position: relative; top: auto; z-index: auto; box-shadow: none; } }
     .buscador-intro   { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); text-align: center; margin-bottom: 10px; }
@@ -196,7 +183,7 @@
       .buscador-btn   { width: 100%; padding: 14px; border-radius: 0 0 10px 10px; }
     }
 
-    /* ── MAPA + CALCULADORA ── */
+    /* ── MAPA + CALCULADORA (movido de index.html) ── */
     .section-hdr { margin-bottom: 1.5rem; }
     .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
     .section-hdr p  { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
@@ -212,7 +199,7 @@
     .calc-slider-wrap { display: flex; align-items: center; gap: 12px; }
     .calc-slider-wrap input[type=range] { flex: 1; accent-color: var(--navy); }
     .calc-val { font-size: 13px; font-weight: 600; color: var(--navy); min-width: 80px; text-align: right; }
-    .calc-select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-100); border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230E1B4D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    .calc-select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-100); border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: white; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231B2A6B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
     .calc-select:focus { outline: none; border-color: var(--cyan); }
     .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 1.25rem 0; }
     .calc-result-card { background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 0.75rem; text-align: center; }
@@ -267,69 +254,61 @@
     .pin-preview-tooltip::before { display: none; }
     .pin-preview b { font-weight: 700; }
     .pin-preview-dest { color: var(--gray-600); margin-top: 2px; font-size: 11px; }
-
-    /* ── AUTH MODAL (max-width más estrecho) ── */
-    #modal-auth .modal-box { max-width: 400px; }
   </style>
 </head>
 <body>
 
-<!-- ══ NAV (siempre visible, dos estados) ══ -->
-<nav class="panel-nav">
-  <div class="nav-logo">NET<span>FLEET</span> <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:8px">transportadora</span></div>
-  <div class="nav-right">
-    <!-- Estado: sin login -->
-    <button class="nav-login-btn" id="nav-login-btn" onclick="abrirModalAuth()">Ingresar</button>
-    <!-- Estado: con login (oculto por defecto) -->
-    <span class="nav-user" id="nav-nombre" style="display:none"></span>
-    <button class="nav-out" id="nav-salir" onclick="cerrarSesion()" style="display:none">Salir</button>
-  </div>
-</nav>
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">NET<span>FLEET</span></div>
+    <div class="login-sub">Portal de transportadora</div>
 
-<!-- ══ HERO MINI ══ -->
-<div class="hero-mini">
-  <strong id="hero-count">&mdash;</strong> viajes disponibles ahora
-  <span class="hero-sep">|</span> Pago garantizado
-  <span class="hero-sep">|</span> $0 comision
-</div>
-
-<!-- ══ PERFIL INCOMPLETO BANNER (oculto por defecto) ══ -->
-<div class="perfil-banner" id="perfil-banner">
-  <div class="perfil-banner-row">
-    <div class="perfil-banner-text">Completa tu perfil para poder recibir viajes adjudicados</div>
-    <button class="perfil-banner-btn" onclick="togglePerfilForm()">Completar perfil</button>
-  </div>
-  <div class="perfil-form" id="perfil-form" style="display:none">
-    <input class="login-input" id="perfil-empresa" type="text" placeholder="Nombre de la transportadora">
-    <input class="login-input" id="perfil-telefono" type="tel" placeholder="Telefono / WhatsApp">
-    <input class="login-input" id="perfil-nit" type="text" placeholder="NIT">
-    <button class="perfil-form-btn" onclick="guardarPerfil()">Guardar</button>
-  </div>
-  <div id="perfil-msg" style="font-size:12px;text-align:center;margin-top:6px;max-width:1000px;margin-left:auto;margin-right:auto"></div>
-</div>
-
-<!-- ══ PANEL PRINCIPAL (siempre visible) ══ -->
-<div class="panel-wrap" id="panel-wrap">
-  <div class="panel-body">
-
-    <!-- Stats (solo con login) -->
-    <div class="stats-bar" id="stats-bar" style="display:none">
-      <div class="stat-card">
-        <div class="stat-num" id="stat-disponibles">&mdash;</div>
-        <div class="stat-lbl">Disponibles</div>
-      </div>
-      <div class="stat-card activas">
-        <div class="stat-num" id="stat-mis-activas">&mdash;</div>
-        <div class="stat-lbl">Mis ofertas activas</div>
-      </div>
-      <div class="stat-card ganadas">
-        <div class="stat-num" id="stat-ganadas">&mdash;</div>
-        <div class="stat-lbl">Adjudicadas</div>
-      </div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login"    onclick="cambiarTab('login')">Ingresar</button>
+      <button class="login-tab"        id="tab-registro" onclick="cambiarTab('registro')">Crear cuenta</button>
     </div>
 
-    <!-- Tabs (solo con login) -->
-    <div class="tabs-nav" id="tabs-nav" style="display:none">
+    <!-- INGRESAR -->
+    <div id="form-login">
+      <label class="login-label">Email</label>
+      <input class="login-input" id="login-email" type="email" placeholder="tu@empresa.com">
+      <label class="login-label">Contraseña</label>
+      <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') iniciarSesion()">
+      <button class="login-btn" onclick="iniciarSesion()">Ingresar →</button>
+      <div class="login-error" id="login-error"></div>
+    </div>
+
+    <!-- REGISTRARSE -->
+    <div id="form-registro" style="display:none">
+      <input class="login-input" id="reg-nombre"   type="text"     placeholder="Nombre completo">
+      <input class="login-input" id="reg-empresa"  type="text"     placeholder="Nombre de la transportadora">
+      <input class="login-input" id="reg-telefono" type="tel"      placeholder="Teléfono / WhatsApp">
+      <input class="login-input" id="reg-nit"      type="text"     placeholder="NIT">
+      <input class="login-input" id="reg-email"    type="email"    placeholder="Email corporativo">
+      <input class="login-input" id="reg-pass"     type="password" placeholder="Contraseña (mín. 8 caracteres)">
+      <button class="login-btn" onclick="registrarse()">Solicitar acceso →</button>
+      <div class="login-error"   id="reg-error"></div>
+      <div class="login-success" id="reg-success" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="panel-wrap" id="panel-wrap">
+  <nav class="panel-nav">
+    <div class="nav-logo">NET<span>FLEET</span> <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:8px">transportadora</span></div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-nombre"></span>
+      <button class="nav-out" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="panel-body">
+
+    <!-- Tabs -->
+    <div class="tabs-nav">
       <button class="tab-btn active" onclick="cambiarTab('viajes', this)">Viajes disponibles</button>
       <button class="tab-btn" onclick="cambiarTab('ofertas', this)">Mis ofertas</button>
       <button class="tab-btn" onclick="cambiarTab('documentos', this)">
@@ -338,38 +317,52 @@
       </button>
     </div>
 
-    <!-- ══ TAB VIAJES (siempre visible por defecto) ══ -->
+    <!-- ══ TAB VIAJES ══ -->
     <div class="tab-section active" id="tab-viajes">
-      <!-- BUSCADOR -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-disponibles">—</div>
+          <div class="stat-lbl">Disponibles</div>
+        </div>
+        <div class="stat-card activas">
+          <div class="stat-num" id="stat-mis-activas">—</div>
+          <div class="stat-lbl">Mis ofertas activas</div>
+        </div>
+        <div class="stat-card ganadas">
+          <div class="stat-num" id="stat-ganadas">—</div>
+          <div class="stat-lbl">Adjudicadas</div>
+        </div>
+      </div>
+      <!-- BUSCADOR (movido de index.html) -->
       <div class="buscador-wrap">
-        <div class="buscador-intro">Busca tu ruta</div>
+        <div class="buscador-intro">¿A dónde vas?</div>
         <div class="buscador-bar">
           <div class="buscador-field">
             <label class="buscador-label">salgo desde</label>
             <input class="buscador-input" id="b-origen" type="text" placeholder="Ciudad de origen..." autocomplete="off" list="list-origen">
             <datalist id="list-origen"></datalist>
           </div>
-          <div class="buscador-sep">&rarr;</div>
+          <div class="buscador-sep">→</div>
           <div class="buscador-field">
             <label class="buscador-label">voy hacia</label>
             <input class="buscador-input" id="b-destino" type="text" placeholder="Ciudad destino..." autocomplete="off" list="list-destino">
             <datalist id="list-destino"></datalist>
           </div>
-          <div class="buscador-sep buscador-sep--cal">&#128197;</div>
+          <div class="buscador-sep buscador-sep--cal">📅</div>
           <div class="buscador-field buscador-field--fecha">
             <label class="buscador-label">fecha de salida</label>
             <select class="buscador-input" id="b-fecha">
               <option value="">Cualquier fecha</option>
             </select>
           </div>
-          <button class="buscador-btn" onclick="buscarViajes()">Buscar &rarr;</button>
+          <button class="buscador-btn" onclick="buscarViajes()">Buscar →</button>
         </div>
         <div class="buscador-reset" id="buscador-reset" style="display:none">
-          <span onclick="resetBuscador()">&times; Ver todos los viajes disponibles</span>
+          <span onclick="resetBuscador()">✕ Ver todos los viajes disponibles</span>
         </div>
       </div>
 
-      <!-- MAPA + CALCULADORA -->
+      <!-- MAPA + CALCULADORA (movido de index.html) -->
       <div class="mapa-calc-section">
         <!-- MAPA -->
         <div class="mapa-col">
@@ -379,10 +372,10 @@
           </div>
           <div class="mapa-wrap">
             <div id="map"></div>
-            <button class="btn-ver-todos" id="btn-ver-todos">&larr; Ver todos</button>
+            <button class="btn-ver-todos" id="btn-ver-todos">← Ver todos</button>
           </div>
           <div class="cta-mapa-wrap">
-            <a id="cta-mapa" href="#viajes-lista">Ver todos los viajes &rarr;</a>
+            <a id="cta-mapa" href="#viajes-lista">Ver todos los viajes →</a>
           </div>
         </div>
 
@@ -390,7 +383,7 @@
         <div class="calc-col">
           <div class="section-hdr">
             <h2>Estimador de flete</h2>
-            <p>Basado en mas de 1.000 viajes reales en Colombia</p>
+            <p>Basado en más de 1.000 viajes reales en Colombia</p>
           </div>
           <div class="calc-card">
             <div class="calc-row">
@@ -420,7 +413,7 @@
                 <option value="">Sin especificar</option>
                 <option value="HUB">Hub (entre bodegas)</option>
                 <option value="ANTIOQUIA">Antioquia</option>
-                <option value="BOYACA">Boyaca</option>
+                <option value="BOYACA">Boyacá</option>
                 <option value="CENTRO">Centro</option>
                 <option value="CUNDINAMARCA">Cundinamarca</option>
                 <option value="EJE CAFETERO">Eje Cafetero</option>
@@ -429,7 +422,7 @@
                 <option value="OCCIDENTE">Occidente</option>
                 <option value="ORIENTE">Oriente</option>
                 <option value="SANTANDERES">Santanderes</option>
-                <option value="SUR">Sur / Narino</option>
+                <option value="SUR">Sur / Nariño</option>
                 <option value="TOLHUIL">Tolima / Huila</option>
                 <option value="VALLE">Valle</option>
               </select>
@@ -437,29 +430,29 @@
             <div class="calc-results" style="grid-template-columns:1fr auto;">
               <div class="calc-result-card main">
                 <div class="calc-result-label">Precio base estimado</div>
-                <div class="calc-result-val" id="cc-base">&mdash;</div>
+                <div class="calc-result-val" id="cc-base">—</div>
               </div>
               <div class="calc-result-card cc-ahorro" id="cc-ahorro-card" style="display:none;">
                 <div class="calc-result-label">Ahorra hasta</div>
-                <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">&mdash;</div>
+                <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">—</div>
               </div>
             </div>
             <div class="calc-rango">
-              <div class="calc-rango-label">Rango historico &mdash; <span id="cc-zona-badge">&mdash;</span></div>
+              <div class="calc-rango-label">Rango histórico — <span id="cc-zona-badge">—</span></div>
               <div class="calc-bar-track"><div class="calc-bar-fill" id="cc-bar"></div></div>
               <div class="calc-bar-extremos">
-                <span id="cc-hist-min">&mdash;</span>
-                <span style="color:var(--gray-400);font-size:11px">mediana historica</span>
-                <span id="cc-hist-max">&mdash;</span>
+                <span id="cc-hist-min">��</span>
+                <span style="color:var(--gray-400);font-size:11px">mediana histórica</span>
+                <span id="cc-hist-max">—</span>
               </div>
             </div>
             <div class="calc-nota">
-              Modelo: regresion polinomial (n=1.015 viajes) &middot; Fuente: viajes Colombia 2025&ndash;2026
+              Modelo: regresión polinomial (n=1.015 viajes) · Fuente: viajes Colombia 2025–2026
             </div>
             <div class="bpo-promo">
-              <div class="bpo-promo-tag">bpo logistico</div>
-              <p class="bpo-promo-text">Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestion logistica integral</strong> &mdash; operacion completa, sin carga administrativa.</p>
-              <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO &rarr;</a>
+              <div class="bpo-promo-tag">bpo logístico</div>
+              <p class="bpo-promo-text">¿Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestión logística integral</strong> — operación completa, sin carga administrativa.</p>
+              <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO →</a>
             </div>
           </div>
         </div>
@@ -470,17 +463,17 @@
       </div>
     </div>
 
-    <!-- ══ TAB MIS OFERTAS (solo con login) ══ -->
+    <!-- ══ TAB MIS OFERTAS ══ -->
     <div class="tab-section" id="tab-ofertas">
       <div id="mis-ofertas-lista">
         <div class="loading-msg">Cargando...</div>
       </div>
     </div>
 
-    <!-- ══ TAB DOCUMENTOS (solo con login) ══ -->
+    <!-- ══ TAB DOCUMENTOS ══ -->
     <div class="tab-section" id="tab-documentos">
       <div class="docs-aviso">
-        Sube tus documentos para poder ejecutar viajes adjudicados. NETFLEET los revisara y te notificara cuando esten aprobados.
+        📋 Sube tus documentos para poder ejecutar viajes adjudicados. NETFLEET los revisará y te notificará cuando estén aprobados.
       </div>
       <div class="docs-grid" id="docs-grid">
         <div class="loading-msg">Cargando documentos...</div>
@@ -490,12 +483,12 @@
   </div>
 </div>
 
-<!-- ══ MODAL HACER OFERTA ══ -->
+<!-- MODAL HACER OFERTA -->
 <div class="modal-overlay" id="modal-oferta">
   <div class="modal-box">
     <div class="modal-head">
       <div class="modal-head-title">Hacer oferta</div>
-      <button class="modal-close" onclick="cerrarModalOferta()">&#10005;</button>
+      <button class="modal-close" onclick="cerrarModalOferta()">✕</button>
     </div>
     <div class="modal-body">
       <div class="modal-viaje-resumen" id="modal-viaje-info"></div>
@@ -506,55 +499,14 @@
       </div>
       <div class="form-group">
         <label class="form-label">Comentario (opcional)</label>
-        <textarea class="form-textarea" id="oferta-comentario" placeholder="Ej: Disponibilidad inmediata, vehiculo refrigerado..."></textarea>
+        <textarea class="form-textarea" id="oferta-comentario" placeholder="Ej: Disponibilidad inmediata, vehículo refrigerado..."></textarea>
       </div>
       <div id="oferta-error"   class="form-error"   style="display:none"></div>
       <div id="oferta-success" class="form-success" style="display:none"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancelar" onclick="cerrarModalOferta()">Cancelar</button>
-      <button class="btn-enviar" id="btn-enviar-oferta" onclick="enviarOferta()">Enviar oferta &rarr;</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MODAL AUTH (login/registro) ══ -->
-<div class="modal-overlay" id="modal-auth">
-  <div class="modal-box">
-    <div class="modal-head">
-      <div class="modal-head-title" id="auth-modal-title">Ingresar</div>
-      <button class="modal-close" onclick="cerrarModalAuth()">&#10005;</button>
-    </div>
-    <div class="modal-body">
-      <div class="login-tabs">
-        <button class="login-tab active" id="auth-tab-login" onclick="cambiarAuthTab('login')">Ingresar</button>
-        <button class="login-tab" id="auth-tab-registro" onclick="cambiarAuthTab('registro')">Crear cuenta</button>
-      </div>
-
-      <!-- INGRESAR -->
-      <div id="auth-form-login">
-        <label class="login-label">Email</label>
-        <input class="login-input" id="login-email" type="email" placeholder="tu@empresa.com">
-        <label class="login-label">Contrasena</label>
-        <input class="login-input" id="login-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
-          onkeydown="if(event.key==='Enter') iniciarSesion()">
-        <button class="login-btn" onclick="iniciarSesion()">Ingresar &rarr;</button>
-        <div class="login-error" id="login-error"></div>
-      </div>
-
-      <!-- REGISTRARSE (simplificado: 3 campos) -->
-      <div id="auth-form-registro" style="display:none">
-        <label class="login-label">Nombre completo</label>
-        <input class="login-input" id="reg-nombre" type="text" placeholder="Tu nombre">
-        <label class="login-label">Email</label>
-        <input class="login-input" id="reg-email" type="email" placeholder="tu@empresa.com">
-        <label class="login-label">Contrasena</label>
-        <input class="login-input" id="reg-pass" type="password" placeholder="Minimo 8 caracteres"
-          onkeydown="if(event.key==='Enter') registrarse()">
-        <button class="login-btn" onclick="registrarse()">Crear cuenta &rarr;</button>
-        <div class="login-error" id="reg-error"></div>
-        <div class="login-success" id="reg-success" style="display:none"></div>
-      </div>
+      <button class="btn-enviar" id="btn-enviar-oferta" onclick="enviarOferta()">Enviar oferta →</button>
     </div>
   </div>
 </div>
@@ -571,7 +523,6 @@
   let misOfertas    = [];
   let misDocs       = [];
   let viajeOfertaActual = null;
-  let pendingOfertaViaje = null; // Guarda viaje pendiente cuando el user no tiene sesion
 
   const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
 
@@ -603,54 +554,39 @@
   }
 
   const DOCS_CONFIG = [
-    { tipo: 'camara_comercio',   nombre: 'Camara de Comercio',          desc: 'Certificado de existencia y representacion legal vigente.' },
-    { tipo: 'rut',               nombre: 'RUT',                          desc: 'Registro Unico Tributario actualizado.' },
-    { tipo: 'poliza_mercancias', nombre: 'Poliza de Mercancias',         desc: 'Poliza que ampara las mercancias transportadas.' },
-    { tipo: 'poliza_rc',         nombre: 'Poliza de Responsabilidad Civil', desc: 'Poliza de responsabilidad civil contractual y extracontractual.' },
+    { tipo: 'camara_comercio',   nombre: 'Cámara de Comercio',          desc: 'Certificado de existencia y representación legal vigente.' },
+    { tipo: 'rut',               nombre: 'RUT',                          desc: 'Registro Único Tributario actualizado.' },
+    { tipo: 'poliza_mercancias', nombre: 'Póliza de Mercancías',         desc: 'Póliza que ampara las mercancías transportadas.' },
+    { tipo: 'poliza_rc',         nombre: 'Póliza de Responsabilidad Civil', desc: 'Póliza de responsabilidad civil contractual y extracontractual.' },
   ];
 
-  // ── AUTH MODAL ────────────────────────────────────────────────
-  function abrirModalAuth(tab) {
-    document.getElementById('login-error').textContent = '';
-    document.getElementById('reg-error').textContent = '';
-    document.getElementById('reg-success').style.display = 'none';
-    cambiarAuthTab(tab || 'login');
-    document.getElementById('modal-auth').classList.add('open');
+  // ── TABS LOGIN/REGISTRO ────────────────────────────────────────
+  function cambiarTab(tab) {
+    document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+    document.getElementById('form-registro').style.display = tab === 'registro' ? '' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+    document.getElementById('tab-registro').classList.toggle('active', tab === 'registro');
   }
 
-  function cerrarModalAuth() {
-    document.getElementById('modal-auth').classList.remove('open');
-  }
-
-  function cambiarAuthTab(tab) {
-    document.getElementById('auth-form-login').style.display    = tab === 'login'    ? '' : 'none';
-    document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none';
-    document.getElementById('auth-tab-login').classList.toggle('active',    tab === 'login');
-    document.getElementById('auth-tab-registro').classList.toggle('active', tab === 'registro');
-    document.getElementById('auth-modal-title').textContent = tab === 'login' ? 'Ingresar' : 'Crear cuenta';
-  }
-
-  // Cerrar modal auth al clic fuera
-  document.getElementById('modal-auth').addEventListener('click', function(e) {
-    if (e.target === this) cerrarModalAuth();
-  });
-
-  // ── REGISTRO (simplificado: 3 campos) ────────────────────────
+  // ── REGISTRO ──────────────────────────────────────────────────
   async function registrarse() {
-    const nombre = document.getElementById('reg-nombre').value.trim();
-    const email  = document.getElementById('reg-email').value.trim();
-    const pass   = document.getElementById('reg-pass').value;
-    const errEl  = document.getElementById('reg-error');
-    const okEl   = document.getElementById('reg-success');
+    const nombre   = document.getElementById('reg-nombre').value.trim();
+    const empresa  = document.getElementById('reg-empresa').value.trim();
+    const telefono = document.getElementById('reg-telefono').value.trim();
+    const nit      = document.getElementById('reg-nit').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const pass     = document.getElementById('reg-pass').value;
+    const errEl    = document.getElementById('reg-error');
+    const okEl     = document.getElementById('reg-success');
     errEl.textContent = ''; okEl.style.display = 'none';
 
-    if (!nombre || !email || !pass) { errEl.textContent = 'Completa todos los campos.'; return; }
-    if (pass.length < 8) { errEl.textContent = 'La contrasena debe tener al menos 8 caracteres.'; return; }
+    if (!nombre || !empresa || !email || !pass) { errEl.textContent = 'Completa todos los campos obligatorios.'; return; }
+    if (pass.length < 8) { errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; return; }
 
     const resp = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-      body: JSON.stringify({ email, password: pass, options: { data: { nombre, tipo: 'transportador' } } })
+      body: JSON.stringify({ email, password: pass, options: { data: { nombre, empresa, telefono, nit, tipo: 'transportador' } } })
     });
     const data = await resp.json();
     if (!resp.ok) {
@@ -658,40 +594,25 @@
       return;
     }
 
-    // Crear fila en perfiles
     if (data.user) {
       await fetch(`${SUPABASE_URL}/rest/v1/perfiles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ id: data.user.id, email, nombre, tipo: 'transportador', estado: 'pendiente' })
+        body: JSON.stringify({ id: data.user.id, email, nombre, empresa, telefono, nit, tipo: 'transportador', estado: 'pendiente' })
       });
     }
 
-    // Auto-login si Supabase devuelve sesion (email confirm deshabilitado)
-    if (data.access_token) {
-      tokenActual   = data.access_token;
-      usuarioActual = data.user;
-      perfilActual  = await fetchPerfil(data.user.id) || { id: data.user.id, email, nombre, tipo: 'transportador', estado: 'pendiente' };
-      cerrarModalAuth();
-      activarSesion();
-      // Auto-abrir modal de oferta si habia un viaje pendiente
-      if (pendingOfertaViaje) {
-        const pv = pendingOfertaViaje;
-        pendingOfertaViaje = null;
-        setTimeout(() => abrirModalOferta(pv.id, pv.origen, pv.destino, pv.fecha, pv.peso), 400);
-      }
-      return;
-    }
-
-    // Si requiere confirmacion de email
     okEl.style.display = '';
-    okEl.textContent = 'Cuenta creada. Revisa tu email para confirmarla, luego ingresa con tus credenciales.';
+    okEl.textContent = '✓ Solicitud enviada. Revisaremos tu cuenta y te avisamos por WhatsApp cuando esté activa.';
     document.getElementById('reg-nombre').value = '';
+    document.getElementById('reg-empresa').value = '';
+    document.getElementById('reg-telefono').value = '';
+    document.getElementById('reg-nit').value = '';
     document.getElementById('reg-email').value = '';
     document.getElementById('reg-pass').value = '';
   }
 
-  // ── LOGIN ─────────────────────────────────────────────────────
+  // ── AUTH ──────────────────────────────────────────────────────
   async function iniciarSesion() {
     const email = document.getElementById('login-email').value.trim();
     const pass  = document.getElementById('login-pass').value;
@@ -704,7 +625,7 @@
       body: JSON.stringify({ email, password: pass })
     });
     const data = await resp.json();
-    if (!resp.ok) { errEl.textContent = 'Email o contrasena incorrectos.'; return; }
+    if (!resp.ok) { errEl.textContent = 'Email o contraseña incorrectos.'; return; }
 
     tokenActual   = data.access_token;
     usuarioActual = data.user;
@@ -717,41 +638,10 @@
     }
 
     perfilActual = perfil;
-    cerrarModalAuth();
-    activarSesion();
-
-    // Auto-abrir modal de oferta si habia un viaje pendiente
-    if (pendingOfertaViaje) {
-      const pv = pendingOfertaViaje;
-      pendingOfertaViaje = null;
-      setTimeout(() => abrirModalOferta(pv.id, pv.origen, pv.destino, pv.fecha, pv.peso), 400);
-    }
+    mostrarPanel();
   }
 
-  // ── LOGOUT ────────────────────────────────────────────────────
-  async function cerrarSesion() {
-    await sb.auth.signOut();
-    usuarioActual = null;
-    perfilActual  = null;
-    tokenActual   = null;
-    misOfertas    = [];
-    misDocs       = [];
-
-    // Restaurar UI a estado sin login
-    document.getElementById('nav-login-btn').style.display = '';
-    document.getElementById('nav-nombre').style.display    = 'none';
-    document.getElementById('nav-salir').style.display     = 'none';
-    document.getElementById('stats-bar').style.display     = 'none';
-    document.getElementById('tabs-nav').style.display      = 'none';
-    document.getElementById('perfil-banner').style.display = 'none';
-    document.getElementById('perfil-form').style.display   = 'none';
-
-    // Volver a tab viajes
-    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
-    document.getElementById('tab-viajes').classList.add('active');
-
-    renderViajes(); // Re-render sin "ya ofertaste"
-  }
+  async function cerrarSesion() { await sb.auth.signOut(); location.reload(); }
 
   async function fetchPerfil(userId) {
     try {
@@ -762,90 +652,39 @@
     } catch { return null; }
   }
 
-  // ── ACTIVAR SESION (reemplaza mostrarPanel) ───────────────────
-  function activarSesion() {
-    // Nav: mostrar usuario, ocultar boton login
-    document.getElementById('nav-login-btn').style.display = 'none';
-    document.getElementById('nav-nombre').style.display    = '';
-    document.getElementById('nav-nombre').textContent      = perfilActual?.empresa || perfilActual?.nombre || '';
-    document.getElementById('nav-salir').style.display     = '';
-
-    // Mostrar stats y tabs
-    document.getElementById('stats-bar').style.display = '';
-    document.getElementById('tabs-nav').style.display  = '';
-
-    // Cargar datos del usuario
-    cargarMisOfertas().then(() => renderViajes()); // Re-render para mostrar "ya ofertaste"
-    cargarDocumentos();
-
-    // Banner de perfil incompleto si faltan empresa/telefono/nit
-    if (!perfilActual?.empresa || !perfilActual?.telefono || !perfilActual?.nit) {
-      document.getElementById('perfil-banner').style.display = '';
-    }
+  function mostrarPanel() {
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('panel-wrap').style.display = 'block';
+    document.getElementById('nav-nombre').textContent = perfilActual?.empresa || perfilActual?.nombre || '';
+    cargarTodo();
   }
 
-  // ── RESTAURAR SESION EXISTENTE ────────────────────────────────
   sb.auth.getSession().then(async ({ data: { session } }) => {
     if (!session) return;
     tokenActual   = session.access_token;
     usuarioActual = session.user;
     const perfil  = await fetchPerfil(session.user.id);
-    if (perfil?.tipo === 'transportador') {
-      perfilActual = perfil;
-      activarSesion();
-    }
+    if (perfil?.tipo === 'transportador') { perfilActual = perfil; mostrarPanel(); }
   });
 
-  // ── COMPLETAR PERFIL (paso 2 post-registro) ──────────────────
-  function togglePerfilForm() {
-    const form = document.getElementById('perfil-form');
-    const visible = form.style.display !== 'none';
-    form.style.display = visible ? 'none' : '';
-    if (!visible && perfilActual) {
-      document.getElementById('perfil-empresa').value  = perfilActual.empresa  || '';
-      document.getElementById('perfil-telefono').value = perfilActual.telefono || '';
-      document.getElementById('perfil-nit').value      = perfilActual.nit      || '';
-    }
-  }
-
-  async function guardarPerfil() {
-    const empresa  = document.getElementById('perfil-empresa').value.trim();
-    const telefono = document.getElementById('perfil-telefono').value.trim();
-    const nit      = document.getElementById('perfil-nit').value.trim();
-    const msg      = document.getElementById('perfil-msg');
-
-    if (!empresa) { msg.innerHTML = '<span style="color:var(--red)">Ingresa el nombre de tu transportadora.</span>'; return; }
-
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?id=eq.${usuarioActual.id}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ empresa, telefono, nit })
-    });
-
-    if (r.ok) {
-      perfilActual.empresa  = empresa;
-      perfilActual.telefono = telefono;
-      perfilActual.nit      = nit;
-      document.getElementById('nav-nombre').textContent    = empresa;
-      document.getElementById('perfil-banner').style.display = 'none';
-      msg.innerHTML = '<span style="color:var(--green);font-weight:600">Perfil actualizado</span>';
-      setTimeout(() => { msg.innerHTML = ''; }, 3000);
-    } else {
-      msg.innerHTML = '<span style="color:var(--red)">Error al guardar. Intenta de nuevo.</span>';
-    }
-  }
-
-  // ── TABS (unificada, fix del bug de duplicacion) ──────────────
+  // ── TABS ──────────────────────────────────────────────────────
   function cambiarTab(nombre, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    btn.classList.add('active');
     document.getElementById('tab-' + nombre).classList.add('active');
     if (nombre === 'documentos') cargarDocumentos();
     if (nombre === 'ofertas')    renderMisOfertas();
   }
 
-  // ── VIAJES (desde Google Sheet CSV) ───────────────────────────
+  // ── CARGA INICIAL ─────────────────────────────────────────────
+  async function cargarTodo() {
+    await Promise.all([cargarViajes(), cargarMisOfertas(), cargarDocumentos()]);
+    // Inicializar mapa después de que el panel sea visible y los viajes carguen
+    setTimeout(initMapaTransportador, 300);
+  }
+
+  // ── VIAJES (desde Google Sheet CSV — misma fuente que index.html) ──
   async function cargarViajes() {
     try {
       const resp = await fetch(CSV_URL);
@@ -879,7 +718,7 @@
 
     lista.innerHTML = viajesDisp.map(v => {
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-      const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '\u2014');
+      const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
       const yaOferte = misRts.has(v.rt_total);
       const tipo     = (v.tipo_mercancia || '').trim() || 'General';
 
@@ -887,23 +726,23 @@
         <div class="viaje-card">
           <div class="viaje-head">
             <div>
-              <div class="viaje-ruta">${v.origen || '\u2014'} \u2192 ${destRes}</div>
-              <div class="viaje-sub">${destinos.join(' \u00b7 ')}</div>
+              <div class="viaje-ruta">${v.origen || '—'} → ${destRes}</div>
+              <div class="viaje-sub">${destinos.join(' · ')}</div>
             </div>
           </div>
           <div class="viaje-meta-grid">
-            <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${v.fecha_cargue || '\u2014'}</div></div>
-            <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '\u2014'}</div></div>
+            <div class="meta-item"><div class="meta-label">Fecha cargue</div><div class="meta-value">${v.fecha_cargue || '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'}</div></div>
             <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${tipo}</div></div>
-            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '\u2014'}</div></div>
+            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—'}</div></div>
           </div>
           <div class="viaje-footer">
             <div class="precio-estimado">
-              ${yaOferte ? `<span style="color:var(--green);font-size:12px;font-weight:600">\u2713 Ya ofertaste en este viaje</span>` : ''}
+              ${yaOferte ? `<span style="color:var(--green);font-size:12px;font-weight:600">✓ Ya ofertaste en este viaje</span>` : ''}
             </div>
             ${yaOferte
               ? `<button class="btn-ya-oferte">Oferta enviada</button>`
-              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>`
+              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar →</button>`
             }
           </div>
         </div>`;
@@ -912,7 +751,6 @@
 
   // ── OFERTAS ───────────────────────────────────────────────────
   async function cargarMisOfertas() {
-    if (!usuarioActual || !tokenActual) return;
     const r = await fetch(`${SUPABASE_URL}/rest/v1/ofertas?usuario_id=eq.${usuarioActual.id}&order=created_at.desc`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
     });
@@ -924,13 +762,13 @@
   function renderMisOfertas() {
     const lista = document.getElementById('mis-ofertas-lista');
     if (!misOfertas.length) {
-      lista.innerHTML = '<div class="empty-msg">Aun no has hecho ofertas.</div>';
+      lista.innerHTML = '<div class="empty-msg">Aún no has hecho ofertas.</div>';
       return;
     }
     lista.innerHTML = misOfertas.map(o => {
       const fecha = new Date(o.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
       const viaje = viajesDisp.find(v => v.rt_total === o.viaje_rt);
-      const ruta  = viaje ? `${viaje.origen} \u2192 ${(viaje.destino||'').split(',')[0].trim()}` : o.viaje_rt;
+      const ruta  = viaje ? `${viaje.origen} → ${(viaje.destino||'').split(',')[0].trim()}` : o.viaje_rt;
       return `
         <div class="oferta-row">
           <div>
@@ -947,7 +785,7 @@
   }
 
   async function cancelarOferta(id) {
-    if (!confirm('Cancelar esta oferta?')) return;
+    if (!confirm('¿Cancelar esta oferta?')) return;
     await fetch(`${SUPABASE_URL}/rest/v1/ofertas?id=eq.${id}`, {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
@@ -958,24 +796,17 @@
     renderViajes();
   }
 
-  // ── MODAL OFERTA (con auth gate) ──────────────────────────────
+  // ── MODAL OFERTA ──────────────────────────────────────────────
   function abrirModalOferta(id, origen, destino, fecha, peso) {
-    // AUTH GATE: si no hay sesion, guardar viaje pendiente y abrir auth
-    if (!usuarioActual) {
-      pendingOfertaViaje = { id, origen, destino, fecha, peso };
-      abrirModalAuth('registro'); // Abrir en tab registro para nuevos
-      return;
-    }
-
     viajeOfertaActual = { id, origen, destino, fecha, peso };
     document.getElementById('modal-viaje-info').innerHTML =
-      `<strong>${origen} \u2192 ${destino}</strong>${fecha ? ' \u00b7 ' + fecha : ''}${peso ? ' \u00b7 ' + Number(peso).toLocaleString('es-CO') + ' kg' : ''}`;
+      `<strong>${origen} → ${destino}</strong>${fecha ? ' · ' + fecha : ''}${peso ? ' · ' + Number(peso).toLocaleString('es-CO') + ' kg' : ''}`;
     document.getElementById('oferta-precio').value    = '';
     document.getElementById('oferta-comentario').value = '';
     document.getElementById('oferta-error').style.display   = 'none';
     document.getElementById('oferta-success').style.display = 'none';
     document.getElementById('btn-enviar-oferta').disabled = false;
-    document.getElementById('btn-enviar-oferta').textContent = 'Enviar oferta \u2192';
+    document.getElementById('btn-enviar-oferta').textContent = 'Enviar oferta →';
     document.getElementById('modal-oferta').classList.add('open');
   }
 
@@ -992,7 +823,7 @@
     errEl.style.display = 'none'; sucEl.style.display = 'none';
 
     if (!precio || precio <= 0) {
-      errEl.textContent = 'Ingresa un precio valido.'; errEl.style.display = 'block'; return;
+      errEl.textContent = 'Ingresa un precio válido.'; errEl.style.display = 'block'; return;
     }
 
     const btn = document.getElementById('btn-enviar-oferta');
@@ -1017,12 +848,12 @@
       const err = await r.json().catch(() => ({}));
       errEl.textContent = err.message?.includes('unique') ? 'Ya tienes una oferta activa en este viaje.' : 'Error al enviar. Intenta de nuevo.';
       errEl.style.display = 'block';
-      btn.disabled = false; btn.textContent = 'Enviar oferta \u2192';
+      btn.disabled = false; btn.textContent = 'Enviar oferta →';
       return;
     }
 
-    sucEl.textContent = '\u2713 Oferta enviada exitosamente.'; sucEl.style.display = 'block';
-    btn.textContent = '\u2713 Enviada';
+    sucEl.textContent = '✓ Oferta enviada exitosamente.'; sucEl.style.display = 'block';
+    btn.textContent = '✓ Enviada';
     await cargarMisOfertas();
     renderViajes();
     setTimeout(cerrarModalOferta, 1500);
@@ -1034,7 +865,6 @@
 
   // ── DOCUMENTOS ────────────────────────────────────────────────
   async function cargarDocumentos() {
-    if (!usuarioActual || !tokenActual) return;
     const r = await fetch(`${SUPABASE_URL}/rest/v1/documentos_transportadora?transportadora_id=eq.${usuarioActual.id}&select=*`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
     });
@@ -1052,7 +882,7 @@
     grid.innerHTML = DOCS_CONFIG.map(cfg => {
       const doc = misDocs.find(d => d.tipo === cfg.tipo);
       const estado = doc ? doc.estado : 'no_subido';
-      const estadoLabel = { pendiente:'En revision', en_revision:'En revision', aprobado:'Aprobado \u2713', rechazado:'Rechazado', no_subido:'Sin subir' }[estado] || estado;
+      const estadoLabel = { pendiente:'En revisión', en_revision:'En revisión', aprobado:'Aprobado ✓', rechazado:'Rechazado', no_subido:'Sin subir' }[estado] || estado;
 
       return `
         <div class="doc-card ${doc?.estado === 'aprobado' ? 'aprobado' : doc?.estado === 'rechazado' ? 'rechazado' : ''}">
@@ -1063,8 +893,8 @@
             <div class="upload-area" onclick="document.getElementById('file-${cfg.tipo}').click()">
               <input type="file" id="file-${cfg.tipo}" accept=".pdf,.jpg,.jpeg,.png" onchange="subirDocumento('${cfg.tipo}', this)">
               <label class="upload-label" for="file-${cfg.tipo}">
-                <strong>${estado === 'no_subido' ? 'Seleccionar archivo' : 'Reemplazar archivo'}</strong>
-                PDF, JPG o PNG - max. 5MB
+                <strong>${estado === 'no_subido' ? '📎 Seleccionar archivo' : '↑ Reemplazar archivo'}</strong>
+                PDF, JPG o PNG · máx. 5MB
               </label>
             </div>
             <button class="btn-upload" id="btn-upload-${cfg.tipo}" onclick="document.getElementById('file-${cfg.tipo}').click()">
@@ -1121,11 +951,11 @@
       });
     }
 
-    msg.innerHTML = '<span style="color:var(--green);font-weight:600">\u2713 Subido \u2014 en revision</span>';
+    msg.innerHTML = '<span style="color:var(--green);font-weight:600">✓ Subido — en revisión</span>';
     await cargarDocumentos();
   }
 
-  // ── BUSCADOR ──────────────────────────────────────────────────
+  // ── BUSCADOR (movido de index.html) ──────────────────────────
   function buscarViajes() {
     const origenVal  = document.getElementById('b-origen').value.trim();
     const destinoVal = document.getElementById('b-destino').value.trim();
@@ -1151,32 +981,32 @@
   function renderViajesFiltrados(lista, origenVal, destinoVal) {
     const el = document.getElementById('viajes-lista');
     if (!lista.length) {
-      el.innerHTML = '<div class="empty-msg">Sin resultados para esta busqueda.</div>';
+      el.innerHTML = '<div class="empty-msg">Sin resultados para esta búsqueda.</div>';
       return;
     }
     const misRts = new Set(misOfertas.filter(o => o.estado === 'activa').map(o => o.viaje_rt));
     el.innerHTML = lista.map(v => {
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
-      const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '\u2014');
+      const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
       const yaOferte = misRts.has(v.rt_total);
       return `
         <div class="viaje-card">
           <div class="viaje-head">
             <div>
-              <div class="viaje-ruta">${v.origen || '\u2014'} \u2192 ${destRes}</div>
-              <div class="viaje-sub">${destinos.join(' \u00b7 ')}</div>
+              <div class="viaje-ruta">${v.origen || '—'} → ${destRes}</div>
+              <div class="viaje-sub">${destinos.join(' · ')}</div>
             </div>
           </div>
           <div class="viaje-meta-grid">
-            <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '\u2014'}</div></div>
-            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '\u2014'}</div></div>
-            <div class="meta-item"><div class="meta-label">Cargue</div><div class="meta-value">${v.fecha_cargue || '\u2014'}</div></div>
+            <div class="meta-item"><div class="meta-label">Peso</div><div class="meta-value">${v.peso_kg ? Number(v.peso_kg).toLocaleString('es-CO') + ' kg' : '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Distancia</div><div class="meta-value">${v.km ? Number(v.km).toLocaleString('es-CO') + ' km' : '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Cargue</div><div class="meta-value">${v.fecha_cargue || '—'}</div></div>
             <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${(v.tipo_mercancia||'').trim() || 'General'}</div></div>
           </div>
           <div class="viaje-footer">
             ${yaOferte
               ? `<button class="btn-ya-oferte">Oferta enviada</button>`
-              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>`
+              : `<button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar →</button>`
             }
           </div>
         </div>`;
@@ -1198,13 +1028,13 @@
     document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarViajes(); });
   });
 
-  // ── CALCULADORA DE FLETE ──────────────────────────────────────
+  // ── CALCULADORA DE FLETE (movido de index.html) ──────────────
   const CC_RANGOS = [
     { label:'< 100 km',    min:0,    max:100,  p25:380000,   p75:800000   },
-    { label:'100\u2013300 km',  min:100,  max:300,  p25:900000,   p75:1695000  },
-    { label:'300\u2013600 km',  min:300,  max:600,  p25:1500000,  p75:2602500  },
-    { label:'600\u20131000 km', min:600,  max:1000, p25:1040025,  p75:4506945  },
-    { label:'\u2265 1000 km',   min:1000, max:9999, p25:4250000,  p75:11030000 },
+    { label:'100–300 km',  min:100,  max:300,  p25:900000,   p75:1695000  },
+    { label:'300–600 km',  min:300,  max:600,  p25:1500000,  p75:2602500  },
+    { label:'600–1000 km', min:600,  max:1000, p25:1040025,  p75:4506945  },
+    { label:'≥ 1000 km',   min:1000, max:9999, p25:4250000,  p75:11030000 },
   ];
   const CC_ZONA_AJUSTE = {
     'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,
@@ -1251,86 +1081,68 @@
   document.getElementById('cc-paradas')?.addEventListener('input', ccCalc);
   document.getElementById('cc-zona')?.addEventListener('change', ccCalc);
   ccCalc();
-
-  // ── CARGA INICIAL (sin requerir login) ────────────────────────
-  cargarViajes().then(() => {
-    // Actualizar hero counter
-    document.getElementById('hero-count').textContent = viajesDisp.length;
-    // Inicializar mapa despues de que Leaflet cargue
-    if (typeof initMapaTransportador === 'function') {
-      setTimeout(initMapaTransportador, 300);
-    } else {
-      // Leaflet aun no cargo, esperar
-      const waitMap = setInterval(() => {
-        if (typeof initMapaTransportador === 'function') {
-          clearInterval(waitMap);
-          setTimeout(initMapaTransportador, 300);
-        }
-      }, 200);
-    }
-  });
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // ── MAPA — codigo de geocoding + mapa Leaflet ─────────────────
+  // ── MAPA — código exacto de index.html (backup) ──────────────
   const GMAPS_KEY = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
   const CIUDADES = {
     'funza':[4.7132,-74.1966],'yumbo':[3.5928,-76.4944],'espinal':[4.1544,-74.8864],
-    'bogota':[4.711,-74.0721],'bogot\u00e1':[4.711,-74.0721],
-    'cali':[3.4516,-76.5319],'medellin':[6.2442,-75.5812],'medell\u00edn':[6.2442,-75.5812],
+    'bogota':[4.711,-74.0721],'bogotá':[4.711,-74.0721],
+    'cali':[3.4516,-76.5319],'medellin':[6.2442,-75.5812],'medellín':[6.2442,-75.5812],
     'barranquilla':[10.9685,-74.7813],'cartagena':[10.391,-75.4794],
-    'cucuta':[7.8939,-72.5078],'c\u00facuta':[7.8939,-72.5078],
+    'cucuta':[7.8939,-72.5078],'cúcuta':[7.8939,-72.5078],
     'bucaramanga':[7.1253,-73.1198],'santa marta':[11.2408,-74.211],
-    'monteria':[8.7575,-75.8906],'monter\u00eda':[8.7575,-75.8906],
+    'monteria':[8.7575,-75.8906],'montería':[8.7575,-75.8906],
     'valledupar':[10.4631,-73.2532],'riohacha':[11.5444,-72.9072],
     'sincelejo':[9.3047,-75.3978],'neiva':[2.9273,-75.282],
-    'ibague':[4.4389,-75.2322],'ibagu\u00e9':[4.4389,-75.2322],
+    'ibague':[4.4389,-75.2322],'ibagué':[4.4389,-75.2322],
     'villavicencio':[4.142,-73.6266],'aguachica':[8.3081,-73.6189],
     'manizales':[5.0703,-75.5138],'pereira':[4.8087,-75.6906],
     'armenia':[4.5339,-75.6811],'cartago':[4.7454,-75.912],
     'la virginia':[4.9,-75.8833],'dosquebradas':[4.8378,-75.6742],
     'tunja':[5.5353,-73.3678],'duitama':[5.8281,-73.0297],
     'sogamoso':[5.715,-72.9267],'paipa':[5.7833,-73.1167],
-    'ramiriqui':[5.4,-73.3333],'ramiriqu\u00ed':[5.4,-73.3333],
-    'chiquinquira':[5.6167,-73.8167],'chiquinquir\u00e1':[5.6167,-73.8167],
+    'ramiriqui':[5.4,-73.3333],'ramiriquí':[5.4,-73.3333],
+    'chiquinquira':[5.6167,-73.8167],'chiquinquirá':[5.6167,-73.8167],
     'buenavista':[5.7167,-73.9667],'ventaquemada':[5.4167,-73.5167],
     'sachica':[5.6667,-73.6833],'jenesano':[5.3833,-73.4167],
     'tuta':[5.6667,-73.2],'toca':[5.5667,-73.1667],
-    'tibana':[5.3167,-73.3833],'tiban\u00e1':[5.3167,-73.3833],
+    'tibana':[5.3167,-73.3833],'tibaná':[5.3167,-73.3833],
     'arcabuco':[5.7667,-73.4333],'macheta':[5.0333,-73.8333],
     'umbita':[5.3,-73.5167],'aquitania':[5.5167,-72.8833],
-    'saboya':[5.7,-73.7667],'samaca':[5.4833,-73.4833],'samac\u00e1':[5.4833,-73.4833],
+    'saboya':[5.7,-73.7667],'samaca':[5.4833,-73.4833],'samacá':[5.4833,-73.4833],
     'sutamarchan':[5.6333,-73.7833],
     'siberia':[4.8856,-74.1483],'cabrera':[3.9847,-74.4856],
-    'fusagasuga':[4.3367,-74.3644],'fusagasug\u00e1':[4.3367,-74.3644],
-    'silvania':[4.4,-74.4833],'sibate':[4.4878,-74.2597],'sibat\u00e9':[4.4878,-74.2597],
+    'fusagasuga':[4.3367,-74.3644],'fusagasugá':[4.3367,-74.3644],
+    'silvania':[4.4,-74.4833],'sibate':[4.4878,-74.2597],'sibaté':[4.4878,-74.2597],
     'san bernardo':[4.1833,-74.4333],'usme':[4.4367,-74.1322],
-    'subachoque':[4.9167,-74.2667],'fomeque':[4.4833,-73.9],'f\u00f3meque':[4.4833,-73.9],
+    'subachoque':[4.9167,-74.2667],'fomeque':[4.4833,-73.9],'fómeque':[4.4833,-73.9],
     'ortigal':[3.2798,-76.3449],'tenjo':[4.8714,-74.1436],
-    'zipaquira':[5.0228,-74.0061],'zipaquir\u00e1':[5.0228,-74.0061],
-    'facatativa':[4.8142,-74.3597],'facatativ\u00e1':[4.8142,-74.3597],
+    'zipaquira':[5.0228,-74.0061],'zipaquirá':[5.0228,-74.0061],
+    'facatativa':[4.8142,-74.3597],'facatativá':[4.8142,-74.3597],
     'mosquera':[4.7066,-74.2303],'madrid':[4.7339,-74.2644],
-    'soacha':[4.5797,-74.2167],'chia':[4.8614,-73.9314],'ch\u00eda':[4.8614,-73.9314],
-    'cajica':[4.9186,-74.0028],'cajic\u00e1':[4.9186,-74.0028],
-    'tocancipa':[4.9678,-73.9139],'tocancip\u00e1':[4.9678,-73.9139],
+    'soacha':[4.5797,-74.2167],'chia':[4.8614,-73.9314],'chía':[4.8614,-73.9314],
+    'cajica':[4.9186,-74.0028],'cajicá':[4.9186,-74.0028],
+    'tocancipa':[4.9678,-73.9139],'tocancipá':[4.9678,-73.9139],
     'gachancipa':[4.9969,-73.8717],
-    'barrancabermeja':[7.0653,-73.8546],'giron':[7.0725,-73.1686],'gir\u00f3n':[7.0725,-73.1686],
+    'barrancabermeja':[7.0653,-73.8546],'giron':[7.0725,-73.1686],'girón':[7.0725,-73.1686],
     'floridablanca':[7.0639,-73.088],'piedecuesta':[6.9868,-73.0522],
     'lebrija':[7.1167,-73.2167],'san gil':[6.5567,-73.1356],
-    'socorro':[6.5133,-73.2642],'velez':[6.0125,-73.6778],'v\u00e9lez':[6.0125,-73.6778],
+    'socorro':[6.5133,-73.2642],'velez':[6.0125,-73.6778],'vélez':[6.0125,-73.6778],
     'barbosa':[5.9364,-73.6189],
     'yopal':[5.3378,-72.3952],'arauca':[7.0897,-70.7617],
     'acacias':[3.9894,-73.7597],'granada':[3.5461,-73.7229],
     'aguazul':[5.1739,-72.5506],'puerto lopez':[4.0847,-72.9583],
     'restrepo':[4.2572,-73.5703],'cumaral':[4.2708,-73.4864],
-    'pasto':[1.2136,-77.2811],'popayan':[2.4448,-76.6147],'popay\u00e1n':[2.4448,-76.6147],
+    'pasto':[1.2136,-77.2811],'popayan':[2.4448,-76.6147],'popayán':[2.4448,-76.6147],
     'mocoa':[1.152,-76.6481],'florencia':[1.6144,-75.6062],
-    'el tigre':[0.35,-75.1833],'puerto asis':[0.5,-76.5],'puerto as\u00eds':[0.5,-76.5],
+    'el tigre':[0.35,-75.1833],'puerto asis':[0.5,-76.5],'puerto asís':[0.5,-76.5],
     'orito':[0.6667,-76.8667],'la hormiga':[0.0833,-76.9],
-    'sibundoy':[1.2,-76.9167],'villagarzon':[1.0333,-76.6167],'villagarz\u00f3n':[1.0333,-76.6167],
+    'sibundoy':[1.2,-76.9167],'villagarzon':[1.0333,-76.6167],'villagarzón':[1.0333,-76.6167],
     'palmira':[3.5394,-76.3036],'buga':[3.9008,-76.3032],'tulua':[4.0847,-76.1995],
     'buenaventura':[3.8824,-77.0193],'girardot':[4.3024,-74.8022],
-    'leticia':[-4.2153,-69.9401],'quibdo':[5.6919,-76.6583],'quibd\u00f3':[5.6919,-76.6583],
+    'leticia':[-4.2153,-69.9401],'quibdo':[5.6919,-76.6583],'quibdó':[5.6919,-76.6583],
   };
 
   const geocodeCache = {};
@@ -1378,7 +1190,7 @@
         geocodeCache[key] = coords;
         return coords;
       }
-    } catch (e) { console.warn('Geocoding fallo para:', ciudad); }
+    } catch (e) { console.warn('Geocoding falló para:', ciudad); }
     return null;
   }
   async function getCoords(ciudad) {
@@ -1399,7 +1211,7 @@
     });
     const marker = L.marker(coord, { icon });
     if (origenLabel || destinosLabel) {
-      const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">\u2192 ${destinosLabel}</div></div>`;
+      const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">→ ${destinosLabel}</div></div>`;
       marker.bindTooltip(preview, { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' });
     }
     return marker;
@@ -1415,7 +1227,7 @@
       if (data.code === 'Ok' && data.routes.length > 0) {
         return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
       }
-    } catch (e) { /* fallback a linea recta */ }
+    } catch (e) { /* fallback a línea recta */ }
     return null;
   }
 
@@ -1428,7 +1240,7 @@
 
     mapaLeaflet = L.map('map', { zoomControl: true }).setView([4.5709, -74.2973], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '\u00a9 OpenStreetMap \u00a9 CARTO', subdomains: 'abcd', maxZoom: 18
+      attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 18
     }).addTo(mapaLeaflet);
 
     setTimeout(() => mapaLeaflet.invalidateSize(), 100);
@@ -1530,24 +1342,24 @@
         const esRetornoPin = destinoRetorno && i === totalParadas - 1;
         const iconDest = L.divIcon({
           html: esRetornoPin
-            ? `<div style="position:relative"><div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div><div style="position:absolute;top:-10px;left:12px;background:#00B4D8;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap">\u21a9 ${numParada}</div></div>`
-            : `<div style="position:relative"><div style="width:12px;height:12px;border-radius:50%;background:#0E1B4D;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#0E1B4D;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}</div>`,
+            ? `<div style="position:relative"><div style="width:14px;height:14px;border-radius:50%;background:#00B4D8;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div><div style="position:absolute;top:-10px;left:12px;background:#00B4D8;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap">↩ ${numParada}</div></div>`
+            : `<div style="position:relative"><div style="width:12px;height:12px;border-radius:50%;background:#1B2A6B;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>${numParada ? `<div style="position:absolute;top:-8px;left:10px;background:#1B2A6B;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;">${numParada}</div>` : ''}</div>`,
           iconSize: [12, 12], iconAnchor: [6, 6], className: ''
         });
         grupo.addLayer(
           L.marker(dest.coord, { icon: iconDest })
-            .bindPopup(esRetornoPin ? `<b style="color:#00B4D8">\u21a9 Retorno \u00b7 Parada ${numParada}:</b> ${dest.nombre}` : `<b style="color:#0E1B4D">Parada${numParada ? ' '+numParada : ''}:</b> ${dest.nombre}`)
+            .bindPopup(esRetornoPin ? `<b style="color:#00B4D8">↩ Retorno · Parada ${numParada}:</b> ${dest.nombre}` : `<b style="color:#1B2A6B">Parada${numParada ? ' '+numParada : ''}:</b> ${dest.nombre}`)
         );
       });
 
       if (destinoRetorno && coordOrigen) puntosRuta.push(coordOrigen);
 
-      // Ruta OSRM con fallback a linea recta
+      // Ruta OSRM con fallback a línea recta
       if (puntosRuta.length > 1) {
-        const lineaRecta = L.polyline(puntosRuta, { color: '#0E1B4D', weight: 2.5, opacity: 0.6, dashArray: '6 4' });
+        const lineaRecta = L.polyline(puntosRuta, { color: '#1B2A6B', weight: 2.5, opacity: 0.6, dashArray: '6 4' });
         grupo.addLayer(lineaRecta);
         obtenerRutaOSRM(puntosRuta).then(rutaReal => {
-          if (rutaReal) { grupo.removeLayer(lineaRecta); grupo.addLayer(L.polyline(rutaReal, { color: '#0E1B4D', weight: 3, opacity: 0.75 })); }
+          if (rutaReal) { grupo.removeLayer(lineaRecta); grupo.addLayer(L.polyline(rutaReal, { color: '#1B2A6B', weight: 3, opacity: 0.75 })); }
         });
       }
 
@@ -1564,8 +1376,8 @@
     leyenda.onAdd = () => {
       const div = L.DomUtil.create('div');
       div.innerHTML = `<div style="background:white;padding:8px 12px;border-radius:8px;border:1px solid #eef0f6;font-family:'DM Sans',sans-serif;font-size:11px;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><div style="background:white;border:2px solid #0E1B4D;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;color:#0E1B4D;">$</div><span style="color:#5a6280">Origen \u00b7 precio</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#0E1B4D;"></div><span style="color:#5a6280">Destino</span></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><div style="background:white;border:2px solid #1B2A6B;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;color:#1B2A6B;">$</div><span style="color:#5a6280">Origen · precio</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#1B2A6B;"></div><span style="color:#5a6280">Destino</span></div>
       </div>`;
       return div;
     };

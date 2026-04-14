@@ -80,7 +80,7 @@
     .stat-card.ganadas  .stat-num { color: var(--green); }
 
     /* ── VIAJES ── */
-    .viajes-grid { display: flex; flex-direction: column; gap: 12px; }
+    .viajes-grid, #viajes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
     .viaje-card { background: white; border-radius: 16px; border: 1px solid var(--gray-100); overflow: hidden; transition: box-shadow .2s; }
     .viaje-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
     .viaje-head { padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
@@ -89,7 +89,7 @@
     .viaje-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 1.5rem 1rem; }
     .meta-item .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); }
     .meta-item .meta-value { font-size: 13px; font-weight: 600; color: var(--navy); margin-top: 2px; }
-    .viaje-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--gray-50); }
+    .viaje-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--gray-100); display: flex; flex-direction: column; gap: 4px; background: var(--gray-50); }
     .precio-estimado { font-size: 12px; color: var(--gray-400); }
     .precio-estimado strong { color: var(--navy); font-size: 15px; }
 
@@ -126,7 +126,9 @@
     .btn-ofertar:hover { background: var(--cyan); color: var(--navy); }
     .btn-aceptar { background: var(--green); color: white; border: none; border-radius: 10px; padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
     .btn-aceptar:hover { background: #16a34a; }
-    .viaje-footer-btns { display: flex; gap: 8px; align-items: center; }
+    .viaje-footer-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .viaje-footer-btns button { width: 100%; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+    @media (min-width: 600px) { .viaje-footer-btns { flex-direction: row; } .viaje-footer-btns button { width: auto; flex: 1; } }
     .btn-ya-oferte { background: var(--gray-100); color: var(--gray-600); border: none; border-radius: 10px; padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: default; font-family: 'DM Sans', sans-serif; }
 
     /* ── MIS OFERTAS ── */

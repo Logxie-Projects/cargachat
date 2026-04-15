@@ -62,9 +62,9 @@ input[type="number"]{font-family:var(--mono)}
 
 /* ── CENTER: 2 maps stacked + results beside ── */
 .center{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
-.maps-stack{display:flex;flex-direction:column;overflow:hidden}
-.map-panel{flex:1;position:relative;min-height:0}
-.map-panel .map-label{position:absolute;top:8px;left:8px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
+.maps-stack{display:flex;flex-direction:column;height:100%}
+.map-panel{height:50%;position:relative;min-height:0}
+.map-panel .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
 .map-panel:first-child .map-label{background:var(--cyan);color:var(--navy)}
 .map-panel:last-child .map-label{background:var(--navy);color:#fff}
 .map-panel .map-el{width:100%;height:100%}
@@ -1170,6 +1170,8 @@ function renderMap(tripData,ordered,target){
 // INIT
 // ================================================================
 loadSheet();
+// Force maps to render correctly after layout settles
+setTimeout(()=>{mapSug.invalidateSize();mapUsr.invalidateSize();},300);
 </script>
 </body>
 </html>

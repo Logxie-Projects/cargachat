@@ -96,7 +96,6 @@ input[type="number"]{font-family:var(--mono)}
 .al-d{background:var(--danger-bg);color:var(--danger);border-left:3px solid var(--danger)}
 .al-i{background:rgba(14,27,77,.05);color:var(--navy);border-left:3px solid var(--navy)}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;padding:32px;text-align:center;font-size:12px}
-.stop-popup .leaflet-popup-content{font-family:var(--font);font-size:12px;line-height:1.5;color:var(--text)}
 
 /* ── RIGHT PANEL: DESTINATIONS ── */
 .rp{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
@@ -971,15 +970,8 @@ async function runAnalysis(){
       clock=eff+descMin;
     }
     
-    // Enrich ordered stops with cumKm from timeline for map popups
-    const destTimeline=timeline.filter(t=>t.type==='dest');
-    destTimeline.forEach(t=>{
-      const s=ordered.find(o=>o.type==='dest'&&o.name===t.city.replace(' (reprogramado)',''));
-      if(s)s.cumKm=t.cumKm;
-    });
-
     // ── RENDER ──
-    renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,skippedDests);
+    renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
     renderMap(tripData,ordered);
     
   }catch(err){alert('Error: '+err.message);console.error(err)}
@@ -988,7 +980,7 @@ async function runAnalysis(){
 
 function parseFecha(str){const parts=str.split('/');if(parts.length===3)return new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));return new Date()}
 
-function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,skippedDests){
+function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing){
   const numDests=destConditions.length;
   const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
   const lastEvt=timeline[timeline.length-1];
@@ -1033,7 +1025,6 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   if(missing.length)h+=`<div class="al al-i">Sin coords: ${missing.join(', ')}</div>`;
   if(totalKm>trip.km*1.5)h+=`<div class="al al-w">Ruta OSRM ${fmt(totalKm)} km (+${Math.round(totalKm/trip.km*100-100)}% vs sheet ${trip.km} km)</div>`;
   if(pernoctaCount>0)h+=`<div class="al al-d">${pernoctaCount} pernocta — viáticos ~${ccFmt(pernoctaCount*100000)}</div>`;
-  if(skippedDests&&skippedDests.length>0)h+=`<div class="al al-d">⚠ NO ENTREGADO: ${skippedDests.map(s=>s.city).join(', ')} — cerrado durante el recorrido, requiere ruta adicional</div>`;
   h+=`<div class="al al-i">Rango mercado (${rango.label}): ${ccFmt(rango.p25)} — ${ccFmt(rango.p75)}</div>`;
   h+='</div>';
   
@@ -1056,10 +1047,6 @@ function renderMap(tripData,ordered){
     m.addTo(map);mapLayers.push(m);
     const label=s.type==='origin'?'CARGUE':(s.type==='return'?'RETORNO':`#${i}`);
     m.bindTooltip(`<b>${label} ${s.name}</b>`,{direction:'top'});
-    const popupInfo=s.type==='origin'?`<b>CARGUE</b><br>${s.name}`
-      :s.type==='return'?`<b>RETORNO</b><br>${s.name}`
-      :`<b>#${i} — ${s.name}</b><br>km acum: ${s.cumKm||'—'}`;
-    m.bindPopup(popupInfo,{className:'stop-popup'});
     if(s.type==='dest'){
       const tip=L.tooltip({permanent:true,direction:'right',offset:[6,0]}).setLatLng([s.lat,s.lng])
         .setContent(`<span style="font-size:9px;font-family:monospace;color:#0E1B4D;font-weight:600">${i}</span>`);

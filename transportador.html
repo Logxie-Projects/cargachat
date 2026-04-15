@@ -179,9 +179,9 @@
     }
 
     /* ── BUSCADOR ── */
-    .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 1rem 2rem 1.25rem; position: sticky; top: 56px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    @media(max-width:700px) { .buscador-wrap { position: relative; top: auto; z-index: auto; box-shadow: none; } }
-    .buscador-intro   { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); text-align: center; margin-bottom: 10px; }
+    .buscador-wrap    { background: white; border-bottom: 1px solid var(--gray-100); padding: 8px 2rem; position: sticky; top: 56px; z-index: 80; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    @media(max-width:700px) { .buscador-wrap { position: relative; top: auto; z-index: auto; box-shadow: none; padding: 8px 1rem; } }
+    .buscador-intro   { display: none; }
     .buscador-bar     { display: flex; align-items: center; gap: 0; max-width: 900px; margin: 0 auto; background: var(--gray-50); border: 1.5px solid var(--gray-100); border-radius: 16px; overflow: hidden; }
     .buscador-field   { display: flex; flex-direction: column; padding: 10px 16px; flex: 1; min-width: 0; }
     .buscador-field--fecha { flex: 0.8; }
@@ -206,7 +206,7 @@
     .section-hdr h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); letter-spacing: -0.5px; }
     .section-hdr p  { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
     .mapa-calc-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 0 2rem 2rem; max-width: 1100px; margin: 0 auto; align-items: start; }
-    #map { height: 420px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
+    #map { height: 300px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
     .mapa-wrap { position: relative; }
     .btn-ver-todos { display: none; position: absolute; top: 12px; left: 12px; z-index: 500; background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--navy); cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
@@ -272,6 +272,13 @@
     .pin-preview-tooltip::before { display: none; }
     .pin-preview b { font-weight: 700; }
     .pin-preview-dest { color: var(--gray-600); margin-top: 2px; font-size: 11px; }
+
+    /* ── CTA FINAL ── */
+    .cta-final { text-align: center; padding: 40px 20px; background: #0E1B4D; color: #fff; border-radius: 20px; margin-top: 2rem; }
+    .cta-final h3 { font-size: 1.4rem; font-weight: 800; margin: 0 0 8px; }
+    .cta-final p { opacity: 0.7; margin: 0 0 20px; font-size: 0.95rem; }
+    .btn-cta-final { background: #22c55e; color: #fff; border: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+    .btn-cta-final:hover { background: #16a34a; }
 
     /* ── AUTH MODAL (max-width más estrecho) ── */
     #modal-auth .modal-box { max-width: 400px; }
@@ -449,8 +456,8 @@
         <!-- MAPA -->
         <div class="mapa-col">
           <div class="section-hdr">
-            <h2>Capacidad disponible en la red</h2>
-            <p>Transportadores activos hoy con espacio para tu carga</p>
+            <h2>Explora las rutas con carga disponible</h2>
+            <p>Rutas activas hoy en todo el pais</p>
           </div>
           <div class="mapa-wrap">
             <div id="map"></div>
@@ -531,13 +538,15 @@
             <div class="calc-nota">
               Modelo: regresion polinomial (n=1.015 viajes) &middot; Fuente: viajes Colombia 2025&ndash;2026
             </div>
-            <div class="bpo-promo">
-              <div class="bpo-promo-tag">bpo logistico</div>
-              <p class="bpo-promo-text">Manejas alto volumen de cargas? Pregunta por nuestro servicio de <strong>gestion logistica integral</strong> &mdash; operacion completa, sin carga administrativa.</p>
-              <a href="https://wa.me/573214401975?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20servicio%20BPO%20log%C3%ADstico%20de%20NETFLEET" target="_blank" class="bpo-promo-link">Conocer servicio BPO &rarr;</a>
-            </div>
           </div>
         </div>
+      </div>
+
+      <!-- CTA FINAL -->
+      <div class="cta-final">
+        <h3>Listo para llenar tu flota?</h3>
+        <p>Registrate gratis y empieza a recibir carga hoy</p>
+        <button onclick="abrirModalAuth('registro')" class="btn-cta-final">Crear cuenta gratis &rarr;</button>
       </div>
     </div>
 
@@ -560,6 +569,13 @@
 
   </div>
 </div>
+
+<footer style="text-align:center;padding:20px;background:#0a1228;color:rgba(255,255,255,0.5);font-size:0.8rem">
+  <div style="font-weight:700;color:#fff;margin-bottom:4px">NET<em style="color:#00BFDF">FLEET</em><br><span style="font-weight:400;font-size:0.8em;opacity:0.6">by Logxie</span></div>
+  <a href="/" style="color:rgba(255,255,255,0.5);text-decoration:none;margin:0 8px">Tienes carga?</a> &middot;
+  <a href="mailto:bernardojaristizabal@gmail.com" style="color:rgba(255,255,255,0.5);text-decoration:none;margin:0 8px">Contacto</a>
+  <p style="margin:8px 0 0">&copy; 2026 NETFLEET &middot; Logxie Connect S.A.S. &middot; Colombia</p>
+</footer>
 
 <!-- ══ MODAL HACER OFERTA ══ -->
 <div class="modal-overlay" id="modal-oferta">

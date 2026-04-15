@@ -616,33 +616,37 @@ async function runAnalysis(){
     orderedDests=userOrder.map(i=>destGeo.find(d=>d.origIdx===i)).filter(Boolean);
   }
   
-  // Build OSRM stops
+  // Build OSRM stops — use nearest-neighbor for suggested order instead of OSRM /trip
+  function haversine(a,b){
+    const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+    const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  }
+  
+  // Nearest-neighbor ordering (geographically coherent)
+  if(!hasUserOrder&&!prioIdxs.length){
+    const nnOrdered=[];const remaining=[...orderedDests];let cur=origin;
+    while(remaining.length>0){
+      let nearest=0,minD=Infinity;
+      for(let i=0;i<remaining.length;i++){const d=haversine(cur,remaining[i]);if(d<minD){minD=d;nearest=i;}}
+      nnOrdered.push(remaining[nearest]);cur=remaining[nearest];remaining.splice(nearest,1);
+    }
+    orderedDests=nnOrdered;
+  }
+  
   const osrmStops=[{...origin,type:'origin'},...orderedDests.map(d=>({...d,type:'dest'}))];
   if(includeReturn)osrmStops.push({...origin,name:origin.name+' (Retorno)',type:'return'});
   
   try{
-    const useOSRMOpt=!hasUserOrder&&!prioIdxs.length;
-    let tripData,wps,ordered;
+    let tripData,ordered;
     
-    if(useOSRMOpt){
-      // Let OSRM optimize order
-      const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
-      const dest=includeReturn?'&destination=last':'';
-      const r=await fetch(`https://router.project-osrm.org/trip/v1/driving/${coords}?source=first${dest}&roundtrip=false&overview=full&geometries=geojson&steps=false`);
-      const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
-      tripData=data.trips[0];wps=data.waypoints;
-      ordered=wps.map(wp=>osrmStops[wp.waypoint_index]);
-      suggestedOrder=wps.filter(wp=>osrmStops[wp.waypoint_index].type==='dest').map(wp=>osrmStops[wp.waypoint_index].origIdx);
-    } else {
-      // Use fixed order — get route without optimization
-      const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
-      const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);
-      const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
-      tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
-      ordered=osrmStops;
-      wps=osrmStops.map((s,i)=>({waypoint_index:i}));
-      suggestedOrder=destGeo.map(d=>d.origIdx);
-    }
+    // Always use OSRM /route with our fixed order (nearest-neighbor or user-defined)
+    const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);
+    const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
+    tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
+    ordered=osrmStops;
+    suggestedOrder=orderedDests.map(d=>d.origIdx);
     
     const legs=tripData.legs||(tripData.legs?tripData.legs:[]);
     const totalKm=Math.round((tripData.distance||0)/1000);

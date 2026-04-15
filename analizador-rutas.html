@@ -176,6 +176,10 @@ input[type="number"]{font-family:var(--mono)}
     </div>
     <div class="sb-s">
       <div class="sb-t">Operación en planta</div>
+      <div class="sb-row">
+        <div class="sb-lbl">Fecha de cargue <span class="u" id="inFechaDow"></span></div>
+        <input type="date" id="inFechaCargue" value="" onchange="updateFechaDow()">
+      </div>
       <div class="input-2">
         <div class="sb-row"><div class="sb-lbl">Llegada <span class="u">hh:mm</span></div><input type="time" id="inArrival" value="08:00"></div>
         <div class="sb-row"><div class="sb-lbl">Espera <span class="u">min</span></div><input type="number" id="inWait" value="60" min="0" max="300" step="15"></div>
@@ -453,7 +457,25 @@ function onTripChange(){
   document.getElementById('tmPeso').textContent=fmt(t.peso)+' kg ('+t.cantPedidos+' pedidos)';
   document.getElementById('tmValor').textContent=ccFmt(t.valor);
   document.getElementById('tmCarga').textContent=t.empresa||'Avgust';
+  // Pre-llenar fecha de cargue del mail
+  if(t.fecha){
+    const parts=t.fecha.split('/');
+    if(parts.length===3){
+      const isoDate=`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      document.getElementById('inFechaCargue').value=isoDate;
+      updateFechaDow();
+    }
+  }
   buildDestPanel(t);
+}
+const DIAS_SEMANA=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+function updateFechaDow(){
+  const val=document.getElementById('inFechaCargue').value;
+  const el=document.getElementById('inFechaDow');
+  if(!val){el.textContent='';return}
+  const d=new Date(val+'T12:00:00');
+  el.textContent=DIAS_SEMANA[d.getDay()];
+  el.style.color=d.getDay()===0?'var(--danger)':(d.getDay()===6?'var(--warn)':'var(--cyan)');
 }
 let winC=2;
 function addWin(){const g=document.getElementById('winGrid'),d=document.createElement('div');d.className='win-row';d.dataset.win=winC;
@@ -803,7 +825,8 @@ async function runAnalysis(){
     let clock=arrivalMin+waitMin;
     const cargueStart=clock;clock+=cargueMin;
     const timeline=[];let cumKm=0;let stopNum=0;
-    const dateFechaBase=trip.fecha?parseFecha(trip.fecha):new Date();
+    const fechaInput=document.getElementById('inFechaCargue').value;
+    const dateFechaBase=fechaInput?new Date(fechaInput+'T12:00:00'):(trip.fecha?parseFecha(trip.fecha):new Date());
     let currentDay=0; // 0=day of cargue
     
     timeline.push({time:cargueStart,day:0,type:'cargue',city:origin.name,action:`Cargue (${cargueMin} min)`,idx:'C',cumKm:0,dur:cargueMin});
@@ -827,6 +850,17 @@ async function runAnalysis(){
     function isInWins(wins,mod){return wins.some(w=>mod>=w.from&&mod<w.to)}
     function nextWinStart(wins,mod){for(const w of wins){if(mod<w.from)return w.from}return-1}
     
+    // Find next day (from dayOffset) when a destination is open
+    function findNextOpenDay(destIdx,fromDay){
+      for(let d=fromDay;d<fromDay+8;d++){
+        const wins=getWinsForDest(destIdx,d);
+        if(wins.length>0) return d;
+      }
+      return fromDay+1; // fallback
+    }
+    
+    const skippedDests=[]; // Destinations skipped because they're closed for >1 day
+    
     for(let i=0;i<ordered.length-1;i++){
       const from=ordered[i],to=ordered[i+1];
       if(!legs[i])continue;
@@ -837,7 +871,28 @@ async function runAnalysis(){
       timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',action:`${driveMin} min / ${legKm} km`,cumKm:Math.round(cumKm)});
       
       if(to.type==='return'){
-        timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'return',city:to.name,idx:'R',cumKm:Math.round(cumKm)});break;
+        // Before returning, check if there are skipped destinations to deliver
+        if(skippedDests.length>0){
+          timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
+            action:`⚠ ${skippedDests.length} destino${skippedDests.length>1?'s':''} pendiente${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — requiere ruta adicional o espera`,dur:0});
+          // Add skipped dests as pending deliveries at end
+          for(const sk of skippedDests){
+            const nextOpen=findNextOpenDay(sk.destIdx,Math.floor(clock/(24*60)));
+            const etaEl=document.getElementById(`deta-${sk.destIdx}`);
+            const dateEl=document.getElementById(`ddate-${sk.destIdx}`);
+            if(etaEl) etaEl.textContent='Pendiente';
+            if(dateEl){
+              const dd=new Date(dateFechaBase);dd.setDate(dd.getDate()+nextOpen);
+              dateEl.textContent=dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})+' (próx. apertura)';
+              dateEl.className='late';
+            }
+            stopNum++;
+            timeline.push({time:nextOpen*24*60+8*60,day:nextOpen,type:'dest',city:sk.city+' (reprogramado)',
+              idx:stopNum,cumKm:Math.round(cumKm),dur:sk.descMin,destIdx:sk.destIdx});
+          }
+        }
+        timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'return',city:to.name,idx:'R',cumKm:Math.round(cumKm)});
+        break;
       }
       if(to.type!=='dest')continue;
       
@@ -853,23 +908,50 @@ async function runAnalysis(){
         timeline.push({time:eff-nextStart,day:effDay-1,type:'pernocta',city:to.name,action:'Pernocta — límite nocturno'});
       }
       
-      // Check if day is open for this dest
-      let maxTries=7;
-      while(maxTries-->0){
-        const wins=getWinsForDest(destIdx,effDay);
-        if(wins.length===0){
-          timeline.push({time:eff,day:effDay,type:'wait',city:'',action:`${to.name}: cerrado este día`,dur:0});
-          effDay++;eff=effDay*24*60+(getWinsForDest(destIdx,effDay)[0]?.from||8*60);mod=eff%(24*60);continue;
+      // Check if destination is open TODAY
+      const winsToday=getWinsForDest(destIdx,effDay);
+      
+      if(winsToday.length===0){
+        // Destination closed today — check how many days until it opens
+        const nextOpen=findNextOpenDay(destIdx,effDay);
+        const daysUntilOpen=nextOpen-effDay;
+        
+        if(daysUntilOpen>1){
+          // More than 1 day wait — SKIP this destination, continue with others
+          timeline.push({time:eff,day:effDay,type:'wait',city:'',
+            action:`⏭ ${to.name}: cerrado hoy (abre en ${daysUntilOpen} días) — se continúa con otros destinos`,dur:0});
+          skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
+          // Don't advance clock — next destination departs from current position
+          clock=eff; // reset clock to not count the undelivered stop time
+          continue;
+        } else {
+          // Opens tomorrow — wait for it (normal behavior)
+          timeline.push({time:eff,day:effDay,type:'wait',city:'',action:`${to.name}: cerrado hoy, abre mañana`,dur:0});
+          effDay=nextOpen;
+          const nwins=getWinsForDest(destIdx,effDay);
+          eff=effDay*24*60+(nwins[0]?.from||8*60);mod=eff%(24*60);
         }
-        if(!isInWins(wins,mod)){
-          const nw=nextWinStart(wins,mod);
-          if(nw===-1){effDay++;const nwins=getWinsForDest(destIdx,effDay);eff=effDay*24*60+(nwins[0]?.from||8*60);mod=eff%(24*60);
-            timeline.push({time:eff,day:effDay-1,type:'pernocta',city:to.name,action:'Cliente cerrado — siguiente día'});continue;}
+      } else if(!isInWins(winsToday,mod)){
+        // Open today but not in window right now
+        const nw=nextWinStart(winsToday,mod);
+        if(nw===-1){
+          // No more windows today
+          const nextOpen=findNextOpenDay(destIdx,effDay+1);
+          const daysUntilOpen=nextOpen-effDay;
+          if(daysUntilOpen>1){
+            timeline.push({time:eff,day:effDay,type:'wait',city:'',
+              action:`⏭ ${to.name}: ventana cerrada, próx. apertura en ${daysUntilOpen} días — se sigue`,dur:0});
+            skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
+            clock=eff;
+            continue;
+          }
+          effDay++;const nwins=getWinsForDest(destIdx,effDay);eff=effDay*24*60+(nwins[0]?.from||8*60);mod=eff%(24*60);
+          timeline.push({time:eff,day:effDay-1,type:'pernocta',city:to.name,action:'Cliente cerrado — siguiente día'});
+        } else {
           const wait=nw-mod;
           timeline.push({time:eff,day:effDay,type:'wait',city:'',action:`Espera ${wait} min`,dur:wait});
           eff+=wait;mod=nw;
         }
-        break;
       }
       
       stopNum++;

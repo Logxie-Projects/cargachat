@@ -946,7 +946,7 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   h+=`<div class="al al-i">Rango mercado (${rango.label}): ${ccFmt(rango.p25)} — ${ccFmt(rango.p75)}</div>`;
   h+='</div>';
   
-  document.getElementById('emptyState').style.display='none';
+  const emptyEl=document.getElementById('emptyState');if(emptyEl)emptyEl.style.display='none';
   document.getElementById('results').innerHTML=h;
 }
 

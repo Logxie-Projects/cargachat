@@ -60,15 +60,18 @@ input[type="number"]{font-family:var(--mono)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
-/* ── CENTER: 2 maps stacked + results beside ── */
-.center{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
-.maps-stack{display:flex;flex-direction:column;height:100%}
-.map-panel{height:50%;position:relative;min-height:0}
-.map-panel .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
-.map-panel:first-child .map-label{background:var(--cyan);color:var(--navy)}
-.map-panel:last-child .map-label{background:var(--navy);color:#fff}
-.map-panel .map-el{width:100%;height:100%}
-.map-divider{height:2px;background:var(--border2);flex-shrink:0}
+/* ── CENTER: 2 rows (suggested + user), each row = map + results ── */
+.center{display:flex;flex-direction:column;overflow:hidden}
+.route-row{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0;border-bottom:2px solid var(--border2)}
+.route-row:last-child{border-bottom:none}
+.route-row .map-panel{position:relative}
+.route-row .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
+.route-row.sug .map-label{background:var(--cyan);color:var(--navy)}
+.route-row.usr .map-label{background:var(--navy);color:#fff}
+.route-row .map-el{width:100%;height:100%}
+.route-row .results{overflow-y:auto;background:var(--bg)}
+.route-row.usr .results{opacity:.3}
+.route-row.usr.active .results{opacity:1}
 .results{overflow-y:auto;background:var(--bg)}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
 .kpi{background:var(--bg2);padding:8px 10px}
@@ -230,21 +233,27 @@ input[type="number"]{font-family:var(--mono)}
     <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button></div>
   </div>
 
-  <!-- CENTER -->
+  <!-- CENTER: 2 route rows -->
   <div class="center">
-    <div class="maps-stack">
-      <div class="map-panel" id="mapPanelSug">
+    <!-- ROW 1: Suggested route -->
+    <div class="route-row sug">
+      <div class="map-panel">
         <div class="map-label">Ruta sugerida</div>
         <div class="map-el" id="mapSugerido"></div>
       </div>
-      <div class="map-divider"></div>
-      <div class="map-panel" id="mapPanelUsr">
+      <div class="results" id="resultsSug">
+        <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>
+      </div>
+    </div>
+    <!-- ROW 2: User route -->
+    <div class="route-row usr" id="rowUsuario">
+      <div class="map-panel">
         <div class="map-label">Tu orden</div>
         <div class="map-el" id="mapUsuario"></div>
       </div>
-    </div>
-    <div class="results" id="results">
-      <div class="empty" id="emptyState">Selecciona un viaje, ajusta parámetros y presiona <strong>Calcular ruta sugerida</strong></div>
+      <div class="results" id="resultsUsr">
+        <div class="empty">Reordena destinos con ▲▼ y presiona <strong>Recalcular con tu orden</strong></div>
+      </div>
     </div>
   </div>
 
@@ -1130,7 +1139,14 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   h+='</div>';
   
   const emptyEl=document.getElementById('emptyState');if(emptyEl)emptyEl.style.display='none';
-  document.getElementById('results').innerHTML=h;
+  
+  // Render to the correct panel
+  if(isUserReorder){
+    document.getElementById('resultsUsr').innerHTML=h;
+    document.getElementById('rowUsuario').classList.add('active');
+  } else {
+    document.getElementById('resultsSug').innerHTML=h;
+  }
 }
 
 function renderMap(tripData,ordered,target){

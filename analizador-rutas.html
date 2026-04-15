@@ -59,12 +59,12 @@ input[type="number"]{font-family:var(--mono)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
-/* ── CENTER ── */
-.center{display:flex;flex-direction:column;overflow:hidden}
-#map{flex:0 0 42%;min-height:240px}
+/* ── CENTER: map left + results right ── */
+.center{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+#map{min-height:100%}
 .leaflet-control-attribution{display:none!important}
-.results{flex:1;overflow-y:auto;background:var(--bg)}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border)}
+.results{overflow-y:auto;background:var(--bg)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
 .kpi{background:var(--bg2);padding:8px 10px}
 .kpi-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
 .kpi-v{font-size:16px;font-weight:600;font-family:var(--mono);color:var(--text);margin-top:1px}
@@ -117,9 +117,11 @@ input[type="number"]{font-family:var(--mono)}
 .dc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
 .dc-field select,.dc-field input{font-size:10px;padding:4px 6px}
 .dc-days{display:flex;gap:2px;margin-bottom:6px}
-.dc-day{width:24px;height:22px;border:1px solid var(--border2);border-radius:4px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:all .12s;color:var(--text2)}
+.dc-day{width:28px;height:26px;border:1px solid var(--border2);border-radius:4px;font-size:9px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:all .12s;color:var(--text2);line-height:1;gap:0px}
 .dc-day.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.dc-day.half{background:rgba(0,191,223,.15);color:var(--navy);border-color:var(--cyan)}
+.dc-day.half{background:linear-gradient(to bottom, var(--navy) 50%, #fff 50%);color:#fff;border-color:var(--navy);position:relative}
+.dc-day.half::after{content:'½';position:absolute;bottom:1px;font-size:7px;color:var(--navy);font-weight:700}
+.dc-day.off{background:#fff;color:var(--text3);border-color:var(--border);text-decoration:line-through;opacity:.5}
 .dc-times{display:grid;grid-template-columns:1fr 8px 1fr;align-items:center;gap:2px;margin-bottom:4px}
 .dc-times .sep{text-align:center;color:var(--text3);font-size:9px}
 .dc-prio{display:flex;gap:4px;align-items:center}
@@ -192,7 +194,8 @@ input[type="number"]{font-family:var(--mono)}
       <button class="win-add" onclick="addWin()">+ Ventana</button>
     </div>
     <div class="sb-s">
-      <div class="sb-t">Ventana sábado</div>
+      <div class="sb-t">Horario sábado (medio día)</div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:6px">Aplica cuando el día está marcado como ½ en el panel de destinos</div>
       <div class="win-grid" id="winGridSat">
         <div class="win-row" data-win="s0"><input type="time" value="08:00" class="win-from"><span class="sep">—</span><input type="time" value="12:00" class="win-to"><button class="win-rm" onclick="rmWinSat('s0')">&times;</button></div>
       </div>
@@ -453,8 +456,9 @@ function createDestCard(cond,displayIdx){
   let daysHtml='';
   DAYS.forEach((d,di)=>{
     const state=cond.days[di];
-    const cls=state===true?'on':(state==='half'?'half':'');
-    daysHtml+=`<div class="dc-day ${cls}" data-di="${di}" onclick="toggleDay(${cond.idx},${di})">${d}</div>`;
+    const cls=state===true?'on':(state==='half'?'half':'off');
+    const title=state===true?'Día completo':(state==='half'?'Solo mañana (medio día)':'Cerrado');
+    daysHtml+=`<div class="dc-day ${cls}" data-di="${di}" onclick="toggleDay(${cond.idx},${di})" title="${title}">${d}</div>`;
   });
   
   card.innerHTML=`
@@ -463,7 +467,7 @@ function createDestCard(cond,displayIdx){
       <span class="city">${cond.city}</span>
       <span class="drag" title="Arrastrar para reordenar">⠿</span>
     </div>
-    <div class="dc-lbl">Días de atención</div>
+    <div class="dc-lbl">Días de atención <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3)">(click: completo → ½ día → cerrado)</span></div>
     <div class="dc-days" id="ddays-${cond.idx}">${daysHtml}</div>
     <div class="dc-grid">
       <div class="dc-field">
@@ -491,13 +495,15 @@ function createDestCard(cond,displayIdx){
 function toggleDay(idx,di){
   const c=destConditions[idx];
   const current=c.days[di];
-  // Cycle: true → half → false → true
+  // Cycle: full → half day → closed → full
   if(current===true)c.days[di]='half';
   else if(current==='half')c.days[di]=false;
   else c.days[di]=true;
   
   const el=document.querySelector(`#ddays-${idx} .dc-day[data-di="${di}"]`);
-  el.className='dc-day '+(c.days[di]===true?'on':(c.days[di]==='half'?'half':''));
+  const state=c.days[di];
+  el.className='dc-day '+(state===true?'on':(state==='half'?'half':'off'));
+  el.title=state===true?'Día completo':(state==='half'?'Solo mañana (medio día)':'Cerrado');
 }
 function togglePrio(idx,checked){destConditions[idx].priority=checked}
 function updateDescMin(idx,val){destConditions[idx].descMin=parseInt(val)||60}
@@ -756,8 +762,8 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
     <div class="kpi"><div class="kpi-l">Conducción</div><div class="kpi-v">${Math.floor(totalDriveMin/60)}h${totalDriveMin%60}m</div><div class="kpi-s">sin paradas</div></div>
     <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${numDests}h desc. total</div></div>
     <div class="kpi ${kw} ${kd}"><div class="kpi-l">Días</div><div class="kpi-v">${totalDays}</div><div class="kpi-s">${pernoctaCount} pernocta</div></div>
-    <div class="kpi"><div class="kpi-l">Sheet</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">${trip.km} km</div></div>
-    <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Ridge ${totalKm}km</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'}</div></div>
+    <div class="kpi"><div class="kpi-l">Precio publicado</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">n8n · ${trip.km} km</div></div>
+    <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ruta real</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
   </div>`;
   
   // Timeline by day

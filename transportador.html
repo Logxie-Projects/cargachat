@@ -213,7 +213,11 @@
     .mapa-calc-section { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 0 2rem 2rem; max-width: 1100px; margin: 0 auto; align-items: start; }
     #map { height: 300px; border-radius: 20px; border: 1px solid var(--gray-100); overflow: hidden; }
     .mapa-wrap { position: relative; }
-    .btn-ver-todos { display: none; position: absolute; top: 12px; left: 12px; z-index: 500; background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--navy); cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .btn-ver-todos { display: none; position: absolute; top: 12px; left: 12px; z-index: 500; background: white; border: 1px solid var(--gray-100); border-radius: 100px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--navy); cursor: pointer; font-family: var(--sans); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .btn-ver-todos.visible { display: block; }
+    .viaje-card { cursor: pointer; transition: box-shadow .2s, border-color .2s; }
+    .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,191,223,0.2); }
+    .precio-pin.activo { background: var(--navy); color: white; border-color: var(--cyan); }
     .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
     .cta-mapa-wrap a { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; }
     .calc-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 20px; padding: 1.5rem; }
@@ -468,7 +472,7 @@
           </div>
           <div class="mapa-wrap">
             <div id="map"></div>
-            <button class="btn-ver-todos" id="btn-ver-todos">&larr; Ver todos</button>
+            <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">&larr; Ver todos</button>
           </div>
           <div class="cta-mapa-wrap">
             <a id="cta-mapa" href="#viajes-lista">Ver todos los viajes &rarr;</a>
@@ -979,7 +983,7 @@
 
     const misRts = new Set(misOfertas.filter(o => o.estado === 'activa').map(o => o.viaje_rt));
 
-    lista.innerHTML = viajesDisp.map(v => {
+    lista.innerHTML = viajesDisp.map((v, idxViaje) => {
       const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
       const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '\u2014');
       const yaOferte = misRts.has(v.rt_total);
@@ -988,7 +992,7 @@
       const precioFmt  = precioBase > 0 ? '$' + Math.round(precioBase).toLocaleString('es-CO') : null;
 
       return `
-        <div class="viaje-card">
+        <div class="viaje-card" onclick="seleccionarViaje(${idxViaje})">
           <div class="viaje-head">
             <div>
               <div class="viaje-ruta">${v.origen || '\u2014'} \u2192 ${destRes}</div>
@@ -1011,8 +1015,8 @@
             ${yaOferte
               ? `<button class="btn-ya-oferte">Oferta enviada</button>`
               : `<div class="viaje-footer-btns">
-                  ${precioFmt ? `<button class="btn-aceptar" onclick="aceptarPrecioBase('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0}, ${Math.round(precioBase)})">Aceptar</button>` : ''}
-                  <button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>
+                  ${precioFmt ? `<button class="btn-aceptar" onclick="event.stopPropagation();aceptarPrecioBase('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0}, ${Math.round(precioBase)})">Aceptar</button>` : ''}
+                  <button class="btn-ofertar" onclick="event.stopPropagation();abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>
                 </div>`
             }
           </div>
@@ -1338,8 +1342,8 @@
             ${yaOferte
               ? `<button class="btn-ya-oferte">Oferta enviada</button>`
               : `<div class="viaje-footer-btns">
-                  ${precioFmt ? `<button class="btn-aceptar" onclick="aceptarPrecioBase('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0}, ${Math.round(precioBase)})">Aceptar</button>` : ''}
-                  <button class="btn-ofertar" onclick="abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>
+                  ${precioFmt ? `<button class="btn-aceptar" onclick="event.stopPropagation();aceptarPrecioBase('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0}, ${Math.round(precioBase)})">Aceptar</button>` : ''}
+                  <button class="btn-ofertar" onclick="event.stopPropagation();abrirModalOferta('${v.rt_total}', '${(v.origen||'').replace(/'/g,"\\'")}', '${destRes.replace(/'/g,"\\'")}', '${v.fecha_cargue||''}', ${v.peso_kg||0})">Ofertar \u2192</button>
                 </div>`
             }
           </div>
@@ -1361,6 +1365,48 @@
   ['b-origen','b-destino'].forEach(id => {
     document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarViajes(); });
   });
+
+  // ── SELECCIONAR VIAJE (interaccion tarjeta ↔ mapa) ────────────
+  let viajeSeleccionado = -1;
+
+  function seleccionarViaje(idx) {
+    const cards = document.querySelectorAll('.viaje-card');
+
+    if (viajeSeleccionado === idx) {
+      // DESELECCIONAR: mostrar todas las rutas
+      viajeSeleccionado = -1;
+      cards.forEach(c => c.classList.remove('selected'));
+      document.getElementById('btn-ver-todos').classList.remove('visible');
+      mapaCapas.forEach((capa) => {
+        if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
+        if (capa.originMarker) activarMarkerOrigen(capa.originMarker, false);
+      });
+      const todos = mapaCapas.flatMap(c => c.bounds);
+      if (todos.length > 1) mapaLeaflet.fitBounds(todos, { padding: [40, 40], maxZoom: 12, animate: false });
+      return;
+    }
+
+    // SELECCIONAR: enfocar un solo viaje
+    viajeSeleccionado = idx;
+    cards.forEach((c, i) => c.classList.toggle('selected', i === idx));
+    document.getElementById('btn-ver-todos').classList.add('visible');
+
+    mapaCapas.forEach((capa, i) => {
+      if (i === idx) {
+        if (!mapaLeaflet.hasLayer(capa.grupo)) capa.grupo.addTo(mapaLeaflet);
+        if (capa.originMarker) activarMarkerOrigen(capa.originMarker, true);
+      } else {
+        mapaLeaflet.removeLayer(capa.grupo);
+      }
+    });
+
+    if (mapaCapas[idx] && mapaCapas[idx].bounds.length > 1) {
+      mapaLeaflet.fitBounds(mapaCapas[idx].bounds, { padding: [60, 60], maxZoom: 12, animate: false });
+    } else if (mapaCapas[idx] && mapaCapas[idx].bounds.length === 1) {
+      mapaLeaflet.setView(mapaCapas[idx].bounds[0], 9, { animate: false });
+    }
+    document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   // ── CALCULADORA DE FLETE ──────────────────────────────────────
   const CC_RANGOS = [
@@ -1562,11 +1608,20 @@
       iconSize: [w, 28], iconAnchor: [w / 2, 36], className: ''
     });
     const marker = L.marker(coord, { icon });
+    marker.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      seleccionarViaje(idx);
+    });
     if (origenLabel || destinosLabel) {
       const preview = `<div class="pin-preview"><b>${origenLabel}</b><div class="pin-preview-dest">\u2192 ${destinosLabel}</div></div>`;
       marker.bindTooltip(preview, { direction: 'top', offset: [0, -38], className: 'pin-preview-tooltip' });
     }
     return marker;
+  }
+
+  function activarMarkerOrigen(marker, activo) {
+    const el = marker.getElement()?.querySelector('.precio-pin');
+    if (el) el.classList.toggle('activo', activo);
   }
 
   async function obtenerRutaOSRM(puntos) {

@@ -345,51 +345,104 @@ function ccDetectarZona(d,o){
 const fmt=n=>new Intl.NumberFormat('es-CO').format(Math.round(n));
 
 // ================================================================
-// GOOGLE SHEET LOADER (VIAJES_LANDING CSV publicado)
+// GOOGLE SHEET LOADER — DETALLE_PEDIDOS (CSV publicado)
+// Cada fila = 1 pedido con horario, contacto, dirección
+// Agrupamos por VIAJE_ID para construir viajes
 // ================================================================
-const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
+const DETALLE_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=749562420&single=true&output=csv';
 const SHEET_ID_ORIG='1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4';
-let TRIPS=[];
+let TRIPS=[];      // Viajes agrupados
+let ALL_PEDIDOS=[]; // Todos los pedidos crudos
 
 async function loadSheet(){
   const st=document.getElementById('sheetStatus');st.textContent='Conectando...';st.style.color='';
-  // Method 1: direct fetch
-  try{const r=await fetch(CSV_URL);if(!r.ok)throw 0;const t=await r.text();if(!t.includes('ORIGEN'))throw 0;parseCSV(t);return;}catch(e){}
-  // Method 2: JSONP
-  try{const d=await new Promise((ok,no)=>{const cb='_gv'+Date.now();const to=setTimeout(()=>{no(0);delete window[cb]},8000);
-    window[cb]=r=>{clearTimeout(to);delete window[cb];ok(r)};const s=document.createElement('script');
-    s.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID_ORIG}/gviz/tq?tqx=responseHandler:${cb}&gid=1429690977`;s.onerror=()=>{clearTimeout(to);no(0)};document.body.appendChild(s)});
-    if(d&&d.table){const h=d.table.cols.map(c=>c.label),rows=d.table.rows.map(r=>r.c.map(c=>c?(c.v!=null?String(c.v):''):''));
-    parseCSV([h.join(','),...rows.map(r=>r.map(v=>v.includes(',')?`"${v}"`:v).join(','))].join('\n'));return;}}catch(e){}
-  // Method 3: CORS proxy
-  try{const r=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}`);const t=await r.text();if(t.includes('ORIGEN')){parseCSV(t);return;}}catch(e){}
+  try{const r=await fetch(DETALLE_URL);if(!r.ok)throw 0;const t=await r.text();if(!t.includes('VIAJE_ID'))throw 0;parseDetalle(t);return;}catch(e){}
+  try{const r=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(DETALLE_URL)}`);const t=await r.text();if(t.includes('VIAJE_ID')){parseDetalle(t);return;}}catch(e){}
   st.textContent='No se pudo conectar al Sheet';st.style.color='var(--danger)';
 }
-function parseCSV(text){
+
+function parseCSVRows(text){
   const rows=[];let cur='',inQ=false,row=[];
   for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){inQ=!inQ;continue}if(c===','&&!inQ){row.push(cur.trim());cur='';continue}
   if((c==='\n'||c==='\r')&&!inQ){if(cur.length||row.length){row.push(cur.trim());rows.push(row)}row=[];cur='';if(c==='\r'&&text[i+1]==='\n')i++;continue}cur+=c;}
   if(cur.length||row.length){row.push(cur.trim());rows.push(row)}
-  if(rows.length<2){document.getElementById('sheetStatus').textContent='0 viajes';return}
-  const hd=rows[0];TRIPS=[];
-  for(let r=1;r<rows.length;r++){const d={};hd.forEach((h,i)=>d[h]=rows[r][i]||'');if(!d.ORIGEN)continue;
-    const origenes=[...new Set(d.ORIGEN.split(',').map(s=>s.trim()).filter(Boolean))];
-    const destinos=[...new Set(d.DESTINO.split(',').map(s=>s.trim()).filter(Boolean))];
-    TRIPS.push({id:'VJ-'+r,origenes,destinos,origenStr:d.ORIGEN,destinoStr:d.DESTINO,
-      fecha:d.FECHA_CARGUE,peso:parseFloat(d.PESO_KG)||0,km:parseInt(d.KM)||0,minutos:d.MINUTOS,
-      precio:parseInt((d.PRECIO_BASE||'0').replace(/\./g,''))||0,valor:parseInt((d.VALOR_MERCANCIA||'0').replace(/\./g,''))||0,
-      cajas:parseInt(d.CAJAS)||0,bidones:parseInt(d.BIDONES)||0,contenedores:parseInt(d.CONTENEDORES)||0,
-      canecas:parseInt(d.CANECAS)||0,unidadesSueltas:parseInt(d.UNIDADES_SUELTAS)||0});}
-  populateSelect();document.getElementById('sheetStatus').textContent=`${TRIPS.length} viajes en vivo`;document.getElementById('sheetStatus').style.color='var(--green)';
+  return rows;
+}
+
+function parseDetalle(text){
+  const rows=parseCSVRows(text);
+  if(rows.length<2){document.getElementById('sheetStatus').textContent='0 pedidos';return}
+  const hd=rows[0];
+  ALL_PEDIDOS=[];
+  
+  for(let r=1;r<rows.length;r++){
+    const d={};hd.forEach((h,i)=>d[h]=rows[r][i]||'');
+    if(!d.VIAJE_ID||!d.DESTINO)continue;
+    ALL_PEDIDOS.push({
+      viajeId:d.VIAJE_ID, numero:parseInt(d.NUMERO)||0, remision:d.REMISION,
+      fecha:d.FECHA_CONSOLIDACION, empresa:d.EMPRESA, zona:d.ZONA,
+      origen:d.ORIGEN, destino:d.DESTINO,
+      peso:parseFloat(d.PESO_KG)||0,
+      valor:parseInt((d.VALOR_MERCANCIA||'0').replace(/\./g,''))||0,
+      esDevolucion:d.ES_DEVOLUCION==='SI',
+      diasAtencion:d.DIAS_ATENCION||'LV',
+      horarioRaw:d.HORARIO_RAW||'',
+      v1Desde:d.V1_DESDE||'', v1Hasta:d.V1_HASTA||'',
+      v2Desde:d.V2_DESDE||'', v2Hasta:d.V2_HASTA||'',
+      horarioSabado:d.HORARIO_SABADO||'',
+      cliente:d.CLIENTE||'', contacto:d.CONTACTO||'', telefono:d.TELEFONO||'',
+      direccion:d.DIRECCION||'', notas:d.NOTAS||'',
+      llamarAntes:d.LLAMAR_ANTES==='SI',
+      // Info del viaje
+      viajeEmpresas:d.VIAJE_EMPRESAS||'', viajeZonas:d.VIAJE_ZONAS||'',
+      viajeFechaCargue:d.VIAJE_FECHA_CARGUE||'',
+      viajePesoTotal:d.VIAJE_PESO_TOTAL||'', viajeValorTotal:d.VIAJE_VALOR_TOTAL||'',
+      viajeCantPedidos:parseInt(d.VIAJE_CANT_PEDIDOS)||0,
+    });
+  }
+  
+  // Agrupar por VIAJE_ID
+  const grupos={};
+  for(const p of ALL_PEDIDOS){
+    if(!grupos[p.viajeId]) grupos[p.viajeId]={pedidos:[],id:p.viajeId};
+    grupos[p.viajeId].pedidos.push(p);
+  }
+  
+  // Construir TRIPS desde grupos
+  TRIPS=[];
+  for(const[id,g]of Object.entries(grupos)){
+    const pedidos=g.pedidos;
+    const origenes=[...new Set(pedidos.map(p=>p.origen).filter(Boolean))];
+    const destinos=[...new Set(pedidos.map(p=>p.destino).filter(Boolean))];
+    const pesoTotal=pedidos.reduce((s,p)=>s+p.peso,0);
+    const valorTotal=pedidos.reduce((s,p)=>s+p.valor,0);
+    const fecha=pedidos[0].viajeFechaCargue||pedidos[0].fecha;
+    
+    TRIPS.push({
+      id, pedidos,
+      origenes, destinos,
+      origenStr:origenes.join(', '), destinoStr:destinos.join(', '),
+      fecha, peso:pesoTotal, valor:valorTotal,
+      empresa:pedidos[0].viajeEmpresas,
+      zona:pedidos[0].viajeZonas,
+      cantPedidos:pedidos[0].viajeCantPedidos||pedidos.length,
+      km:0, // se calcula con OSRM
+      precio:0, // se calcula con Ridge
+    });
+  }
+  
+  populateSelect();
+  document.getElementById('sheetStatus').textContent=`${ALL_PEDIDOS.length} pedidos / ${TRIPS.length} viaje${TRIPS.length!==1?'s':''} en vivo`;
+  document.getElementById('sheetStatus').style.color='var(--green)';
 }
 
 // ================================================================
 // UI — Select, Windows, Meta
 // ================================================================
 function populateSelect(){
-  const sel=document.getElementById('tripSelect');sel.innerHTML='<option value="">— Seleccionar —</option>';
-  TRIPS.forEach((t,i)=>{const nd=t.destinos.length;const o=document.createElement('option');
-    o.value=i;o.textContent=`${t.origenes[0]} → ${t.destinos[0]}${nd>1?' +'+String(nd-1):''} (${t.km}km, ${fmt(t.peso)}kg)`;sel.appendChild(o)});
+  const sel=document.getElementById('tripSelect');sel.innerHTML='<option value="">— Seleccionar viaje —</option>';
+  TRIPS.forEach((t,i)=>{const o=document.createElement('option');
+    o.value=i;o.textContent=`${t.origenes[0]} → ${t.destinos.slice(0,2).join(', ')}${t.destinos.length>2?' +'+String(t.destinos.length-2):''} (${t.cantPedidos} ped, ${fmt(t.peso)}kg)`;sel.appendChild(o)});
   sel.onchange=onTripChange;
 }
 function onTripChange(){
@@ -397,10 +450,9 @@ function onTripChange(){
   if(i===''){m.style.display='none';clearDestPanel();return}
   const t=TRIPS[i];m.style.display='grid';
   document.getElementById('tmFecha').textContent=t.fecha;
-  document.getElementById('tmPeso').textContent=fmt(t.peso)+' kg';
+  document.getElementById('tmPeso').textContent=fmt(t.peso)+' kg ('+t.cantPedidos+' pedidos)';
   document.getElementById('tmValor').textContent=ccFmt(t.valor);
-  const c=[];if(t.cajas)c.push(t.cajas+' caj');if(t.bidones)c.push(t.bidones+' bid');if(t.contenedores)c.push(t.contenedores+' cont');
-  document.getElementById('tmCarga').textContent=c.join(', ')||'—';
+  document.getElementById('tmCarga').textContent=t.empresa||'Avgust';
   buildDestPanel(t);
 }
 let winC=2;
@@ -431,23 +483,94 @@ function buildDestPanel(trip){
   const defaultWinsSat=getWins('winGridSat');
   const descMin=parseInt(document.getElementById('inDescargue').value)||60;
   
-  trip.destinos.forEach((city,i)=>{
+  // Agrupar pedidos por destino (puede haber varios pedidos al mismo destino)
+  const destGroups={};
+  for(const p of trip.pedidos){
+    const key=normalizarNombre(p.destino);
+    if(!destGroups[key]) destGroups[key]={city:p.destino,pedidos:[],isReturn:false};
+    destGroups[key].pedidos.push(p);
+    if(p.esDevolucion) destGroups[key].isReturn=true;
+  }
+  
+  let displayCount=0;
+  for(const[key,grp]of Object.entries(destGroups)){
+    const pedidos=grp.pedidos;
+    const pesoGrp=pedidos.reduce((s,p)=>s+p.peso,0);
+    
+    // Determinar días de atención — usar el más restrictivo de los pedidos del grupo
+    let days=parseDiasAtencion(pedidos[0].diasAtencion);
+    
+    // Determinar ventanas — usar las del pedido con ventana más restrictiva
+    let v1Desde='',v1Hasta='',v2Desde='',v2Hasta='',hSab='';
+    for(const p of pedidos){
+      if(p.v1Desde&&p.v1Hasta){
+        if(!v1Desde||timeVal(p.v1Hasta)<timeVal(v1Hasta)){
+          v1Desde=p.v1Desde;v1Hasta=p.v1Hasta;
+        }
+      }
+      if(p.v2Desde&&p.v2Hasta){
+        if(!v2Desde||timeVal(p.v2Hasta)<timeVal(v2Hasta)){
+          v2Desde=p.v2Desde;v2Hasta=p.v2Hasta;
+        }
+      }
+      if(p.horarioSabado&&!hSab) hSab=p.horarioSabado;
+    }
+    
+    // Construir ventanas
+    const winsLV=[];
+    if(v1Desde&&v1Hasta) winsLV.push({from:timeToMin(v1Desde),to:timeToMin(v1Hasta)});
+    if(v2Desde&&v2Hasta) winsLV.push({from:timeToMin(v2Desde),to:timeToMin(v2Hasta)});
+    const winsSat=hSab?[{from:timeToMin(hSab.split('-')[0]),to:timeToMin(hSab.split('-')[1])}]:[...defaultWinsSat];
+    
+    // Notas combinadas
+    const allNotas=pedidos.map(p=>p.notas).filter(Boolean);
+    const allClientes=pedidos.map(p=>p.cliente).filter(Boolean);
+    const allContactos=pedidos.map(p=>(p.contacto?p.contacto:'')+(p.telefono?' ('+p.telefono+')':'')).filter(Boolean);
+    const llamarAntes=pedidos.some(p=>p.llamarAntes);
+    
     const cond={
-      city,idx:i,
-      days:[...DAY_DEFAULTS], // L M X J V S D
-      winsLV:[...defaultWinsLV.map(w=>({...w}))],
-      winsSat:[...defaultWinsSat.map(w=>({...w}))],
-      descMin,
-      priority:false,  // "entregar primero"
-      customWins:false, // using custom windows
+      city:grp.city, idx:displayCount,
+      days,
+      winsLV:winsLV.length?winsLV:[...defaultWinsLV.map(w=>({...w}))],
+      winsSat,
+      descMin:descMin,
+      priority:false,
+      customWins:winsLV.length>0,
+      isReturnDest:grp.isReturn,
+      // Data del mail
+      pedidos,
+      pesoGrp,
+      clientes:allClientes,
+      contactos:[...new Set(allContactos)],
+      notas:[...new Set(allNotas)],
+      llamarAntes,
+      v1Desde:v1Desde||'08:00', v1Hasta:v1Hasta||'12:00',
+      v2Desde:v2Desde||'14:00', v2Hasta:v2Hasta||'16:00',
+      horarioSabado:hSab,
     };
     destConditions.push(cond);
-    userOrder.push(i);
-    list.appendChild(createDestCard(cond,i));
-  });
-  document.getElementById('rpBadge').textContent=`${trip.destinos.length} destinos`;
+    userOrder.push(displayCount);
+    list.appendChild(createDestCard(cond,displayCount));
+    displayCount++;
+  }
+  document.getElementById('rpBadge').textContent=`${displayCount} destinos · ${trip.pedidos.length} pedidos`;
   initDragDrop();
 }
+
+// Parsear DIAS_ATENCION string a array de estados [L,M,X,J,V,S,D]
+function parseDiasAtencion(str){
+  const d=[false,false,false,false,false,false,false]; // L M X J V S D
+  if(!str) return [true,true,true,true,true,'half',false]; // default LV+S½
+  str=str.toUpperCase().trim();
+  if(str==='LV'||str==='L-V'){d[0]=d[1]=d[2]=d[3]=d[4]=true;return d;}
+  if(str==='LVS'){d[0]=d[1]=d[2]=d[3]=d[4]=true;d[5]='half';return d;}
+  if(str==='LS'||str==='L-S'){d[0]=d[1]=d[2]=d[3]=d[4]=true;d[5]=true;return d;}
+  if(str==='MJ'){d[1]=true;d[3]=true;return d;} // solo martes y jueves
+  // Default: LV + sábado medio día
+  return [true,true,true,true,true,'half',false];
+}
+
+function timeVal(t){if(!t)return 0;const[h,m]=(t+'').split(':').map(Number);return(h||0)*60+(m||0);}
 
 function createDestCard(cond,displayIdx){
   const card=document.createElement('div');
@@ -461,28 +584,40 @@ function createDestCard(cond,displayIdx){
     daysHtml+=`<div class="dc-day ${cls}" data-di="${di}" onclick="toggleDay(${cond.idx},${di})" title="${title}">${d}</div>`;
   });
   
+  // Info de pedidos en este destino
+  const pedCount=cond.pedidos?cond.pedidos.length:0;
+  const remisiones=cond.pedidos?cond.pedidos.map(p=>p.remision).join(', '):'';
+  const pesoLabel=cond.pesoGrp?fmt(cond.pesoGrp)+' kg':'';
+  const clientesHtml=cond.clientes&&cond.clientes.length?cond.clientes.map(c=>`<span style="font-size:9px;color:var(--text2)">${c}</span>`).join('<br>'):'';
+  const contactosHtml=cond.contactos&&cond.contactos.length?cond.contactos.join(' · '):'';
+  const notasHtml=cond.notas&&cond.notas.length?cond.notas.join(' | '):'';
+  
   card.innerHTML=`
     <div class="dc-head">
       <span class="num" id="dnum-${cond.idx}">${displayIdx+1}</span>
-      <span class="city">${cond.city}</span>
+      <span class="city">${cond.city}${cond.isReturnDest?' <span style="font-size:9px;color:var(--warn);font-weight:600;margin-left:4px">↩ Retorno</span>':''}</span>
       <span class="drag" title="Arrastrar para reordenar">⠿</span>
     </div>
-    <div class="dc-lbl">Días de atención <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3)">(click: completo → ½ día → cerrado)</span></div>
+    ${pedCount>0?`<div style="font-size:9px;color:var(--text3);margin-bottom:4px;display:flex;justify-content:space-between"><span>${pedCount} pedido${pedCount>1?'s':''} · ${pesoLabel}</span><span style="color:var(--text2)">${remisiones.length>40?remisiones.substring(0,38)+'...':remisiones}</span></div>`:''}
+    ${clientesHtml?`<div style="margin-bottom:4px">${clientesHtml}</div>`:''}
+    <div class="dc-lbl">Días <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3)">(click: ● → ½ → ✕)</span></div>
     <div class="dc-days" id="ddays-${cond.idx}">${daysHtml}</div>
     <div class="dc-grid">
       <div class="dc-field">
         <div class="dc-lbl">Ventana 1</div>
-        <div class="dc-times"><input type="time" value="08:00" onchange="updateDestWin(${cond.idx})" class="dw-from-1" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="12:00" onchange="updateDestWin(${cond.idx})" class="dw-to-1" style="font-size:10px;padding:3px 4px"></div>
+        <div class="dc-times"><input type="time" value="${cond.v1Desde||'08:00'}" onchange="updateDestWin(${cond.idx})" class="dw-from-1" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="${cond.v1Hasta||'12:00'}" onchange="updateDestWin(${cond.idx})" class="dw-to-1" style="font-size:10px;padding:3px 4px"></div>
       </div>
       <div class="dc-field">
-        <div class="dc-lbl">Ventana 2 (L-V)</div>
-        <div class="dc-times"><input type="time" value="14:00" onchange="updateDestWin(${cond.idx})" class="dw-from-2" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="16:00" onchange="updateDestWin(${cond.idx})" class="dw-to-2" style="font-size:10px;padding:3px 4px"></div>
+        <div class="dc-lbl">Ventana 2</div>
+        <div class="dc-times"><input type="time" value="${cond.v2Desde||'14:00'}" onchange="updateDestWin(${cond.idx})" class="dw-from-2" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="${cond.v2Hasta||'16:00'}" onchange="updateDestWin(${cond.idx})" class="dw-to-2" style="font-size:10px;padding:3px 4px"></div>
       </div>
     </div>
     <div class="dc-prio">
-      <label><input type="checkbox" onchange="togglePrio(${cond.idx},this.checked)"> Entregar primero</label>
-      <label style="margin-left:auto"><input type="number" value="${cond.descMin}" min="15" max="180" step="15" style="width:48px;font-size:10px;padding:2px 4px" onchange="updateDescMin(${cond.idx},this.value)"> min desc.</label>
+      <label><input type="checkbox" onchange="togglePrio(${cond.idx},this.checked)"${cond.llamarAntes?' checked':''}> Entregar primero</label>
+      <label style="margin-left:auto"><input type="number" value="${cond.descMin}" min="15" max="180" step="15" style="width:48px;font-size:10px;padding:2px 4px" onchange="updateDescMin(${cond.idx},this.value)"> min</label>
     </div>
+    ${contactosHtml?`<div style="font-size:9px;color:var(--text2);margin-top:4px">Contacto: ${contactosHtml}</div>`:''}
+    ${notasHtml?`<div style="font-size:9px;color:var(--warn);margin-top:2px;font-weight:500">${notasHtml}</div>`:''}
     <div class="dc-info" id="dinfo-${cond.idx}">
       <span>ETA:</span><strong class="eta" id="deta-${cond.idx}">—</strong>
       <span>Fecha entrega:</span><strong id="ddate-${cond.idx}">—</strong>
@@ -592,14 +727,17 @@ async function runAnalysis(){
   const maxNH=document.getElementById('inNocturno').value;
   const maxDriveH=maxNH==='none'?18:parseInt(maxNH);
   
-  // Build stops with user order (or priority override)
+  // Build stops from destConditions (already grouped by unique destination)
   const origin=geo(trip.origenes[0]);
   if(!origin){alert('Sin coords para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Analizar ruta';return}
   
-  // Resolve all dest coords
   const destGeo=[];const missing=[];
-  for(const d of trip.destinos){const c=geo(d);if(c)destGeo.push({...c,origIdx:trip.destinos.indexOf(d)});else missing.push(d)}
-  if(!destGeo.length){alert('Sin coordenadas para destinos');btn.disabled=false;btn.textContent='Analizar ruta';return}
+  for(const cond of destConditions){
+    const c=geo(cond.city);
+    if(!c){missing.push(cond.city);continue}
+    destGeo.push({...c,origIdx:cond.idx,isReturnDest:cond.isReturnDest});
+  }
+  if(!destGeo.length){alert('Sin destinos con coordenadas');btn.disabled=false;btn.textContent='Analizar ruta';return}
   
   // Apply priority: move priority items to front
   let orderedDests=[...destGeo];
@@ -623,13 +761,22 @@ async function runAnalysis(){
     return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
   }
   
-  // Nearest-neighbor ordering (geographically coherent)
+  // Nearest-neighbor ordering: regular dests first, return-to-origin dests last
   if(!hasUserOrder&&!prioIdxs.length){
-    const nnOrdered=[];const remaining=[...orderedDests];let cur=origin;
+    const regularDests=orderedDests.filter(d=>!d.isReturnDest);
+    const returnDests=orderedDests.filter(d=>d.isReturnDest);
+    
+    // Nearest-neighbor for regular destinations
+    const nnOrdered=[];let remaining=[...regularDests];let cur=origin;
     while(remaining.length>0){
       let nearest=0,minD=Infinity;
       for(let i=0;i<remaining.length;i++){const d=haversine(cur,remaining[i]);if(d<minD){minD=d;nearest=i;}}
       nnOrdered.push(remaining[nearest]);cur=remaining[nearest];remaining.splice(nearest,1);
+    }
+    // Append return-to-origin destinations at the end (closest to origin last = natural on way back)
+    if(returnDests.length){
+      const rrSorted=[...returnDests].sort((a,b)=>haversine(cur,a)-haversine(cur,b));
+      nnOrdered.push(...rrSorted);
     }
     orderedDests=nnOrdered;
   }

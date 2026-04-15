@@ -417,6 +417,18 @@ function parseCSVRows(text){
 }
 
 function parseDetalle(text){
+  // Clean Google Sheets time format: "7:30:00" → "07:30", "16:00:00" → "16:00"
+  function cleanTime(v){
+    if(!v) return '';
+    v=v.trim();
+    // Remove trailing :00 from HH:MM:00 format (Sheets auto-format)
+    v=v.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1');
+    // Also handle ranges in HORARIO_SABADO like "08:00:00-12:00:00"
+    v=v.replace(/(\d{1,2}:\d{2}):\d{2}/g, '$1');
+    // Pad single digit hour: "7:30" → "07:30"
+    v=v.replace(/^(\d):/, '0$1:');
+    return v;
+  }
   const rows=parseCSVRows(text);
   if(rows.length<2){document.getElementById('sheetStatus').textContent='0 pedidos';return}
   const hd=rows[0];
@@ -434,9 +446,9 @@ function parseDetalle(text){
       esDevolucion:d.ES_DEVOLUCION==='SI',
       diasAtencion:d.DIAS_ATENCION||'LV',
       horarioRaw:d.HORARIO_RAW||'',
-      v1Desde:d.V1_DESDE||'', v1Hasta:d.V1_HASTA||'',
-      v2Desde:d.V2_DESDE||'', v2Hasta:d.V2_HASTA||'',
-      horarioSabado:d.HORARIO_SABADO||'',
+      v1Desde:cleanTime(d.V1_DESDE), v1Hasta:cleanTime(d.V1_HASTA),
+      v2Desde:cleanTime(d.V2_DESDE), v2Hasta:cleanTime(d.V2_HASTA),
+      horarioSabado:cleanTime(d.HORARIO_SABADO),
       cliente:d.CLIENTE||'', contacto:d.CONTACTO||'', telefono:d.TELEFONO||'',
       direccion:d.DIRECCION||'', notas:d.NOTAS||'',
       llamarAntes:d.LLAMAR_ANTES==='SI',

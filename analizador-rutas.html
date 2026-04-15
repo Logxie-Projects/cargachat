@@ -3,883 +3,822 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LogxIA — Analizador de Rutas</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>LogxIA — Analizador de Rutas v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-:root {
-  --bg: #0c0f14;
-  --bg2: #13171f;
-  --bg3: #1a1f2b;
-  --bg4: #232a38;
-  --text: #e8e6e1;
-  --text2: #9a9890;
-  --text3: #6b6860;
-  --accent: #00c8a0;
-  --accent2: #00a080;
-  --accent-glow: rgba(0,200,160,0.15);
-  --warn: #f0a030;
-  --warn-bg: rgba(240,160,48,0.1);
-  --danger: #e85050;
-  --danger-bg: rgba(232,80,80,0.08);
-  --info: #4090e0;
-  --info-bg: rgba(64,144,224,0.1);
-  --border: rgba(255,255,255,0.06);
-  --border2: rgba(255,255,255,0.1);
-  --radius: 8px;
-  --radius-lg: 12px;
-  --font: 'DM Sans', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', monospace;
+:root{
+  --navy:#0E1B4D;--cyan:#00BFDF;--green:#22c55e;
+  --bg:#F5F6FA;--bg2:#FFFFFF;--bg3:#EEF0F6;--bg4:#E2E4ED;
+  --text:#0E1B4D;--text2:#4A5580;--text3:#8890AB;
+  --warn:#E89B20;--warn-bg:rgba(232,155,32,.1);
+  --danger:#D64040;--danger-bg:rgba(214,64,64,.08);
+  --border:rgba(14,27,77,.08);--border2:rgba(14,27,77,.15);
+  --r:8px;--rl:12px;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-html { font-size:14px; }
-body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:13px}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow:hidden}
 
-/* HEADER */
-.header {
-  background: linear-gradient(135deg, #0a0e15 0%, #121824 100%);
-  border-bottom: 1px solid var(--border2);
-  padding: 16px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.header-left { display:flex; align-items:center; gap:12px; }
-.logo {
-  width:36px; height:36px; background:var(--accent); border-radius:8px;
-  display:flex; align-items:center; justify-content:center;
-  font-weight:700; font-size:14px; color:var(--bg); letter-spacing:-0.5px;
-}
-.header h1 { font-size:18px; font-weight:600; letter-spacing:-0.3px; }
-.header h1 span { color:var(--accent); }
-.header-right { font-size:12px; color:var(--text2); }
+/* ── HEADER ── */
+.hdr{background:var(--navy);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;height:48px}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.logo{width:30px;height:30px;background:var(--cyan);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--navy)}
+.hdr h1{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.3px}
+.hdr h1 span{color:var(--cyan)}
+.hdr-r{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.7)}
+.hdr-r button{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--cyan);font-family:var(--font);font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer}
 
-/* LAYOUT */
-.app { display:grid; grid-template-columns:340px 1fr; min-height:calc(100vh - 69px); }
+/* ── 3-COL LAYOUT ── */
+.app{display:grid;grid-template-columns:280px 1fr 340px;height:calc(100vh - 48px)}
 
-/* SIDEBAR */
-.sidebar {
-  background:var(--bg2); border-right:1px solid var(--border);
-  padding:0; overflow-y:auto; max-height:calc(100vh - 69px);
-}
-.sb-section { padding:16px 20px; border-bottom:1px solid var(--border); }
-.sb-section:last-child { border-bottom:none; }
-.sb-title {
-  font-size:10px; font-weight:600; text-transform:uppercase;
-  letter-spacing:1.2px; color:var(--accent); margin-bottom:12px;
-}
-.sb-row { margin-bottom:10px; }
-.sb-label { font-size:11px; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:4px; }
-.sb-label .unit { color:var(--text3); font-family:var(--mono); font-size:10px; }
+/* ── LEFT SIDEBAR ── */
+.sb{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:0}
+.sb-s{padding:12px 16px;border-bottom:1px solid var(--border)}
+.sb-t{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);margin-bottom:8px}
+.sb-row{margin-bottom:8px}
+.sb-lbl{font-size:11px;color:var(--text2);margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.sb-lbl .u{color:var(--text3);font-family:var(--mono);font-size:9px}
+select,input[type="number"],input[type="time"]{width:100%;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:var(--r);outline:none}
+select:focus,input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234A5580'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+input[type="number"]{font-family:var(--mono)}
+.input-2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.win-grid{display:flex;flex-direction:column;gap:4px}
+.win-row{display:grid;grid-template-columns:1fr 8px 1fr 22px;align-items:center;gap:3px}
+.win-row .sep{text-align:center;color:var(--text3);font-size:10px}
+.win-add{background:transparent;border:1px dashed var(--border2);color:var(--cyan);font-size:10px;padding:4px;border-radius:var(--r);cursor:pointer;font-family:var(--font)}
+.win-rm{background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1;opacity:.4}
+.win-rm:hover{opacity:1}
+.btn-run{width:100%;padding:10px;background:var(--navy);color:#fff;font-family:var(--font);font-size:13px;font-weight:600;border:none;border-radius:var(--r);cursor:pointer;letter-spacing:.3px;transition:background .15s,transform .1s}
+.btn-run:hover{background:#162566}
+.btn-run:active{transform:scale(.98)}
+.btn-run:disabled{opacity:.3;cursor:not-allowed}
+.trip-meta{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px;padding:6px 8px;background:var(--bg3);border-radius:var(--r);font-size:10px}
+.trip-meta span{color:var(--text2)}
+.trip-meta strong{color:var(--text);font-weight:500}
 
-select, input[type="number"], input[type="time"], input[type="text"] {
-  width:100%; background:var(--bg3); border:1px solid var(--border2);
-  color:var(--text); font-family:var(--font); font-size:13px;
-  padding:8px 10px; border-radius:var(--radius); outline:none;
-  transition: border-color .2s, box-shadow .2s;
-}
-select:focus, input:focus {
-  border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-glow);
-}
-select { cursor:pointer; -webkit-appearance:none; appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239a9890'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat:no-repeat; background-position:right 10px center; padding-right:28px;
-}
-input[type="number"] { font-family:var(--mono); }
-.input-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+/* ── CENTER ── */
+.center{display:flex;flex-direction:column;overflow:hidden}
+#map{flex:0 0 42%;min-height:240px}
+.leaflet-control-attribution{display:none!important}
+.results{flex:1;overflow-y:auto;background:var(--bg)}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border)}
+.kpi{background:var(--bg2);padding:8px 10px}
+.kpi-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.kpi-v{font-size:16px;font-weight:600;font-family:var(--mono);color:var(--text);margin-top:1px}
+.kpi-s{font-size:9px;color:var(--text3)}
+.kpi.kw .kpi-v{color:var(--warn)}
+.kpi.kd .kpi-v{color:var(--danger)}
+.tl-wrap{padding:8px 12px}
+.tl-day{border:1px solid var(--border2);border-radius:var(--rl);margin-bottom:8px;overflow:hidden}
+.tl-dh{padding:6px 10px;font-size:11px;font-weight:600;display:flex;justify-content:space-between}
+.tl-d1 .tl-dh{background:rgba(14,27,77,.06);color:var(--navy)}
+.tl-d2 .tl-dh{background:rgba(0,191,223,.1);color:#009BB5}
+.tl-d3 .tl-dh{background:var(--warn-bg);color:var(--warn)}
+.tl-d4 .tl-dh{background:var(--danger-bg);color:var(--danger)}
+.tl-r{display:grid;grid-template-columns:54px 28px 1fr 44px 58px;align-items:center;padding:4px 10px;border-top:1px solid var(--border);font-size:11px}
+.tl-r:hover{background:var(--bg3)}
+.tl-time{font-family:var(--mono);font-weight:500;font-size:10px}
+.tl-idx{font-size:9px;color:var(--text3);text-align:center;font-weight:600}
+.tl-city{font-weight:500}
+.tl-km{font-family:var(--mono);font-size:10px;color:var(--text2);text-align:right}
+.tl-act{font-size:9px;color:var(--text2);text-align:right}
+.tl-dot{width:7px;height:7px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:5px}
+.tl-r.tl-cargue{background:rgba(0,191,223,.06)}
+.tl-r.tl-drive{color:var(--text3);font-style:italic;font-size:10px}
+.tl-r.tl-wait{background:var(--warn-bg);color:var(--warn);font-size:10px}
+.tl-r.tl-pernocta{background:var(--danger-bg);color:var(--danger);font-size:10px}
+.alerts{padding:0 12px 8px}
+.al{padding:8px 10px;border-radius:var(--r);margin-bottom:4px;font-size:11px;line-height:1.4}
+.al-w{background:var(--warn-bg);color:var(--warn);border-left:3px solid var(--warn)}
+.al-d{background:var(--danger-bg);color:var(--danger);border-left:3px solid var(--danger)}
+.al-i{background:rgba(14,27,77,.05);color:var(--navy);border-left:3px solid var(--navy)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;padding:32px;text-align:center;font-size:12px}
 
-/* Windows editor */
-.win-grid { display:flex; flex-direction:column; gap:6px; }
-.win-row { display:grid; grid-template-columns:1fr 8px 1fr 28px; align-items:center; gap:4px; }
-.win-row .sep { text-align:center; color:var(--text3); font-size:11px; }
-.win-add { background:transparent; border:1px dashed var(--border2); color:var(--accent);
-  font-size:11px; padding:6px; border-radius:var(--radius); cursor:pointer;
-  font-family:var(--font); transition:border-color .2s; }
-.win-add:hover { border-color:var(--accent); }
-.win-remove { background:transparent; border:none; color:var(--danger); cursor:pointer;
-  font-size:16px; line-height:1; opacity:0.5; transition:opacity .2s; }
-.win-remove:hover { opacity:1; }
+/* ── RIGHT PANEL: DESTINATIONS ── */
+.rp{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.rp-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg2);z-index:2}
+.rp-hdr h3{font-size:12px;font-weight:600;color:var(--navy)}
+.rp-hdr .badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(0,191,223,.12);color:#009BB5;font-weight:600}
+.rp-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;padding:20px;text-align:center}
+.dest-list{padding:0}
+.dest-card{border-bottom:1px solid var(--border);padding:10px 14px;transition:background .1s}
+.dest-card:hover{background:var(--bg3)}
+.dest-card.drag-over{border-top:2px solid var(--cyan);padding-top:8px}
+.dc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.dc-head .num{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+.dc-head .num.changed{background:var(--warn)}
+.dc-head .city{font-weight:600;font-size:12px;margin-left:8px;flex:1}
+.dc-head .drag{cursor:grab;color:var(--text3);font-size:14px;user-select:none;padding:0 4px}
+.dc-head .drag:active{cursor:grabbing}
+.dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
+.dc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.dc-field select,.dc-field input{font-size:10px;padding:4px 6px}
+.dc-days{display:flex;gap:2px;margin-bottom:6px}
+.dc-day{width:24px;height:22px;border:1px solid var(--border2);border-radius:4px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:all .12s;color:var(--text2)}
+.dc-day.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dc-day.half{background:rgba(0,191,223,.15);color:var(--navy);border-color:var(--cyan)}
+.dc-times{display:grid;grid-template-columns:1fr 8px 1fr;align-items:center;gap:2px;margin-bottom:4px}
+.dc-times .sep{text-align:center;color:var(--text3);font-size:9px}
+.dc-prio{display:flex;gap:4px;align-items:center}
+.dc-prio label{font-size:10px;color:var(--text2);display:flex;align-items:center;gap:3px;cursor:pointer}
+.dc-prio input[type="checkbox"]{width:13px;height:13px;accent-color:var(--navy)}
+.dc-info{font-size:9px;color:var(--text3);padding-top:4px;border-top:1px solid var(--border);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.dc-info strong{color:var(--text);font-weight:500}
+.dc-info .eta{color:var(--green);font-weight:600}
+.dc-info .late{color:var(--danger);font-weight:600}
+.dc-diff{margin-top:4px;padding:4px 6px;border-radius:4px;font-size:9px;font-weight:500}
+.dc-diff.optimal{background:rgba(34,197,94,.08);color:var(--green)}
+.dc-diff.suboptimal{background:var(--warn-bg);color:var(--warn)}
 
-/* Run button */
-.btn-run {
-  width:100%; padding:12px; background:var(--accent); color:var(--bg);
-  font-family:var(--font); font-size:14px; font-weight:600;
-  border:none; border-radius:var(--radius); cursor:pointer;
-  transition:background .2s, transform .1s; letter-spacing:0.3px;
-}
-.btn-run:hover { background:var(--accent2); }
-.btn-run:active { transform:scale(0.98); }
-.btn-run:disabled { opacity:0.4; cursor:not-allowed; }
-
-/* MAIN AREA */
-.main { display:flex; flex-direction:column; overflow:hidden; }
-
-/* MAP */
-#map { flex:0 0 45%; min-height:300px; }
-.leaflet-control-attribution { display:none!important; }
-
-/* RESULTS PANEL */
-.results { flex:1; overflow-y:auto; padding:0; background:var(--bg); }
-
-/* KPIs */
-.kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--border); }
-.kpi { background:var(--bg2); padding:12px 14px; }
-.kpi-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; }
-.kpi-val { font-size:20px; font-weight:600; margin-top:2px; font-family:var(--mono); color:var(--text); }
-.kpi-sub { font-size:10px; color:var(--text3); margin-top:1px; }
-.kpi.kpi-warn .kpi-val { color:var(--warn); }
-.kpi.kpi-danger .kpi-val { color:var(--danger); }
-
-/* TIMELINE */
-.tl-wrap { padding:12px 16px; }
-.tl-day {
-  border:1px solid var(--border2); border-radius:var(--radius-lg);
-  margin-bottom:10px; overflow:hidden;
-}
-.tl-day-head {
-  padding:8px 14px; font-size:12px; font-weight:600;
-  display:flex; justify-content:space-between; align-items:center;
-}
-.tl-day-1 .tl-day-head { background:var(--info-bg); color:var(--info); }
-.tl-day-2 .tl-day-head { background:var(--accent-glow); color:var(--accent); }
-.tl-day-3 .tl-day-head { background:var(--warn-bg); color:var(--warn); }
-.tl-day-4 .tl-day-head { background:var(--danger-bg); color:var(--danger); }
-
-.tl-row {
-  display:grid; grid-template-columns:58px 32px 1fr 52px 68px;
-  align-items:center; padding:5px 14px; border-top:1px solid var(--border);
-  font-size:12px; transition:background .1s;
-}
-.tl-row:hover { background:var(--bg3); }
-.tl-time { font-family:var(--mono); font-weight:500; font-size:11px; }
-.tl-idx { font-size:10px; color:var(--text3); text-align:center; font-weight:600; }
-.tl-city { font-weight:500; }
-.tl-km { font-family:var(--mono); font-size:11px; color:var(--text2); text-align:right; }
-.tl-act { font-size:10px; color:var(--text2); text-align:right; }
-.tl-dot { width:8px; height:8px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:6px; }
-.tl-row.tl-cargue { background:rgba(0,200,160,0.05); }
-.tl-row.tl-drive { color:var(--text3); font-style:italic; font-size:11px; }
-.tl-row.tl-wait { background:var(--warn-bg); color:var(--warn); font-size:11px; }
-.tl-row.tl-pernocta { background:var(--danger-bg); color:var(--danger); font-size:11px; }
-.tl-row.tl-return { color:var(--text3); }
-
-/* ALERTS */
-.alerts { padding:0 16px 12px; }
-.alert-box {
-  padding:10px 14px; border-radius:var(--radius); margin-bottom:6px;
-  font-size:12px; line-height:1.5;
-}
-.alert-warn { background:var(--warn-bg); color:var(--warn); border-left:3px solid var(--warn); }
-.alert-danger { background:var(--danger-bg); color:var(--danger); border-left:3px solid var(--danger); }
-.alert-info { background:var(--info-bg); color:var(--info); border-left:3px solid var(--info); }
-
-/* EMPTY STATE */
-.empty-state {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  height:100%; color:var(--text3); gap:12px; padding:40px;
-}
-.empty-state .icon { font-size:48px; opacity:0.3; }
-.empty-state p { font-size:13px; text-align:center; max-width:280px; line-height:1.5; }
-
-/* LOADING */
-.loading-overlay {
-  position:absolute; inset:0; background:rgba(12,15,20,0.85);
-  display:flex; align-items:center; justify-content:center;
-  z-index:1000; font-size:13px; color:var(--accent); gap:8px;
-}
-.spinner { width:18px; height:18px; border:2px solid var(--border2);
-  border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; }
-@keyframes spin { to{transform:rotate(360deg)} }
-
-/* Trip list in select */
-.trip-meta { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:6px;
-  padding:8px 10px; background:var(--bg3); border-radius:var(--radius); font-size:11px; }
-.trip-meta span { color:var(--text2); }
-.trip-meta strong { color:var(--text); font-weight:500; }
+/* Compare bar */
+.compare-bar{padding:8px 14px;border-top:1px solid var(--border);background:var(--bg3);position:sticky;bottom:0}
+.compare-bar .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.compare-row{display:flex;justify-content:space-between;font-size:11px}
+.compare-row .val{font-family:var(--mono);font-weight:600}
+.compare-row .diff{font-size:10px}
+.compare-row .diff.worse{color:var(--danger)}
+.compare-row .diff.same{color:var(--green)}
 
 /* Scrollbar */
-::-webkit-scrollbar { width:6px; }
-::-webkit-scrollbar-track { background:var(--bg); }
-::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--text3); }
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 </style>
 </head>
 <body>
-
-<div class="header">
-  <div class="header-left">
+<div class="hdr">
+  <div class="hdr-l">
     <div class="logo">Lx</div>
     <h1>Logx<span>IA</span> — Analizador de rutas</h1>
   </div>
-  <div class="header-right">
+  <div class="hdr-r">
     <span id="sheetStatus">Conectando...</span>
-    <button onclick="loadSheet()" style="background:transparent;border:1px solid var(--border2);color:var(--accent);font-family:var(--font);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;margin-left:8px;">Recargar</button>
+    <button onclick="loadSheet()">Recargar</button>
   </div>
 </div>
-
 <div class="app">
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-
-    <div class="sb-section">
-      <div class="sb-title">Viaje a analizar</div>
-      <div class="sb-row">
-        <div class="sb-label">Seleccionar viaje</div>
-        <select id="tripSelect"><option value="">Cargando...</option></select>
-      </div>
+  <!-- LEFT SIDEBAR -->
+  <div class="sb">
+    <div class="sb-s">
+      <div class="sb-t">Viaje</div>
+      <div class="sb-row"><div class="sb-lbl">Seleccionar viaje</div><select id="tripSelect"><option value="">Cargando...</option></select></div>
       <div class="trip-meta" id="tripMeta" style="display:none">
-        <span>Fecha cargue:</span><strong id="tmEmpresa">—</strong>
+        <span>Fecha:</span><strong id="tmFecha">—</strong>
         <span>Peso:</span><strong id="tmPeso">—</strong>
-        <span>Valor merc.:</span><strong id="tmValor">—</strong>
-        <span>Carga:</span><strong id="tmRT">—</strong>
+        <span>Valor:</span><strong id="tmValor">—</strong>
+        <span>Carga:</span><strong id="tmCarga">—</strong>
       </div>
     </div>
-
-    <div class="sb-section">
-      <div class="sb-title">Tiempos de operación</div>
-      <div class="sb-row">
-        <div class="sb-label">Hora llegada del vehículo a planta</div>
-        <input type="time" id="inArrival" value="08:00">
+    <div class="sb-s">
+      <div class="sb-t">Operación en planta</div>
+      <div class="input-2">
+        <div class="sb-row"><div class="sb-lbl">Llegada <span class="u">hh:mm</span></div><input type="time" id="inArrival" value="08:00"></div>
+        <div class="sb-row"><div class="sb-lbl">Espera <span class="u">min</span></div><input type="number" id="inWait" value="60" min="0" max="300" step="15"></div>
       </div>
-      <div class="sb-row">
-        <div class="sb-label">Espera para ingreso <span class="unit">(min)</span></div>
-        <input type="number" id="inWait" value="60" min="0" max="300" step="15">
-      </div>
-      <div class="sb-row">
-        <div class="sb-label">Tiempo de cargue <span class="unit">(min)</span></div>
-        <input type="number" id="inCargue" value="180" min="30" max="480" step="15">
-      </div>
-      <div class="sb-row">
-        <div class="sb-label">Tiempo de descargue por parada <span class="unit">(min)</span></div>
-        <input type="number" id="inDescargue" value="60" min="15" max="180" step="15">
+      <div class="input-2">
+        <div class="sb-row"><div class="sb-lbl">Cargue <span class="u">min</span></div><input type="number" id="inCargue" value="180" min="30" max="480" step="15"></div>
+        <div class="sb-row"><div class="sb-lbl">Descargue/parada <span class="u">min</span></div><input type="number" id="inDescargue" value="60" min="15" max="180" step="15"></div>
       </div>
     </div>
-
-    <div class="sb-section">
-      <div class="sb-title">Ventanas de atención cliente</div>
+    <div class="sb-s">
+      <div class="sb-t">Ventanas default (L-V)</div>
       <div class="win-grid" id="winGrid">
-        <div class="win-row" data-win="0">
-          <input type="time" value="08:00" class="win-from">
-          <span class="sep">—</span>
-          <input type="time" value="12:00" class="win-to">
-          <button class="win-remove" onclick="removeWindow(0)">&times;</button>
-        </div>
-        <div class="win-row" data-win="1">
-          <input type="time" value="14:00" class="win-from">
-          <span class="sep">—</span>
-          <input type="time" value="16:00" class="win-to">
-          <button class="win-remove" onclick="removeWindow(1)">&times;</button>
-        </div>
+        <div class="win-row" data-win="0"><input type="time" value="08:00" class="win-from"><span class="sep">—</span><input type="time" value="12:00" class="win-to"><button class="win-rm" onclick="rmWin(0)">&times;</button></div>
+        <div class="win-row" data-win="1"><input type="time" value="14:00" class="win-from"><span class="sep">—</span><input type="time" value="16:00" class="win-to"><button class="win-rm" onclick="rmWin(1)">&times;</button></div>
       </div>
-      <button class="win-add" onclick="addWindow()">+ Agregar ventana</button>
+      <button class="win-add" onclick="addWin()">+ Ventana</button>
     </div>
-
-    <div class="sb-section">
-      <div class="sb-title">Parámetros de ruta</div>
-      <div class="sb-row">
-        <div class="sb-label">Incluir retorno a origen</div>
-        <select id="inRetorno">
-          <option value="yes" selected>Sí — vehículo regresa</option>
-          <option value="no">No — termina en último destino</option>
-        </select>
-      </div>
-      <div class="sb-row">
-        <div class="sb-label">Hora máxima de conducción nocturna</div>
-        <select id="inNocturno">
-          <option value="none">No permitir conducción nocturna</option>
-          <option value="20">Hasta 8:00 PM</option>
-          <option value="22" selected>Hasta 10:00 PM</option>
-          <option value="24">Sin restricción</option>
-        </select>
+    <div class="sb-s">
+      <div class="sb-t">Ventana sábado</div>
+      <div class="win-grid" id="winGridSat">
+        <div class="win-row" data-win="s0"><input type="time" value="08:00" class="win-from"><span class="sep">—</span><input type="time" value="12:00" class="win-to"><button class="win-rm" onclick="rmWinSat('s0')">&times;</button></div>
       </div>
     </div>
-
-    <div class="sb-section">
-      <button class="btn-run" id="btnRun" onclick="runAnalysis()">Analizar ruta</button>
+    <div class="sb-s">
+      <div class="sb-t">Ruta</div>
+      <div class="sb-row"><div class="sb-lbl">Retorno a origen</div><select id="inRetorno"><option value="yes" selected>Sí</option><option value="no">No</option></select></div>
+      <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="none">No permitir</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite</option></select></div>
     </div>
-
+    <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Analizar ruta</button></div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main" style="position:relative;">
+  <!-- CENTER -->
+  <div class="center">
     <div id="map"></div>
     <div class="results" id="results">
-      <div class="empty-state" id="emptyState">
-        <div class="icon">&#9776;</div>
-        <p>Selecciona un viaje y configura los parámetros, luego presiona <strong>Analizar ruta</strong></p>
-      </div>
+      <div class="empty" id="emptyState">Selecciona un viaje, ajusta parámetros y presiona <strong>Analizar ruta</strong></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rp">
+    <div class="rp-hdr"><h3>Condiciones por destino</h3><span class="badge" id="rpBadge">—</span></div>
+    <div id="destList"><div class="rp-empty">Analiza un viaje para ver los destinos</div></div>
+    <div class="compare-bar" id="compareBar" style="display:none">
+      <div class="label">Ruta sugerida vs deseada</div>
+      <div class="compare-row"><span>Km sugerido:</span><span class="val" id="cmpKmS">—</span></div>
+      <div class="compare-row"><span>Km deseado:</span><span class="val" id="cmpKmD">—</span><span class="diff" id="cmpKmDiff"></span></div>
+      <div class="compare-row"><span>Tiempo sugerido:</span><span class="val" id="cmpTimeS">—</span></div>
+      <div class="compare-row"><span>Tiempo deseado:</span><span class="val" id="cmpTimeD">—</span><span class="diff" id="cmpTimeDiff"></span></div>
+      <div style="margin-top:6px"><button class="btn-run" style="font-size:11px;padding:6px" onclick="runAnalysis()">Recalcular con orden deseado</button></div>
     </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ===== CITIES DB =====
-const CITIES={
-  "funza":{lat:4.7167,lng:-74.2122},"bogota":{lat:4.6097,lng:-74.0817},"bogotá":{lat:4.6097,lng:-74.0817},
-  "yumbo":{lat:3.5853,lng:-76.4953},"cali":{lat:3.4516,lng:-76.532},"palmira":{lat:3.5394,lng:-76.3036},
-  "espinal":{lat:4.149,lng:-74.8843},"monteria":{lat:8.7479,lng:-75.8814},"montería":{lat:8.7479,lng:-75.8814},
-  "ibague":{lat:4.4389,lng:-75.2322},"ibagué":{lat:4.4389,lng:-75.2322},"granada":{lat:3.5461,lng:-73.7138},
-  "bucaramanga":{lat:7.1254,lng:-73.1198},"giron":{lat:7.0681,lng:-73.1672},"girón":{lat:7.0681,lng:-73.1672},
-  "cucuta":{lat:7.8891,lng:-72.4967},"cúcuta":{lat:7.8891,lng:-72.4967},"floridablanca":{lat:7.0647,lng:-73.0897},
-  "paipa":{lat:5.7831,lng:-73.115},"sutamarchan":{lat:5.6167,lng:-73.6333},"sutamarchán":{lat:5.6167,lng:-73.6333},
-  "ventaquemada":{lat:5.3667,lng:-73.5167},"tuta":{lat:5.6903,lng:-73.2292},
-  "zipaquira":{lat:5.0225,lng:-74.0042},"zipaquirá":{lat:5.0225,lng:-74.0042},
-  "tunja":{lat:5.5353,lng:-73.3678},"ramiriqui":{lat:5.4011,lng:-73.3342},"ramiriquí":{lat:5.4011,lng:-73.3342},
-  "aquitania":{lat:5.5192,lng:-72.8867},"umbita":{lat:5.2094,lng:-73.4492},
-  "samaca":{lat:5.4875,lng:-73.4833},"samacá":{lat:5.4875,lng:-73.4833},
-  "jenesano":{lat:5.3886,lng:-73.3636},
-  "barranquilla":{lat:10.9639,lng:-74.7964},"cartagena":{lat:10.391,lng:-75.5144},
-  "medellin":{lat:6.2442,lng:-75.5812},"medellín":{lat:6.2442,lng:-75.5812},
-  "pereira":{lat:4.8133,lng:-75.6961},"manizales":{lat:5.0689,lng:-75.5174},
-  "neiva":{lat:2.9273,lng:-75.2819},"pasto":{lat:1.2136,lng:-77.2811},
-  "villavicencio":{lat:4.142,lng:-73.6266},"duitama":{lat:5.8264,lng:-73.0333},
-  "mosquera":{lat:4.6878,lng:-74.2326},"soacha":{lat:4.5793,lng:-74.2172},
-  "buga":{lat:3.9006,lng:-76.3032},"armenia":{lat:4.5339,lng:-75.6811},
-  "girardot":{lat:4.3022,lng:-74.802},"sogamoso":{lat:5.7144,lng:-72.9336},
-  "chiquinquira":{lat:5.6167,lng:-73.8167},"chiquinquirá":{lat:5.6167,lng:-73.8167},
-  "popayan":{lat:2.4419,lng:-76.6061},"popayán":{lat:2.4419,lng:-76.6061},
-  "sincelejo":{lat:9.3047,lng:-75.3978},"valledupar":{lat:10.4631,lng:-73.2532},
-  "rionegro":{lat:6.1553,lng:-75.3742},"dosquebradas":{lat:4.8394,lng:-75.6722},
-  "cartago":{lat:4.7461,lng:-75.9117},"tulua":{lat:4.0847,lng:-76.1992},"tuluá":{lat:4.0847,lng:-76.1992},
+// ================================================================
+// NETFLEET CORE — Diccionario, Geocoding, Pricing (idéntico a index.html)
+// ================================================================
+const CIUDADES = {
+  'funza':[4.7132,-74.1966],'yumbo':[3.5928,-76.4944],'espinal':[4.1544,-74.8864],
+  'bogota':[4.7110,-74.0721],'bogotá':[4.7110,-74.0721],
+  'cali':[3.4516,-76.5319],'medellin':[6.2442,-75.5812],'medellín':[6.2442,-75.5812],
+  'barranquilla':[10.9685,-74.7813],'cartagena':[10.3910,-75.4794],
+  'cucuta':[7.8939,-72.5078],'cúcuta':[7.8939,-72.5078],
+  'bucaramanga':[7.1253,-73.1198],'santa marta':[11.2408,-74.2110],
+  'monteria':[8.7575,-75.8906],'montería':[8.7575,-75.8906],
+  'valledupar':[10.4631,-73.2532],'riohacha':[11.5444,-72.9072],
+  'sincelejo':[9.3047,-75.3978],'neiva':[2.9273,-75.2820],
+  'ibague':[4.4389,-75.2322],'ibagué':[4.4389,-75.2322],
+  'villavicencio':[4.1420,-73.6266],'aguachica':[8.3081,-73.6189],
+  'manizales':[5.0703,-75.5138],'pereira':[4.8087,-75.6906],
+  'armenia':[4.5339,-75.6811],'cartago':[4.7454,-75.9120],
+  'la virginia':[4.9000,-75.8833],'dosquebradas':[4.8378,-75.6742],
+  'tunja':[5.5353,-73.3678],'duitama':[5.8281,-73.0297],
+  'sogamoso':[5.7150,-72.9267],'paipa':[5.7833,-73.1167],
+  'ramiriqui':[5.4000,-73.3333],'ramiriquí':[5.4000,-73.3333],
+  'chiquinquira':[5.6167,-73.8167],'chiquinquirá':[5.6167,-73.8167],
+  'buenavista':[5.7167,-73.9667],'ventaquemada':[5.4167,-73.5167],
+  'sachica':[5.6667,-73.6833],
+  'jenesano':[5.3833,-73.4167],'jenessano':[5.3833,-73.4167],
+  'jenesano de boyaca':[5.3833,-73.4167],'jenesano boyaca':[5.3833,-73.4167],
+  'tuta':[5.6667,-73.2000],'toca':[5.5667,-73.1667],
+  'tibana':[5.3167,-73.3833],'tibaná':[5.3167,-73.3833],
+  'arcabuco':[5.7667,-73.4333],'macheta':[5.0333,-73.8333],
+  'umbita':[5.3000,-73.5167],'aquitania':[5.5167,-72.8833],
+  'saboya':[5.7000,-73.7667],'samaca':[5.4833,-73.4833],'samacá':[5.4833,-73.4833],
+  'sutamarchan':[5.6333,-73.7833],
+  'siberia':[4.8856,-74.1483],'cabrera':[3.9847,-74.4856],
+  'fusagasuga':[4.3367,-74.3644],'fusagasugá':[4.3367,-74.3644],
+  'silvania':[4.4000,-74.4833],'sibate':[4.4878,-74.2597],'sibaté':[4.4878,-74.2597],
+  'san bernardo':[4.1833,-74.4333],'usme':[4.4367,-74.1322],
+  'subachoque':[4.9167,-74.2667],'fomeque':[4.4833,-73.9000],'fómeque':[4.4833,-73.9000],
+  'ortigal':[3.2798,-76.3449],'tenjo':[4.8714,-74.1436],
+  'zipaquira':[5.0228,-74.0061],'zipaquirá':[5.0228,-74.0061],
+  'facatativa':[4.8142,-74.3597],'facatativá':[4.8142,-74.3597],
+  'mosquera':[4.7066,-74.2303],'madrid':[4.7339,-74.2644],
+  'soacha':[4.5797,-74.2167],'chia':[4.8614,-73.9314],'chía':[4.8614,-73.9314],
+  'cajica':[4.9186,-74.0028],'cajicá':[4.9186,-74.0028],
+  'tocancipa':[4.9678,-73.9139],'tocancipá':[4.9678,-73.9139],'gachancipa':[4.9969,-73.8717],
+  'barrancabermeja':[7.0653,-73.8546],'giron':[7.0725,-73.1686],'girón':[7.0725,-73.1686],
+  'floridablanca':[7.0639,-73.0880],'piedecuesta':[6.9868,-73.0522],
+  'lebrija':[7.1167,-73.2167],'san gil':[6.5567,-73.1356],
+  'socorro':[6.5133,-73.2642],'velez':[6.0125,-73.6778],'vélez':[6.0125,-73.6778],
+  'barbosa':[5.9364,-73.6189],
+  'yopal':[5.3378,-72.3952],'arauca':[7.0897,-70.7617],
+  'acacias':[3.9894,-73.7597],'granada':[3.5461,-73.7229],
+  'aguazul':[5.1739,-72.5506],'puerto lopez':[4.0847,-72.9583],
+  'restrepo':[4.2572,-73.5703],'cumaral':[4.2708,-73.4864],
+  'pasto':[1.2136,-77.2811],'popayan':[2.4448,-76.6147],'popayán':[2.4448,-76.6147],
+  'mocoa':[1.1520,-76.6481],'florencia':[1.6144,-75.6062],
+  'el tigre':[0.3500,-75.1833],'puerto asis':[0.5000,-76.5000],'puerto asís':[0.5000,-76.5000],
+  'orito':[0.6667,-76.8667],'la hormiga':[0.0833,-76.9000],
+  'sibundoy':[1.2000,-76.9167],'villagarzon':[1.0333,-76.6167],'villagarzón':[1.0333,-76.6167],
+  'leticia':[-4.2153,-69.9401],'mitu':[1.2531,-70.2333],
+  'puerto inirida':[3.8653,-67.9239],'san jose del guaviare':[2.5694,-72.6416],
+  'quibdo':[5.6919,-76.6583],'quibdó':[5.6919,-76.6583],'puerto carreno':[6.1893,-67.4841],
+  'palmira':[3.5394,-76.3036],'buga':[3.9006,-76.3032],
+  'tulua':[4.0847,-76.1992],'tuluá':[4.0847,-76.1992],'girardot':[4.3022,-74.8020],
+  'rionegro':[6.1553,-75.3742],
 };
+const geocodeCache={};
+const GMAPS_KEY='AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
 
-function geo(name){
-  if(!name) return null;
-  const n=name.trim().toLowerCase();
-  if(CITIES[n]) return {...CITIES[n],name:name.trim()};
-  const norm=n.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  if(CITIES[norm]) return {...CITIES[norm],name:name.trim()};
+function normalizarNombre(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.\-_()]/g,' ').replace(/\s+/g,' ').trim()}
+function variantes(nombre){
+  const base=normalizarNombre(nombre),partes=base.split(' '),vs=[base],sw=['de','del','la','el','los','las','y'];
+  for(let i=1;i<partes.length;i++){if(sw.includes(partes[i-1])||sw.includes(partes[i])){vs.push(partes.slice(0,i).join(' '));vs.push(partes.slice(i+1).join(' '));}}
+  if(partes[0].length>4)vs.push(partes[0]);
+  return[...new Set(vs.filter(Boolean))];
+}
+function getCoordenadas(ciudad){
+  if(!ciudad)return null;
+  const cands=variantes(ciudad);
+  for(const[nombre,coords]of Object.entries(CIUDADES)){const n=normalizarNombre(nombre);for(const c of cands){if(n===c||c.includes(n)||n.includes(c))return coords;}}
   return null;
 }
+async function geocodeCiudad(ciudad){
+  if(!ciudad)return null;const key=ciudad.toLowerCase().trim();
+  if(geocodeCache[key])return geocodeCache[key];
+  try{const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ciudad+', Colombia')}&key=${GMAPS_KEY}`);const d=await r.json();
+  if(d.results&&d.results.length>0){const l=d.results[0].geometry.location;const c=[l.lat,l.lng];geocodeCache[key]=c;return c;}}catch(e){}return null;
+}
+async function getCoords(ciudad){return getCoordenadas(ciudad)||await geocodeCiudad(ciudad)}
+function geo(name){const c=getCoordenadas(name);return c?{lat:c[0],lng:c[1],name:name.trim()}:null}
 
-// ===== GOOGLE SHEET LOADER =====
-// VIAJES_LANDING: publicada en la web, CSV público
-// Columnas: ORIGEN,DESTINO,FECHA_CARGUE,FECHA_ENTREGA,PESO_KG,CONTENEDORES,CAJAS,BIDONES,CANECAS,UNIDADES_SUELTAS,OTRO,VALOR_MERCANCIA,KM,MINUTOS,PRECIO_BASE
+// Pricing Ridge R²=0.919
+const CC_ZONA_AJUSTE={'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226};
+const CC_ZONAS_CIUDADES={'LLANOS':['villavicencio','yopal','arauca','acacias','granada','puerto lopez','restrepo','cumaral','aguazul','tauramena','trinidad','paz de ariporo','orocue','san martin'],'BOYACA':['tunja','duitama','sogamoso','chiquinquira','paipa','villa de leyva','samaca','ventaquemada','tibasosa','nobsa'],'SANTANDERES':['bucaramanga','cucuta','giron','floridablanca','piedecuesta','san gil','barrancabermeja','pamplona','ocana','los patios'],'ORIENTE':['bucaramanga','cucuta','giron','floridablanca','piedecuesta','pamplona'],'CUNDINAMARCA':['zipaquira','chia','facatativa','soacha','mosquera','madrid','cajica','cota','tenjo','tabio','la calera','fusagasuga','silvania','tocancipa'],'EJE CAFETERO':['virginia','cartago','armenia','manizales','santa rosa','chinchina','pereira','dosquebradas','la virginia','calarca','montenegro','quimbaya','belalcazar'],'VALLE':['cali','palmira','buga','tulua','yumbo','jamundi','candelaria','ginebra','la union'],'ANTIOQUIA':['medellin','rionegro','envigado','itagui','bello','sabaneta','la ceja','marinilla','guarne','caucasia','apartado','turbo'],'CENTRO':['ibague','girardot','melgar','honda','mariquita','flandes','guamo'],'TOLHUIL':['neiva','garzon','pitalito','campoalegre','la plata','san agustin','espinal','natagaima','purificacion'],'OCCIDENTE':['cali','palmira','buga','tulua','sevilla','buenaventura','jamundi','candelaria','ginebra','el cerrito','dagua'],'NORTE':['monteria','valledupar','barranquilla','cartagena','santa marta','sincelejo','riohacha','lorica','cerete','magangue','mompox','el banco','aguachica'],'SUR':['pasto','ipiales','tumaco','popayan','mocoa','el tigre','puerto asis','orito','la hormiga','sibundoy','villagarzon','santander de quilichao','miranda','patia','florencia','belen de los andaquies']};
+const CC_RANGOS=[{label:'< 100 km',min:0,max:100,p25:380000,p75:800000},{label:'100–300 km',min:100,max:300,p25:900000,p75:1695000},{label:'300–600 km',min:300,max:600,p25:1500000,p75:2602500},{label:'600–1000 km',min:600,max:1000,p25:1040025,p75:4506945},{label:'≥ 1000 km',min:1000,max:9999,p25:4250000,p75:11030000}];
+function ccNorm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function ccFmt(n){return'$'+Math.round(n).toLocaleString('es-CO')}
+function ccRango(km){return CC_RANGOS.find(r=>km>=r.min&&km<r.max)||CC_RANGOS[4]}
+const CC_HUB=['funza','yumbo','espinal'];const CC_PRECIO_MINIMO=950000;
+function estimarPrecio(km,kg,paradas,destino,origen){
+  km=parseInt(km)||0;kg=parseInt(kg)||0;paradas=parseInt(paradas)||1;if(!km||!kg)return 0;
+  const zona=ccDetectarZona(destino||'',origen||''),aj=CC_ZONA_AJUSTE[zona]||0;
+  if(km<50)return Math.max(300000,260000+kg*28+63186*(paradas-1));
+  return Math.max(CC_PRECIO_MINIMO,3097.69*km+217.94*kg+0.1215*km*kg-1.0566*km*km-0.0034*kg*kg+63186*paradas+aj-306248);
+}
+function ccDetectarZona(d,o){
+  const on=ccNorm(o),dn=ccNorm(d);
+  if(CC_HUB.some(h=>on.includes(h))&&dn.split(',').map(x=>x.trim()).filter(Boolean).every(x=>CC_HUB.some(h=>x.includes(h))))return'HUB';
+  for(const[z,cs]of Object.entries(CC_ZONAS_CIUDADES)){if(cs.some(c=>dn.includes(c)))return z;}return'';
+}
+const fmt=n=>new Intl.NumberFormat('es-CO').format(Math.round(n));
+
+// ================================================================
+// GOOGLE SHEET LOADER (VIAJES_LANDING CSV publicado)
+// ================================================================
 const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1429690977&single=true&output=csv';
-// Google Visualization API (soporta JSONP, evita CORS)
-const SHEET_ID_ORIGINAL='1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4';
-const GVIZ_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID_ORIGINAL}/gviz/tq?tqx=out:csv&gid=1429690977`;
+const SHEET_ID_ORIG='1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4';
 let TRIPS=[];
 
 async function loadSheet(){
-  const statusEl=document.getElementById('sheetStatus');
-  statusEl.textContent='Conectando con Google Sheet...';
-  statusEl.style.color='';
-  
-  // Método 1: fetch directo del CSV publicado
-  try {
-    const resp=await fetch(CSV_URL);
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text=await resp.text();
-    if(text.includes('<!DOCTYPE')||text.includes('<html')) throw new Error('HTML recibido');
-    if(text.includes('ORIGEN')){ parseCSV(text); return; }
-    throw new Error('CSV vacío');
-  } catch(e1){
-    console.log('Método 1 (fetch CSV) falló:',e1.message);
-  }
-  
-  // Método 2: Google Visualization API con JSONP callback
-  try {
-    const jsonpData = await new Promise((resolve, reject) => {
-      const cbName = '_gvizCb' + Date.now();
-      const timeout = setTimeout(() => { reject(new Error('Timeout JSONP')); delete window[cbName]; }, 8000);
-      window[cbName] = function(response) {
-        clearTimeout(timeout);
-        delete window[cbName];
-        resolve(response);
-      };
-      const script = document.createElement('script');
-      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID_ORIGINAL}/gviz/tq?tqx=responseHandler:${cbName}&gid=1429690977`;
-      script.onerror = () => { clearTimeout(timeout); reject(new Error('JSONP script error')); };
-      document.body.appendChild(script);
-    });
-    
-    // Parse Google Visualization JSON response
-    if(jsonpData && jsonpData.table){
-      const table = jsonpData.table;
-      const headers = table.cols.map(c => c.label);
-      const rows = table.rows.map(r => r.c.map(cell => cell ? (cell.v !== null ? String(cell.v) : '') : ''));
-      
-      // Convert to CSV format and parse
-      const csvLines = [headers.join(',')];
-      rows.forEach(r => csvLines.push(r.map(v => v.includes(',') ? `"${v}"` : v).join(',')));
-      parseCSV(csvLines.join('\n'));
-      return;
-    }
-    throw new Error('Respuesta GVIZ vacía');
-  } catch(e2){
-    console.log('Método 2 (JSONP) falló:',e2.message);
-  }
-  
-  // Método 3: CORS proxy (allorigins.win — gratuito, sin registro)
-  try {
-    statusEl.textContent='Intentando vía proxy CORS...';
-    const proxyUrl=`https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}`;
-    const resp=await fetch(proxyUrl);
-    if(!resp.ok) throw new Error(`Proxy HTTP ${resp.status}`);
-    const text=await resp.text();
-    if(text.includes('ORIGEN')){ parseCSV(text); return; }
-    throw new Error('Proxy no devolvió CSV');
-  } catch(e3){
-    console.log('Método 3 (proxy) falló:',e3.message);
-  }
-  
-  // Todos fallaron
-  statusEl.textContent='No se pudo conectar al Sheet — Sube esta página a netfleet.app o usa un servidor local';
-  statusEl.style.color='var(--danger)';
+  const st=document.getElementById('sheetStatus');st.textContent='Conectando...';st.style.color='';
+  // Method 1: direct fetch
+  try{const r=await fetch(CSV_URL);if(!r.ok)throw 0;const t=await r.text();if(!t.includes('ORIGEN'))throw 0;parseCSV(t);return;}catch(e){}
+  // Method 2: JSONP
+  try{const d=await new Promise((ok,no)=>{const cb='_gv'+Date.now();const to=setTimeout(()=>{no(0);delete window[cb]},8000);
+    window[cb]=r=>{clearTimeout(to);delete window[cb];ok(r)};const s=document.createElement('script');
+    s.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID_ORIG}/gviz/tq?tqx=responseHandler:${cb}&gid=1429690977`;s.onerror=()=>{clearTimeout(to);no(0)};document.body.appendChild(s)});
+    if(d&&d.table){const h=d.table.cols.map(c=>c.label),rows=d.table.rows.map(r=>r.c.map(c=>c?(c.v!=null?String(c.v):''):''));
+    parseCSV([h.join(','),...rows.map(r=>r.map(v=>v.includes(',')?`"${v}"`:v).join(','))].join('\n'));return;}}catch(e){}
+  // Method 3: CORS proxy
+  try{const r=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}`);const t=await r.text();if(t.includes('ORIGEN')){parseCSV(t);return;}}catch(e){}
+  st.textContent='No se pudo conectar al Sheet';st.style.color='var(--danger)';
 }
-
 function parseCSV(text){
-  const rows=[];
-  let current=''; let inQuotes=false; let row=[];
-  for(let i=0;i<text.length;i++){
-    const ch=text[i];
-    if(ch==='"'){ inQuotes=!inQuotes; continue; }
-    if(ch===','&&!inQuotes){ row.push(current.trim()); current=''; continue; }
-    if((ch==='\n'||ch==='\r')&&!inQuotes){
-      if(current.length||row.length){ row.push(current.trim()); rows.push(row); }
-      row=[]; current='';
-      if(ch==='\r'&&text[i+1]==='\n') i++;
-      continue;
-    }
-    current+=ch;
-  }
-  if(current.length||row.length){ row.push(current.trim()); rows.push(row); }
-  
-  if(rows.length<2){
-    document.getElementById('sheetStatus').textContent='Sheet sin viajes disponibles (0 filas)';
-    document.getElementById('sheetStatus').style.color='var(--warn)';
-    return;
-  }
-  
-  const headers=rows[0];
-  TRIPS=[];
-  for(let r=1;r<rows.length;r++){
-    const d={};
-    headers.forEach((h,i)=>d[h]=rows[r][i]||'');
-    if(!d.ORIGEN) continue;
-    
+  const rows=[];let cur='',inQ=false,row=[];
+  for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){inQ=!inQ;continue}if(c===','&&!inQ){row.push(cur.trim());cur='';continue}
+  if((c==='\n'||c==='\r')&&!inQ){if(cur.length||row.length){row.push(cur.trim());rows.push(row)}row=[];cur='';if(c==='\r'&&text[i+1]==='\n')i++;continue}cur+=c;}
+  if(cur.length||row.length){row.push(cur.trim());rows.push(row)}
+  if(rows.length<2){document.getElementById('sheetStatus').textContent='0 viajes';return}
+  const hd=rows[0];TRIPS=[];
+  for(let r=1;r<rows.length;r++){const d={};hd.forEach((h,i)=>d[h]=rows[r][i]||'');if(!d.ORIGEN)continue;
     const origenes=[...new Set(d.ORIGEN.split(',').map(s=>s.trim()).filter(Boolean))];
     const destinos=[...new Set(d.DESTINO.split(',').map(s=>s.trim()).filter(Boolean))];
-    
-    TRIPS.push({
-      id:'VJ-'+(r), rt:'—', empresa:'Avgust',
-      origenes, destinos,
-      origenStr:d.ORIGEN, destinoStr:d.DESTINO,
-      fecha:d.FECHA_CARGUE, peso:parseFloat(d.PESO_KG)||0,
-      km:parseInt(d.KM)||0, minutos:d.MINUTOS,
-      precio:parseInt((d.PRECIO_BASE||'0').replace(/\./g,''))||0,
-      valor:parseInt((d.VALOR_MERCANCIA||'0').replace(/\./g,''))||0,
-      estado:'DISPONIBLE',
-      cajas:parseInt(d.CAJAS)||0, bidones:parseInt(d.BIDONES)||0,
-      contenedores:parseInt(d.CONTENEDORES)||0,
-      canecas:parseInt(d.CANECAS)||0,
-      unidadesSueltas:parseInt(d.UNIDADES_SUELTAS)||0,
-    });
-  }
-  
-  populateSelect();
-  document.getElementById('sheetStatus').textContent=
-    `${TRIPS.length} viajes en vivo — VIAJES_LANDING`;
-  document.getElementById('sheetStatus').style.color='var(--accent)';
+    TRIPS.push({id:'VJ-'+r,origenes,destinos,origenStr:d.ORIGEN,destinoStr:d.DESTINO,
+      fecha:d.FECHA_CARGUE,peso:parseFloat(d.PESO_KG)||0,km:parseInt(d.KM)||0,minutos:d.MINUTOS,
+      precio:parseInt((d.PRECIO_BASE||'0').replace(/\./g,''))||0,valor:parseInt((d.VALOR_MERCANCIA||'0').replace(/\./g,''))||0,
+      cajas:parseInt(d.CAJAS)||0,bidones:parseInt(d.BIDONES)||0,contenedores:parseInt(d.CONTENEDORES)||0,
+      canecas:parseInt(d.CANECAS)||0,unidadesSueltas:parseInt(d.UNIDADES_SUELTAS)||0});}
+  populateSelect();document.getElementById('sheetStatus').textContent=`${TRIPS.length} viajes en vivo`;document.getElementById('sheetStatus').style.color='var(--green)';
 }
 
+// ================================================================
+// UI — Select, Windows, Meta
+// ================================================================
 function populateSelect(){
-  const sel=document.getElementById('tripSelect');
-  sel.innerHTML='<option value="">— Seleccionar viaje —</option>';
-  TRIPS.forEach((t,i)=>{
-    const nDest=t.destinos.length;
-    const label=`${t.origenes[0]} → ${t.destinos[0]}${nDest>1?' +'+String(nDest-1):''}  (${t.km}km, ${fmt(t.peso)}kg)`;
-    const opt=document.createElement('option');
-    opt.value=i; opt.textContent=label;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener('change',onTripChange);
+  const sel=document.getElementById('tripSelect');sel.innerHTML='<option value="">— Seleccionar —</option>';
+  TRIPS.forEach((t,i)=>{const nd=t.destinos.length;const o=document.createElement('option');
+    o.value=i;o.textContent=`${t.origenes[0]} → ${t.destinos[0]}${nd>1?' +'+String(nd-1):''} (${t.km}km, ${fmt(t.peso)}kg)`;sel.appendChild(o)});
+  sel.onchange=onTripChange;
 }
-
 function onTripChange(){
-  const idx=document.getElementById('tripSelect').value;
-  const meta=document.getElementById('tripMeta');
-  if(idx===''){meta.style.display='none';return;}
-  const t=TRIPS[idx];
-  meta.style.display='grid';
-  document.getElementById('tmEmpresa').textContent=t.fecha;
+  const i=document.getElementById('tripSelect').value,m=document.getElementById('tripMeta');
+  if(i===''){m.style.display='none';clearDestPanel();return}
+  const t=TRIPS[i];m.style.display='grid';
+  document.getElementById('tmFecha').textContent=t.fecha;
   document.getElementById('tmPeso').textContent=fmt(t.peso)+' kg';
-  document.getElementById('tmValor').textContent='$'+fmt(t.valor);
-  const carga=[]; 
-  if(t.cajas) carga.push(t.cajas+' cajas');
-  if(t.bidones) carga.push(t.bidones+' bid.');
-  if(t.contenedores) carga.push(t.contenedores+' cont.');
-  if(t.canecas) carga.push(t.canecas+' can.');
-  if(t.unidadesSueltas) carga.push(t.unidadesSueltas+' uds.');
-  document.getElementById('tmRT').textContent=carga.join(', ')||'—';
+  document.getElementById('tmValor').textContent=ccFmt(t.valor);
+  const c=[];if(t.cajas)c.push(t.cajas+' caj');if(t.bidones)c.push(t.bidones+' bid');if(t.contenedores)c.push(t.contenedores+' cont');
+  document.getElementById('tmCarga').textContent=c.join(', ')||'—';
+  buildDestPanel(t);
+}
+let winC=2;
+function addWin(){const g=document.getElementById('winGrid'),d=document.createElement('div');d.className='win-row';d.dataset.win=winC;
+  d.innerHTML=`<input type="time" value="08:00" class="win-from"><span class="sep">—</span><input type="time" value="12:00" class="win-to"><button class="win-rm" onclick="rmWin(${winC})">&times;</button>`;g.appendChild(d);winC++}
+function rmWin(id){document.querySelector(`#winGrid .win-row[data-win="${id}"]`)?.remove()}
+function rmWinSat(id){document.querySelector(`#winGridSat .win-row[data-win="${id}"]`)?.remove()}
+function getWins(gridId){return Array.from(document.querySelectorAll(`#${gridId} .win-row`)).map(r=>({from:timeToMin(r.querySelector('.win-from').value),to:timeToMin(r.querySelector('.win-to').value)})).sort((a,b)=>a.from-b.from)}
+function timeToMin(s){const[h,m]=s.split(':').map(Number);return h*60+m}
+function minToTime(m){while(m<0)m+=24*60;const d=Math.floor(m/(24*60));m=m%(24*60);const h=Math.floor(m/60),mm=Math.round(m%60);const ap=h>=12?'PM':'AM';const h12=h===0?12:(h>12?h-12:h);let s=`${h12}:${String(mm).padStart(2,'0')} ${ap}`;if(d>0)s+=` (+${d}d)`;return s}
+
+// ================================================================
+// RIGHT PANEL — Destination Conditions
+// ================================================================
+const DAYS=['L','M','X','J','V','S','D'];
+const DAY_DEFAULTS=[true,true,true,true,true,'half',false]; // L-V full, Sat half, Sun closed
+let destConditions=[];  // per-destination conditions
+let suggestedOrder=[];  // OSRM optimized order
+let userOrder=[];       // user-modified order
+
+function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Analiza un viaje para ver los destinos</div>';
+  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];}
+
+function buildDestPanel(trip){
+  const list=document.getElementById('destList');list.innerHTML='';
+  destConditions=[];userOrder=[];
+  const defaultWinsLV=getWins('winGrid');
+  const defaultWinsSat=getWins('winGridSat');
+  const descMin=parseInt(document.getElementById('inDescargue').value)||60;
+  
+  trip.destinos.forEach((city,i)=>{
+    const cond={
+      city,idx:i,
+      days:[...DAY_DEFAULTS], // L M X J V S D
+      winsLV:[...defaultWinsLV.map(w=>({...w}))],
+      winsSat:[...defaultWinsSat.map(w=>({...w}))],
+      descMin,
+      priority:false,  // "entregar primero"
+      customWins:false, // using custom windows
+    };
+    destConditions.push(cond);
+    userOrder.push(i);
+    list.appendChild(createDestCard(cond,i));
+  });
+  document.getElementById('rpBadge').textContent=`${trip.destinos.length} destinos`;
+  initDragDrop();
 }
 
-// ===== UTILITIES =====
-const fmt=n=>new Intl.NumberFormat('es-CO').format(Math.round(n));
-function timeToMin(str){const[h,m]=str.split(':').map(Number);return h*60+m;}
-function minToTime(m){
-  while(m<0)m+=24*60;
-  const d=Math.floor(m/(24*60)); m=m%(24*60);
-  const hh=Math.floor(m/60); const mm=Math.round(m%60);
-  const ap=hh>=12?'PM':'AM'; const h12=hh===0?12:(hh>12?hh-12:hh);
-  let s=`${h12}:${String(mm).padStart(2,'0')} ${ap}`;
-  if(d>0) s+=` (+${d}d)`;
-  return s;
+function createDestCard(cond,displayIdx){
+  const card=document.createElement('div');
+  card.className='dest-card';card.dataset.idx=cond.idx;card.draggable=true;
+  
+  let daysHtml='';
+  DAYS.forEach((d,di)=>{
+    const state=cond.days[di];
+    const cls=state===true?'on':(state==='half'?'half':'');
+    daysHtml+=`<div class="dc-day ${cls}" data-di="${di}" onclick="toggleDay(${cond.idx},${di})">${d}</div>`;
+  });
+  
+  card.innerHTML=`
+    <div class="dc-head">
+      <span class="num" id="dnum-${cond.idx}">${displayIdx+1}</span>
+      <span class="city">${cond.city}</span>
+      <span class="drag" title="Arrastrar para reordenar">⠿</span>
+    </div>
+    <div class="dc-lbl">Días de atención</div>
+    <div class="dc-days" id="ddays-${cond.idx}">${daysHtml}</div>
+    <div class="dc-grid">
+      <div class="dc-field">
+        <div class="dc-lbl">Ventana 1</div>
+        <div class="dc-times"><input type="time" value="08:00" onchange="updateDestWin(${cond.idx})" class="dw-from-1" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="12:00" onchange="updateDestWin(${cond.idx})" class="dw-to-1" style="font-size:10px;padding:3px 4px"></div>
+      </div>
+      <div class="dc-field">
+        <div class="dc-lbl">Ventana 2 (L-V)</div>
+        <div class="dc-times"><input type="time" value="14:00" onchange="updateDestWin(${cond.idx})" class="dw-from-2" style="font-size:10px;padding:3px 4px"><span class="sep">—</span><input type="time" value="16:00" onchange="updateDestWin(${cond.idx})" class="dw-to-2" style="font-size:10px;padding:3px 4px"></div>
+      </div>
+    </div>
+    <div class="dc-prio">
+      <label><input type="checkbox" onchange="togglePrio(${cond.idx},this.checked)"> Entregar primero</label>
+      <label style="margin-left:auto"><input type="number" value="${cond.descMin}" min="15" max="180" step="15" style="width:48px;font-size:10px;padding:2px 4px" onchange="updateDescMin(${cond.idx},this.value)"> min desc.</label>
+    </div>
+    <div class="dc-info" id="dinfo-${cond.idx}">
+      <span>ETA:</span><strong class="eta" id="deta-${cond.idx}">—</strong>
+      <span>Fecha entrega:</span><strong id="ddate-${cond.idx}">—</strong>
+    </div>
+    <div class="dc-diff" id="ddiff-${cond.idx}" style="display:none"></div>
+  `;
+  return card;
 }
 
-// ===== WINDOWS =====
-let winCounter=2;
-function addWindow(){
-  const grid=document.getElementById('winGrid');
-  const div=document.createElement('div');
-  div.className='win-row'; div.dataset.win=winCounter;
-  div.innerHTML=`<input type="time" value="08:00" class="win-from"><span class="sep">—</span><input type="time" value="12:00" class="win-to"><button class="win-remove" onclick="removeWindow(${winCounter})">&times;</button>`;
-  grid.appendChild(div);
-  winCounter++;
+function toggleDay(idx,di){
+  const c=destConditions[idx];
+  const current=c.days[di];
+  // Cycle: true → half → false → true
+  if(current===true)c.days[di]='half';
+  else if(current==='half')c.days[di]=false;
+  else c.days[di]=true;
+  
+  const el=document.querySelector(`#ddays-${idx} .dc-day[data-di="${di}"]`);
+  el.className='dc-day '+(c.days[di]===true?'on':(c.days[di]==='half'?'half':''));
 }
-function removeWindow(id){
-  const row=document.querySelector(`.win-row[data-win="${id}"]`);
-  if(row) row.remove();
-}
-function getWindows(){
-  const rows=document.querySelectorAll('.win-row');
-  return Array.from(rows).map(r=>({
-    from:timeToMin(r.querySelector('.win-from').value),
-    to:timeToMin(r.querySelector('.win-to').value)
-  })).sort((a,b)=>a.from-b.from);
+function togglePrio(idx,checked){destConditions[idx].priority=checked}
+function updateDescMin(idx,val){destConditions[idx].descMin=parseInt(val)||60}
+function updateDestWin(idx){
+  const card=document.querySelector(`.dest-card[data-idx="${idx}"]`);
+  const c=destConditions[idx];
+  c.winsLV=[
+    {from:timeToMin(card.querySelector('.dw-from-1').value),to:timeToMin(card.querySelector('.dw-to-1').value)},
+    {from:timeToMin(card.querySelector('.dw-from-2').value),to:timeToMin(card.querySelector('.dw-to-2').value)}
+  ].filter(w=>w.from<w.to);
+  c.winsSat=[{from:timeToMin(card.querySelector('.dw-from-1').value),to:timeToMin(card.querySelector('.dw-to-1').value)}];
+  c.customWins=true;
 }
 
-// ===== MAP =====
-const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],7);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+// Drag & Drop reorder
+function initDragDrop(){
+  const list=document.getElementById('destList');
+  let dragIdx=null;
+  list.querySelectorAll('.dest-card').forEach(card=>{
+    card.addEventListener('dragstart',e=>{dragIdx=parseInt(card.dataset.idx);card.style.opacity='.4'});
+    card.addEventListener('dragend',()=>{card.style.opacity='';list.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'))});
+    card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('drag-over')});
+    card.addEventListener('dragleave',()=>card.classList.remove('drag-over'));
+    card.addEventListener('drop',e=>{
+      e.preventDefault();card.classList.remove('drag-over');
+      const dropIdx=parseInt(card.dataset.idx);
+      if(dragIdx===null||dragIdx===dropIdx)return;
+      // Reorder userOrder
+      const fromPos=userOrder.indexOf(dragIdx);
+      const toPos=userOrder.indexOf(dropIdx);
+      userOrder.splice(fromPos,1);
+      userOrder.splice(toPos,0,dragIdx);
+      // Re-render numbers
+      userOrder.forEach((origIdx,pos)=>{
+        const numEl=document.getElementById(`dnum-${origIdx}`);
+        if(numEl){numEl.textContent=pos+1;numEl.className='num'+(pos!==origIdx?' changed':'');}
+      });
+      updateCompareBar();
+    });
+  });
+}
+
+function updateCompareBar(){
+  if(!suggestedOrder.length)return;
+  const bar=document.getElementById('compareBar');
+  const isChanged=JSON.stringify(userOrder)!==JSON.stringify(suggestedOrder.map((_,i)=>i));
+  if(!isChanged){bar.style.display='none';return}
+  bar.style.display='block';
+  // Show difference
+  document.querySelectorAll('.dc-diff').forEach(el=>el.style.display='none');
+  userOrder.forEach((origIdx,pos)=>{
+    const sugPos=suggestedOrder.findIndex(s=>s===origIdx);
+    const diff=pos-sugPos;
+    const el=document.getElementById(`ddiff-${origIdx}`);
+    if(el&&diff!==0){
+      el.style.display='block';
+      el.className='dc-diff '+(Math.abs(diff)>2?'suboptimal':'optimal');
+      el.textContent=diff>0?`↓ ${diff} posiciones vs sugerido`:`↑ ${Math.abs(diff)} posiciones vs sugerido`;
+    }
+  });
+}
+
+// ================================================================
+// MAP
+// ================================================================
+const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
 let mapLayers=[];
+function clearMap(){mapLayers.forEach(l=>map.removeLayer(l));mapLayers=[]}
 
-function clearMap(){mapLayers.forEach(l=>map.removeLayer(l));mapLayers=[];}
-
-// ===== OSRM ROUTING =====
-async function getOSRMTrip(stops, includeReturn){
-  const coords=stops.map(s=>`${s.lng},${s.lat}`).join(';');
-  const destParam=includeReturn?'&destination=last':'';
-  const url=`https://router.project-osrm.org/trip/v1/driving/${coords}?source=first${destParam}&roundtrip=false&overview=full&geometries=geojson&steps=false`;
-  const resp=await fetch(url);
-  const data=await resp.json();
-  if(data.code!=='Ok') throw new Error('OSRM error: '+data.code);
-  return data;
-}
-
-// ===== MAIN ANALYSIS =====
+// ================================================================
+// ANALYSIS ENGINE
+// ================================================================
 async function runAnalysis(){
   const tripIdx=document.getElementById('tripSelect').value;
-  if(tripIdx===''){alert('Selecciona un viaje primero');return;}
-  
-  const btn=document.getElementById('btnRun');
-  btn.disabled=true; btn.textContent='Calculando ruta OSRM...';
-  
+  if(tripIdx==='')return alert('Selecciona un viaje');
+  const btn=document.getElementById('btnRun');btn.disabled=true;btn.textContent='Calculando OSRM...';
   const trip=TRIPS[tripIdx];
   const arrivalMin=timeToMin(document.getElementById('inArrival').value);
   const waitMin=parseInt(document.getElementById('inWait').value)||0;
   const cargueMin=parseInt(document.getElementById('inCargue').value)||0;
-  const descargueMin=parseInt(document.getElementById('inDescargue').value)||0;
-  const windows=getWindows();
+  const defaultDescMin=parseInt(document.getElementById('inDescargue').value)||60;
+  const defaultWinsLV=getWins('winGrid');
+  const defaultWinsSat=getWins('winGridSat');
   const includeReturn=document.getElementById('inRetorno').value==='yes';
-  const maxNocturno=document.getElementById('inNocturno').value;
-  const maxDriveHour=maxNocturno==='none'?18:parseInt(maxNocturno);
+  const maxNH=document.getElementById('inNocturno').value;
+  const maxDriveH=maxNH==='none'?18:parseInt(maxNH);
   
-  // Build stop list
+  // Build stops with user order (or priority override)
   const origin=geo(trip.origenes[0]);
-  if(!origin){alert('No se encontró coordenadas para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Analizar ruta';return;}
+  if(!origin){alert('Sin coords para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Analizar ruta';return}
   
-  const destCoords=[];
-  const missingCities=[];
-  for(const d of trip.destinos){
-    const c=geo(d);
-    if(c) destCoords.push(c);
-    else missingCities.push(d);
+  // Resolve all dest coords
+  const destGeo=[];const missing=[];
+  for(const d of trip.destinos){const c=geo(d);if(c)destGeo.push({...c,origIdx:trip.destinos.indexOf(d)});else missing.push(d)}
+  if(!destGeo.length){alert('Sin coordenadas para destinos');btn.disabled=false;btn.textContent='Analizar ruta';return}
+  
+  // Apply priority: move priority items to front
+  let orderedDests=[...destGeo];
+  const prioIdxs=destConditions.filter(c=>c.priority).map(c=>c.idx);
+  if(prioIdxs.length){
+    const prio=orderedDests.filter(d=>prioIdxs.includes(d.origIdx));
+    const rest=orderedDests.filter(d=>!prioIdxs.includes(d.origIdx));
+    orderedDests=[...prio,...rest];
   }
-  if(destCoords.length===0){alert('No se encontraron coordenadas para ningún destino');btn.disabled=false;btn.textContent='Analizar ruta';return;}
   
-  // OSRM stops
-  const osrmStops=[{...origin,type:'origin'}];
-  destCoords.forEach(c=>osrmStops.push({...c,type:'dest'}));
-  if(includeReturn) osrmStops.push({...origin,name:origin.name+' (Retorno)',type:'return'});
+  // Check if user reordered
+  const hasUserOrder=JSON.stringify(userOrder)!==JSON.stringify(destConditions.map((_,i)=>i));
+  if(hasUserOrder){
+    orderedDests=userOrder.map(i=>destGeo.find(d=>d.origIdx===i)).filter(Boolean);
+  }
   
-  try {
-    btn.textContent='Consultando OSRM...';
-    const osrm=await getOSRMTrip(osrmStops,includeReturn);
-    const tripData=osrm.trips[0];
-    const wps=osrm.waypoints;
+  // Build OSRM stops
+  const osrmStops=[{...origin,type:'origin'},...orderedDests.map(d=>({...d,type:'dest'}))];
+  if(includeReturn)osrmStops.push({...origin,name:origin.name+' (Retorno)',type:'return'});
+  
+  try{
+    const useOSRMOpt=!hasUserOrder&&!prioIdxs.length;
+    let tripData,wps,ordered;
     
-    // Ordered stops from OSRM optimization
-    const ordered=wps.map((wp,i)=>({
-      ...osrmStops[wp.waypoint_index],
-      wpIdx:wp.waypoint_index,
-    }));
-    
-    // Leg info
-    const legs=tripData.legs.map((leg,i)=>({
-      from:ordered[i].name,
-      to:ordered[i+1].name,
-      km:Math.round(leg.distance/1000*10)/10,
-      min:Math.round(leg.duration/60),
-      fromCoord:ordered[i],
-      toCoord:ordered[i+1]
-    }));
-    
-    // ===== TIMELINE CALCULATION =====
-    let clock=arrivalMin+waitMin; // ingreso real
-    const cargueStart=clock;
-    clock+=cargueMin; // sale de cargue
-    const cargueEnd=clock;
-    
-    const timeline=[];
-    let cumKm=0;
-    let dayNum=0;
-    let stopNum=0;
-    
-    // Cargue event
-    timeline.push({
-      time:cargueStart,day:0,type:'cargue',city:origin.name,
-      action:`Cargue (${cargueMin} min)`,idx:'C',cumKm:0,dur:cargueMin
-    });
-    timeline.push({
-      time:cargueEnd,day:0,type:'salida',city:'',action:'Sale de planta',idx:'',cumKm:0
-    });
-    
-    function inWin(minOfDay){
-      return windows.some(w=>minOfDay>=w.from&&minOfDay<w.to);
-    }
-    function nextWinStart(minOfDay){
-      for(const w of windows){if(minOfDay<w.from) return w.from;}
-      return -1; // no more windows today
+    if(useOSRMOpt){
+      // Let OSRM optimize order
+      const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
+      const dest=includeReturn?'&destination=last':'';
+      const r=await fetch(`https://router.project-osrm.org/trip/v1/driving/${coords}?source=first${dest}&roundtrip=false&overview=full&geometries=geojson&steps=false`);
+      const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
+      tripData=data.trips[0];wps=data.waypoints;
+      ordered=wps.map(wp=>osrmStops[wp.waypoint_index]);
+      suggestedOrder=wps.filter(wp=>osrmStops[wp.waypoint_index].type==='dest').map(wp=>osrmStops[wp.waypoint_index].origIdx);
+    } else {
+      // Use fixed order — get route without optimization
+      const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
+      const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);
+      const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
+      tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
+      ordered=osrmStops;
+      wps=osrmStops.map((s,i)=>({waypoint_index:i}));
+      suggestedOrder=destGeo.map(d=>d.origIdx);
     }
     
-    for(let i=0;i<legs.length;i++){
-      const leg=legs[i];
-      const driveMin=leg.min;
-      cumKm+=leg.km;
-      clock+=driveMin;
+    const legs=tripData.legs||(tripData.legs?tripData.legs:[]);
+    const totalKm=Math.round((tripData.distance||0)/1000);
+    const totalDriveMin=Math.round((tripData.duration||0)/60);
+    
+    // ── TIMELINE with per-destination conditions ──
+    let clock=arrivalMin+waitMin;
+    const cargueStart=clock;clock+=cargueMin;
+    const timeline=[];let cumKm=0;let stopNum=0;
+    const dateFechaBase=trip.fecha?parseFecha(trip.fecha):new Date();
+    let currentDay=0; // 0=day of cargue
+    
+    timeline.push({time:cargueStart,day:0,type:'cargue',city:origin.name,action:`Cargue (${cargueMin} min)`,idx:'C',cumKm:0,dur:cargueMin});
+    timeline.push({time:clock,day:0,type:'salida',city:'',action:'Sale de planta',idx:'',cumKm:0});
+    
+    function getDayOfWeek(dayOffset){
+      const base=dateFechaBase.getDay(); // 0=Sun
+      return(base+dayOffset)%7;
+    }
+    function getWinsForDest(destIdx,dayOffset){
+      const dow=getDayOfWeek(dayOffset); // 0=Sun,1=Mon...6=Sat
+      const cond=destConditions[destIdx];
+      if(!cond)return defaultWinsLV;
+      const dayMap=[6,0,1,2,3,4,5]; // JS dow → our index (L=0...D=6)
+      const ourDay=dayMap[dow];
+      const dayState=cond.days[ourDay];
+      if(dayState===false)return[]; // closed
+      if(dayState==='half')return cond.customWins?cond.winsSat:defaultWinsSat;
+      return cond.customWins?cond.winsLV:defaultWinsLV;
+    }
+    function isInWins(wins,mod){return wins.some(w=>mod>=w.from&&mod<w.to)}
+    function nextWinStart(wins,mod){for(const w of wins){if(mod<w.from)return w.from}return-1}
+    
+    for(let i=0;i<ordered.length-1;i++){
+      const from=ordered[i],to=ordered[i+1];
+      if(!legs[i])continue;
+      const driveMin=Math.round(legs[i].duration/60);
+      const legKm=Math.round(legs[i].distance/1000*10)/10;
+      cumKm+=legKm;clock+=driveMin;
       
-      const isReturn=ordered[i+1].type==='return';
-      const isDest=ordered[i+1].type==='dest';
+      timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',action:`${driveMin} min / ${legKm} km`,cumKm:Math.round(cumKm)});
       
-      // Drive event
-      timeline.push({
-        time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',
-        action:`${driveMin} min / ${leg.km} km`,idx:'',cumKm:Math.round(cumKm),dur:driveMin
-      });
+      if(to.type==='return'){
+        timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'return',city:to.name,idx:'R',cumKm:Math.round(cumKm)});break;
+      }
+      if(to.type!=='dest')continue;
       
-      if(isReturn){
-        timeline.push({
-          time:clock,day:Math.floor(clock/(24*60)),type:'return',
-          city:ordered[i+1].name,action:'Retorno',idx:'R',cumKm:Math.round(cumKm)
-        });
+      let eff=clock;let effDay=Math.floor(eff/(24*60));let mod=eff%(24*60);
+      const destIdx=to.origIdx;
+      const descMin=destConditions[destIdx]?.descMin||defaultDescMin;
+      
+      // Night driving check
+      if(maxDriveH<24&&mod>=maxDriveH*60){
+        effDay++;const wins=getWinsForDest(destIdx,effDay);
+        const nextStart=wins.length?wins[0].from:8*60;
+        eff=effDay*24*60+nextStart;mod=nextStart;
+        timeline.push({time:eff-nextStart,day:effDay-1,type:'pernocta',city:to.name,action:'Pernocta — límite nocturno'});
+      }
+      
+      // Check if day is open for this dest
+      let maxTries=7;
+      while(maxTries-->0){
+        const wins=getWinsForDest(destIdx,effDay);
+        if(wins.length===0){
+          timeline.push({time:eff,day:effDay,type:'wait',city:'',action:`${to.name}: cerrado este día`,dur:0});
+          effDay++;eff=effDay*24*60+(getWinsForDest(destIdx,effDay)[0]?.from||8*60);mod=eff%(24*60);continue;
+        }
+        if(!isInWins(wins,mod)){
+          const nw=nextWinStart(wins,mod);
+          if(nw===-1){effDay++;const nwins=getWinsForDest(destIdx,effDay);eff=effDay*24*60+(nwins[0]?.from||8*60);mod=eff%(24*60);
+            timeline.push({time:eff,day:effDay-1,type:'pernocta',city:to.name,action:'Cliente cerrado — siguiente día'});continue;}
+          const wait=nw-mod;
+          timeline.push({time:eff,day:effDay,type:'wait',city:'',action:`Espera ${wait} min`,dur:wait});
+          eff+=wait;mod=nw;
+        }
         break;
       }
       
-      if(!isDest) continue;
-      
-      // Check time of day
-      let effClock=clock;
-      let mod=effClock%(24*60);
-      
-      // Check if driving past nocturno limit
-      if(maxDriveHour<24 && mod>=maxDriveHour*60){
-        // Must stop for the night
-        const nextDayStart=Math.ceil(effClock/(24*60))*24*60+windows[0].from;
-        timeline.push({
-          time:effClock,day:Math.floor(effClock/(24*60)),type:'pernocta',
-          city:ordered[i+1].name,action:`Pernocta — conducción nocturna no permitida después de ${maxDriveHour>12?(maxDriveHour-12)+' PM':maxDriveHour+' AM'}`,
-        });
-        effClock=nextDayStart;
-        mod=effClock%(24*60);
-      }
-      
-      // Check if in client window
-      if(!inWin(mod)){
-        const nw=nextWinStart(mod);
-        if(nw===-1){
-          // No more windows today → pernocta
-          const nextDayStart=(Math.floor(effClock/(24*60))+1)*24*60+windows[0].from;
-          timeline.push({
-            time:effClock,day:Math.floor(effClock/(24*60)),type:'pernocta',
-            city:ordered[i+1].name,action:'Pernocta — cliente cerrado hasta mañana',
-          });
-          effClock=nextDayStart;
-        } else {
-          const waitTime=nw-mod;
-          const reason=mod>=12*60&&mod<14*60?'Almuerzo':'Espera apertura';
-          timeline.push({
-            time:effClock,day:Math.floor(effClock/(24*60)),type:'wait',
-            city:'',action:`${reason} (${waitTime} min)`,dur:waitTime
-          });
-          effClock+=waitTime;
-        }
-        mod=effClock%(24*60);
-      }
-      
-      // Check if descargue fits before window closes
-      const currentWin=windows.find(w=>mod>=w.from&&mod<w.to);
-      if(currentWin){
-        const remaining=currentWin.to-mod;
-        if(remaining<descargueMin){
-          // Doesn't fit — wait for next window
-          const nw=nextWinStart(currentWin.to);
-          if(nw===-1){
-            const nextDayStart=(Math.floor(effClock/(24*60))+1)*24*60+windows[0].from;
-            timeline.push({
-              time:effClock,day:Math.floor(effClock/(24*60)),type:'wait',
-              city:'',action:`Ventana insuficiente (${remaining} min) — espera siguiente`,dur:nw>0?nw-mod:0
-            });
-            effClock=nextDayStart;
-          } else {
-            const waitTime=nw-mod;
-            timeline.push({
-              time:effClock,day:Math.floor(effClock/(24*60)),type:'wait',
-              city:'',action:`Solo ${remaining} min en ventana, necesita ${descargueMin} — espera`,dur:waitTime
-            });
-            effClock+=waitTime;
-          }
-        }
-      }
-      
       stopNum++;
-      timeline.push({
-        time:effClock,day:Math.floor(effClock/(24*60)),type:'dest',
-        city:ordered[i+1].name,action:`Descargue (${descargueMin} min)`,
-        idx:stopNum,cumKm:Math.round(cumKm),dur:descargueMin
-      });
+      timeline.push({time:eff,day:effDay,type:'dest',city:to.name,idx:stopNum,cumKm:Math.round(cumKm),dur:descMin,destIdx});
       
-      clock=effClock+descargueMin;
-    }
-    
-    // If no return requested, add final marker
-    if(!includeReturn){
-      const lastDest=timeline.filter(t=>t.type==='dest').pop();
-      if(lastDest){
-        timeline.push({
-          time:lastDest.time+descargueMin,day:Math.floor((lastDest.time+descargueMin)/(24*60)),
-          type:'end',city:lastDest.city,action:'Fin de operación',idx:'FIN',cumKm:lastDest.cumKm
-        });
+      // Update dest card with ETA and delivery date
+      const etaEl=document.getElementById(`deta-${destIdx}`);
+      const dateEl=document.getElementById(`ddate-${destIdx}`);
+      if(etaEl)etaEl.textContent=minToTime(eff);
+      if(dateEl){
+        const deliveryDate=new Date(dateFechaBase);deliveryDate.setDate(deliveryDate.getDate()+effDay);
+        dateEl.textContent=deliveryDate.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
+        dateEl.className=effDay>0?'late':'eta';
       }
-    }
-    
-    // ===== RENDER RESULTS =====
-    const totalKm=Math.round(tripData.distance/1000);
-    const totalDriveMin=Math.round(tripData.duration/60);
-    const numDests=destCoords.length;
-    const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
-    const lastEvent=timeline[timeline.length-1];
-    const totalDays=Math.floor(lastEvent.time/(24*60))+1;
-    const totalOpMin=lastEvent.time-arrivalMin;
-    const totalDescMin=numDests*descargueMin;
-    
-    // KPIs
-    const kpiWarn=totalDays>1?'kpi-warn':'';
-    const kpiDanger=totalDays>2?'kpi-danger':'';
-    
-    let html=`<div class="kpis">
-      <div class="kpi"><div class="kpi-label">Km ruta real</div><div class="kpi-val">${fmt(totalKm)}</div><div class="kpi-sub">vs ${trip.km} km sheet</div></div>
-      <div class="kpi"><div class="kpi-label">Conducción</div><div class="kpi-val">${Math.floor(totalDriveMin/60)}h${totalDriveMin%60}m</div><div class="kpi-sub">sin paradas</div></div>
-      <div class="kpi"><div class="kpi-label">Descargues</div><div class="kpi-val">${numDests} × ${descargueMin}m</div><div class="kpi-sub">${Math.round(totalDescMin/60)}h total</div></div>
-      <div class="kpi ${kpiWarn} ${kpiDanger}"><div class="kpi-label">Días operación</div><div class="kpi-val">${totalDays}</div><div class="kpi-sub">${pernoctaCount} pernocta${pernoctaCount!==1?'s':''}</div></div>
-      <div class="kpi"><div class="kpi-label">Precio sheet</div><div class="kpi-val">$${fmt(trip.precio)}</div><div class="kpi-sub">$/km: $${fmt(trip.precio/trip.km)}</div></div>
-      <div class="kpi"><div class="kpi-label">$/km real</div><div class="kpi-val">$${fmt(trip.precio/totalKm)}</div><div class="kpi-sub">${totalKm} km reales</div></div>
-    </div>`;
-    
-    // Timeline by day
-    html+='<div class="tl-wrap">';
-    for(let d=0;d<totalDays;d++){
-      const dayEvents=timeline.filter(t=>t.day===d);
-      if(dayEvents.length===0) continue;
-      const dayStops=dayEvents.filter(t=>t.type==='dest').length;
-      const dayClass=`tl-day-${Math.min(d+1,4)}`;
       
-      html+=`<div class="tl-day ${dayClass}">`;
-      html+=`<div class="tl-day-head"><span>Día ${d+1}${d===0?' (cargue + entregas)':''}</span><span>${dayStops} entrega${dayStops!==1?'s':''}</span></div>`;
-      
-      for(const e of dayEvents){
-        const time=minToTime(e.time);
-        if(e.type==='drive'){
-          html+=`<div class="tl-row tl-drive"><span></span><span></span><span>Conduce ${e.action}</span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
-        } else if(e.type==='wait'){
-          html+=`<div class="tl-row tl-wait"><span class="tl-time">${time}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
-        } else if(e.type==='pernocta'){
-          html+=`<div class="tl-row tl-pernocta"><span class="tl-time">${time}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
-        } else if(e.type==='cargue'){
-          html+=`<div class="tl-row tl-cargue"><span class="tl-time">${time}</span><span class="tl-idx">${e.idx}</span><span><span class="tl-dot" style="background:#00c8a0"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm} km</span><span class="tl-act">${e.dur}m cargue</span></div>`;
-        } else if(e.type==='salida'){
-          html+=`<div class="tl-row" style="color:var(--text3)"><span class="tl-time">${time}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
-        } else if(e.type==='dest'){
-          html+=`<div class="tl-row"><span class="tl-time">${time}</span><span class="tl-idx">#${e.idx}</span><span><span class="tl-dot" style="background:#4090e0"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm} km</span><span class="tl-act">${descargueMin}m desc.</span></div>`;
-        } else if(e.type==='return'){
-          html+=`<div class="tl-row tl-return"><span class="tl-time">${time}</span><span class="tl-idx">R</span><span><span class="tl-dot" style="background:#6b6860"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
-        } else if(e.type==='end'){
-          html+=`<div class="tl-row" style="color:var(--accent)"><span class="tl-time">${time}</span><span class="tl-idx">${e.idx}</span><span><span class="tl-city">${e.action}</span></span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
-        }
-      }
-      html+='</div>';
+      clock=eff+descMin;
     }
-    html+='</div>';
     
-    // Alerts
-    html+='<div class="alerts">';
-    if(missingCities.length>0){
-      html+=`<div class="alert-box alert-info">Ciudades sin coordenadas (excluidas del análisis): ${missingCities.join(', ')}</div>`;
-    }
-    if(totalKm>trip.km*1.5){
-      html+=`<div class="alert-box alert-warn">La ruta real (${fmt(totalKm)} km) es ${Math.round(totalKm/trip.km*100-100)}% mayor que lo registrado en el sheet (${trip.km} km). El sheet calcula distancia al destino más lejano, no la ruta multi-parada.</div>`;
-    }
-    if(pernoctaCount>0){
-      html+=`<div class="alert-box alert-danger">Se requieren ${pernoctaCount} pernocta${pernoctaCount>1?'s':''} en ruta. Considerar viáticos ($80K–$120K/noche) y costo de oportunidad del vehículo.</div>`;
-    }
-    if(totalDays>1){
-      const viaticos=pernoctaCount*100000;
-      const combReal=totalKm*2500;
-      const costoReal=trip.precio;
-      html+=`<div class="alert-box alert-info"><strong>Estimación costos adicionales:</strong> Viáticos ~$${fmt(viaticos)} + combustible diferencial (~$${fmt(combReal-trip.km*2500)}) = ~$${fmt(viaticos+combReal-trip.km*2500)} adicionales sobre el precio base.</div>`;
-    }
-    html+='</div>';
+    // ── RENDER ──
+    renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
+    renderMap(tripData,ordered);
     
-    document.getElementById('emptyState').style.display='none';
-    document.getElementById('results').innerHTML=html;
-    
-    // ===== MAP =====
-    clearMap();
-    const routeCoords=tripData.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const routeLine=L.polyline(routeCoords,{color:'#00c8a0',weight:3,opacity:0.7});
-    routeLine.addTo(map); mapLayers.push(routeLine);
-    map.fitBounds(routeLine.getBounds(),{padding:[40,40]});
-    
-    // Markers in optimized order
-    ordered.forEach((s,i)=>{
-      const color=s.type==='origin'?'#00c8a0':(s.type==='return'?'#6b6860':'#4090e0');
-      const fill=s.type==='dest'?'#13171f':color;
-      const radius=s.type==='origin'?8:(s.type==='return'?6:5);
-      const m=L.circleMarker([s.lat,s.lng],{radius,color,fillColor:fill,fillOpacity:0.9,weight:2});
-      m.addTo(map); mapLayers.push(m);
-      
-      const tl=timeline.find(t=>(t.type==='dest'||t.type==='cargue'||t.type==='return')&&t.city===s.name);
-      const label=s.type==='origin'?'CARGUE':(s.type==='return'?'RETORNO':`#${i}`);
-      m.bindTooltip(`<b>${label} ${s.name}</b>${tl?'<br>'+minToTime(tl.time):''}`,{direction:'top'});
-      
-      if(s.type==='dest'){
-        const numLabel=L.tooltip({permanent:true,direction:'right',offset:[6,0],className:''})
-          .setLatLng([s.lat,s.lng])
-          .setContent(`<span style="font-size:9px;font-family:monospace;color:#4090e0;text-shadow:0 0 3px rgba(0,0,0,.8)">${i}</span>`);
-        numLabel.addTo(map); mapLayers.push(numLabel);
-      }
-    });
-    
-  } catch(err){
-    alert('Error en análisis: '+err.message);
-    console.error(err);
-  }
-  
-  btn.disabled=false; btn.textContent='Analizar ruta';
+  }catch(err){alert('Error: '+err.message);console.error(err)}
+  btn.disabled=false;btn.textContent='Analizar ruta';
 }
 
-// ===== INIT =====
+function parseFecha(str){const parts=str.split('/');if(parts.length===3)return new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));return new Date()}
+
+function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing){
+  const numDests=destConditions.length;
+  const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
+  const lastEvt=timeline[timeline.length-1];
+  const totalDays=Math.floor((lastEvt?.time||0)/(24*60))+1;
+  const zona=ccDetectarZona(trip.destinoStr,trip.origenStr);
+  const precioRidge=estimarPrecio(totalKm,trip.peso,numDests,trip.destinoStr,trip.origenStr);
+  const rango=ccRango(totalKm);
+  
+  const kw=totalDays>1?'kw':'';const kd=totalDays>2?'kd':'';
+  let h=`<div class="kpis">
+    <div class="kpi"><div class="kpi-l">Km OSRM</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">vs ${trip.km} sheet</div></div>
+    <div class="kpi"><div class="kpi-l">Conducción</div><div class="kpi-v">${Math.floor(totalDriveMin/60)}h${totalDriveMin%60}m</div><div class="kpi-s">sin paradas</div></div>
+    <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${numDests}h desc. total</div></div>
+    <div class="kpi ${kw} ${kd}"><div class="kpi-l">Días</div><div class="kpi-v">${totalDays}</div><div class="kpi-s">${pernoctaCount} pernocta</div></div>
+    <div class="kpi"><div class="kpi-l">Sheet</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">${trip.km} km</div></div>
+    <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Ridge ${totalKm}km</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'}</div></div>
+  </div>`;
+  
+  // Timeline by day
+  h+='<div class="tl-wrap">';
+  for(let d=0;d<totalDays;d++){
+    const de=timeline.filter(t=>t.day===d);if(!de.length)continue;
+    const ds=de.filter(t=>t.type==='dest').length;
+    const dc=`tl-d${Math.min(d+1,4)}`;
+    h+=`<div class="tl-day ${dc}"><div class="tl-dh"><span>Día ${d+1}</span><span>${ds} entrega${ds!==1?'s':''}</span></div>`;
+    for(const e of de){
+      const t=minToTime(e.time);
+      if(e.type==='drive')h+=`<div class="tl-r tl-drive"><span></span><span></span><span>Conduce ${e.action}</span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
+      else if(e.type==='wait')h+=`<div class="tl-r tl-wait"><span class="tl-time">${t}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
+      else if(e.type==='pernocta')h+=`<div class="tl-r tl-pernocta"><span class="tl-time">${t}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
+      else if(e.type==='cargue')h+=`<div class="tl-r tl-cargue"><span class="tl-time">${t}</span><span class="tl-idx">C</span><span><span class="tl-dot" style="background:var(--cyan)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">0</span><span class="tl-act">${e.dur}m</span></div>`;
+      else if(e.type==='salida')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span></span><span>Sale de planta</span><span></span><span></span></div>`;
+      else if(e.type==='dest')h+=`<div class="tl-r"><span class="tl-time">${t}</span><span class="tl-idx">#${e.idx}</span><span><span class="tl-dot" style="background:var(--navy)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm}</span><span class="tl-act">${e.dur}m</span></div>`;
+      else if(e.type==='return')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span class="tl-idx">R</span><span><span class="tl-dot" style="background:var(--text3)"></span>${e.city}</span><span class="tl-km">${e.cumKm}</span><span></span></div>`;
+    }
+    h+='</div>';
+  }
+  h+='</div>';
+  
+  // Alerts
+  h+='<div class="alerts">';
+  if(missing.length)h+=`<div class="al al-i">Sin coords: ${missing.join(', ')}</div>`;
+  if(totalKm>trip.km*1.5)h+=`<div class="al al-w">Ruta OSRM ${fmt(totalKm)} km (+${Math.round(totalKm/trip.km*100-100)}% vs sheet ${trip.km} km)</div>`;
+  if(pernoctaCount>0)h+=`<div class="al al-d">${pernoctaCount} pernocta — viáticos ~${ccFmt(pernoctaCount*100000)}</div>`;
+  h+=`<div class="al al-i">Rango mercado (${rango.label}): ${ccFmt(rango.p25)} — ${ccFmt(rango.p75)}</div>`;
+  h+='</div>';
+  
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('results').innerHTML=h;
+}
+
+function renderMap(tripData,ordered){
+  clearMap();
+  if(tripData.geometry){
+    const coords=tripData.geometry.coordinates.map(c=>[c[1],c[0]]);
+    const line=L.polyline(coords,{color:'#0E1B4D',weight:3,opacity:.7});line.addTo(map);mapLayers.push(line);
+    map.fitBounds(line.getBounds(),{padding:[30,30]});
+  }
+  ordered.forEach((s,i)=>{
+    const color=s.type==='origin'?'#00BFDF':(s.type==='return'?'#8890AB':'#0E1B4D');
+    const fill=s.type==='dest'?'#fff':color;
+    const r=s.type==='origin'?7:(s.type==='return'?5:5);
+    const m=L.circleMarker([s.lat,s.lng],{radius:r,color,fillColor:fill,fillOpacity:.9,weight:2});
+    m.addTo(map);mapLayers.push(m);
+    const label=s.type==='origin'?'CARGUE':(s.type==='return'?'RETORNO':`#${i}`);
+    m.bindTooltip(`<b>${label} ${s.name}</b>`,{direction:'top'});
+    if(s.type==='dest'){
+      const tip=L.tooltip({permanent:true,direction:'right',offset:[6,0]}).setLatLng([s.lat,s.lng])
+        .setContent(`<span style="font-size:9px;font-family:monospace;color:#0E1B4D;font-weight:600">${i}</span>`);
+      tip.addTo(map);mapLayers.push(tip);
+    }
+  });
+}
+
+// ================================================================
+// INIT
+// ================================================================
 loadSheet();
 </script>
 </body>

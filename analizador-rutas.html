@@ -30,17 +30,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .hdr-r{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.7)}
 .hdr-r button{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--cyan);font-family:var(--font);font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer}
 
-/* ── 3-COL LAYOUT ── */
-.app{display:grid;grid-template-columns:280px 1fr 340px;height:calc(100vh - 48px)}
+/* ── MAIN LAYOUT: 2 maps left + results right, collapsible sidebars ── */
+.app{display:grid;grid-template-columns:auto 1fr auto;height:calc(100vh - 48px)}
 
-/* ── LEFT SIDEBAR ── */
-.sb{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:0}
+/* ── LEFT SIDEBAR (collapsible) ── */
+.sb{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:0;width:280px;transition:width .2s}
+.sb.collapsed{width:0;overflow:hidden;padding:0;border:none}
 .sb-s{padding:12px 16px;border-bottom:1px solid var(--border)}
 .sb-t{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);margin-bottom:8px}
 .sb-row{margin-bottom:8px}
 .sb-lbl{font-size:11px;color:var(--text2);margin-bottom:3px;display:flex;align-items:center;gap:4px}
 .sb-lbl .u{color:var(--text3);font-family:var(--mono);font-size:9px}
-select,input[type="number"],input[type="time"]{width:100%;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:var(--r);outline:none}
+select,input[type="number"],input[type="time"],input[type="date"]{width:100%;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:var(--r);outline:none}
 select:focus,input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
 select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234A5580'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
 input[type="number"]{font-family:var(--mono)}
@@ -59,10 +60,15 @@ input[type="number"]{font-family:var(--mono)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
-/* ── CENTER: map left + results right ── */
+/* ── CENTER: 2 maps stacked + results beside ── */
 .center{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
-#map{min-height:100%}
-.leaflet-control-attribution{display:none!important}
+.maps-stack{display:flex;flex-direction:column;overflow:hidden}
+.map-panel{flex:1;position:relative;min-height:0}
+.map-panel .map-label{position:absolute;top:8px;left:8px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
+.map-panel:first-child .map-label{background:var(--cyan);color:var(--navy)}
+.map-panel:last-child .map-label{background:var(--navy);color:#fff}
+.map-panel .map-el{width:100%;height:100%}
+.map-divider{height:2px;background:var(--border2);flex-shrink:0}
 .results{overflow-y:auto;background:var(--bg)}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
 .kpi{background:var(--bg2);padding:8px 10px}
@@ -97,8 +103,16 @@ input[type="number"]{font-family:var(--mono)}
 .al-i{background:rgba(14,27,77,.05);color:var(--navy);border-left:3px solid var(--navy)}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;padding:32px;text-align:center;font-size:12px}
 
-/* ── RIGHT PANEL: DESTINATIONS ── */
-.rp{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+/* ── RIGHT PANEL: DESTINATIONS (collapsible) ── */
+.rp{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;width:340px;transition:width .2s}
+.rp.collapsed{width:0;overflow:hidden;padding:0;border:none}
+
+/* ── TOGGLE BUTTONS ── */
+.toggle-btn{position:fixed;z-index:100;background:var(--navy);color:#fff;border:none;width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.7;transition:opacity .15s}
+.toggle-btn:hover{opacity:1}
+.toggle-sb{top:56px;left:4px}
+.toggle-rp{top:56px;right:4px}
+.leaflet-control-attribution{display:none!important}
 .rp-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg2);z-index:2}
 .rp-hdr h3{font-size:12px;font-weight:600;color:var(--navy)}
 .rp-hdr .badge{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(0,191,223,.12);color:#009BB5;font-weight:600}
@@ -218,11 +232,25 @@ input[type="number"]{font-family:var(--mono)}
 
   <!-- CENTER -->
   <div class="center">
-    <div id="map"></div>
+    <div class="maps-stack">
+      <div class="map-panel" id="mapPanelSug">
+        <div class="map-label">Ruta sugerida</div>
+        <div class="map-el" id="mapSugerido"></div>
+      </div>
+      <div class="map-divider"></div>
+      <div class="map-panel" id="mapPanelUsr">
+        <div class="map-label">Tu orden</div>
+        <div class="map-el" id="mapUsuario"></div>
+      </div>
+    </div>
     <div class="results" id="results">
       <div class="empty" id="emptyState">Selecciona un viaje, ajusta parámetros y presiona <strong>Calcular ruta sugerida</strong></div>
     </div>
   </div>
+
+  <!-- TOGGLE BUTTONS -->
+  <button class="toggle-btn toggle-sb" onclick="togglePanel('sb')" title="Parámetros">☰</button>
+  <button class="toggle-btn toggle-rp" onclick="togglePanel('rp')" title="Destinos">☰</button>
 
   <!-- RIGHT PANEL -->
   <div class="rp">
@@ -729,12 +757,28 @@ function updateCompareBar(){
 }
 
 // ================================================================
-// MAP
+// MAPS — Suggested (top) + User order (bottom)
 // ================================================================
-const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
-let mapLayers=[];
-function clearMap(){mapLayers.forEach(l=>map.removeLayer(l));mapLayers=[]}
+const mapSug=L.map('mapSugerido',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapSug);
+let mapSugLayers=[];
+
+const mapUsr=L.map('mapUsuario',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapUsr);
+let mapUsrLayers=[];
+
+function clearMap(target){
+  if(target==='sug'||target==='both'){mapSugLayers.forEach(l=>mapSug.removeLayer(l));mapSugLayers=[];}
+  if(target==='usr'||target==='both'){mapUsrLayers.forEach(l=>mapUsr.removeLayer(l));mapUsrLayers=[];}
+}
+
+// Panel toggle
+function togglePanel(panel){
+  const el=document.querySelector('.'+panel);
+  el.classList.toggle('collapsed');
+  // Invalidate map sizes after transition
+  setTimeout(()=>{mapSug.invalidateSize();mapUsr.invalidateSize();},250);
+}
 
 // ================================================================
 // ANALYSIS ENGINE
@@ -988,7 +1032,14 @@ async function runAnalysis(){
     
     // ── RENDER ──
     renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
-    renderMap(tripData,ordered);
+    // First run = suggested map (cyan), subsequent runs = user map (navy)
+    const isReorder=suggestedKPIs!==null&&JSON.stringify(userOrder)!==JSON.stringify(suggestedOrder.map((_,i)=>i));
+    if(!isReorder){
+      renderMap(tripData,ordered,'sug');
+      clearMap('usr'); // Clear user map since this is the suggested route
+    } else {
+      renderMap(tripData,ordered,'usr');
+    }
     
   }catch(err){alert('Error: '+err.message);console.error(err)}
   btn.disabled=false;btn.textContent='Calcular ruta sugerida';
@@ -1082,25 +1133,35 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   document.getElementById('results').innerHTML=h;
 }
 
-function renderMap(tripData,ordered){
-  clearMap();
+function renderMap(tripData,ordered,target){
+  // target: 'sug' for suggested map, 'usr' for user map
+  const tgt=target||'sug';
+  const m=tgt==='sug'?mapSug:mapUsr;
+  const layers=tgt==='sug'?mapSugLayers:mapUsrLayers;
+  const routeColor=tgt==='sug'?'#00BFDF':'#0E1B4D';
+  
+  // Clear this map
+  layers.forEach(l=>m.removeLayer(l));
+  if(tgt==='sug') mapSugLayers=[]; else mapUsrLayers=[];
+  const addLayer=(l)=>{l.addTo(m);if(tgt==='sug')mapSugLayers.push(l);else mapUsrLayers.push(l);};
+  
   if(tripData.geometry){
     const coords=tripData.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const line=L.polyline(coords,{color:'#0E1B4D',weight:3,opacity:.7});line.addTo(map);mapLayers.push(line);
-    map.fitBounds(line.getBounds(),{padding:[30,30]});
+    const line=L.polyline(coords,{color:routeColor,weight:3,opacity:.7});addLayer(line);
+    m.fitBounds(line.getBounds(),{padding:[30,30]});
   }
   ordered.forEach((s,i)=>{
     const color=s.type==='origin'?'#00BFDF':(s.type==='return'?'#8890AB':'#0E1B4D');
     const fill=s.type==='dest'?'#fff':color;
     const r=s.type==='origin'?7:(s.type==='return'?5:5);
-    const m=L.circleMarker([s.lat,s.lng],{radius:r,color,fillColor:fill,fillOpacity:.9,weight:2});
-    m.addTo(map);mapLayers.push(m);
+    const mk=L.circleMarker([s.lat,s.lng],{radius:r,color,fillColor:fill,fillOpacity:.9,weight:2});
+    addLayer(mk);
     const label=s.type==='origin'?'CARGUE':(s.type==='return'?'RETORNO':`#${i}`);
-    m.bindTooltip(`<b>${label} ${s.name}</b>`,{direction:'top'});
+    mk.bindTooltip(`<b>${label} ${s.name}</b>`,{direction:'top'});
     if(s.type==='dest'){
       const tip=L.tooltip({permanent:true,direction:'right',offset:[6,0]}).setLatLng([s.lat,s.lng])
-        .setContent(`<span style="font-size:9px;font-family:monospace;color:#0E1B4D;font-weight:600">${i}</span>`);
-      tip.addTo(map);mapLayers.push(tip);
+        .setContent(`<span style="font-size:9px;font-family:monospace;color:${routeColor};font-weight:600">${i}</span>`);
+      addLayer(tip);
     }
   });
 }

@@ -111,7 +111,11 @@ input[type="number"]{font-family:var(--mono)}
 .dc-head .num{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
 .dc-head .num.changed{background:var(--warn)}
 .dc-head .city{font-weight:600;font-size:12px;margin-left:8px;flex:1}
-.dc-head .drag{cursor:grab;color:var(--text3);font-size:14px;user-select:none;padding:0 4px}
+.dc-head .dc-arrows{display:flex;flex-direction:column;gap:1px;margin-left:auto}
+.arr-btn{background:var(--bg3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:8px;line-height:1;padding:2px 5px;color:var(--text2);transition:all .15s}
+.arr-btn:hover{background:var(--cyan);color:#fff;border-color:var(--cyan)}
+.sug-badge{font-size:8px;padding:1px 4px;border-radius:3px;background:var(--bg3);color:var(--text3);font-weight:500;white-space:nowrap}
+.sug-badge.diff{background:rgba(0,191,223,.12);color:var(--cyan)}
 .dc-head .drag:active{cursor:grabbing}
 .dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
 .dc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
@@ -209,28 +213,30 @@ input[type="number"]{font-family:var(--mono)}
       <div class="sb-row"><div class="sb-lbl">Retorno a origen</div><select id="inRetorno"><option value="yes" selected>Sí</option><option value="no">No</option></select></div>
       <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="none">No permitir</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite</option></select></div>
     </div>
-    <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Analizar ruta</button></div>
+    <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button></div>
   </div>
 
   <!-- CENTER -->
   <div class="center">
     <div id="map"></div>
     <div class="results" id="results">
-      <div class="empty" id="emptyState">Selecciona un viaje, ajusta parámetros y presiona <strong>Analizar ruta</strong></div>
+      <div class="empty" id="emptyState">Selecciona un viaje, ajusta parámetros y presiona <strong>Calcular ruta sugerida</strong></div>
     </div>
   </div>
 
   <!-- RIGHT PANEL -->
   <div class="rp">
     <div class="rp-hdr"><h3>Condiciones por destino</h3><span class="badge" id="rpBadge">—</span></div>
-    <div id="destList"><div class="rp-empty">Analiza un viaje para ver los destinos</div></div>
+    <div id="destList"><div class="rp-empty">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div></div>
     <div class="compare-bar" id="compareBar" style="display:none">
-      <div class="label">Ruta sugerida vs deseada</div>
+      <div class="label">Ruta sugerida vs tu orden</div>
       <div class="compare-row"><span>Km sugerido:</span><span class="val" id="cmpKmS">—</span></div>
-      <div class="compare-row"><span>Km deseado:</span><span class="val" id="cmpKmD">—</span><span class="diff" id="cmpKmDiff"></span></div>
+      <div class="compare-row"><span>Km tu orden:</span><span class="val" id="cmpKmD">—</span><span class="diff" id="cmpKmDiff"></span></div>
       <div class="compare-row"><span>Tiempo sugerido:</span><span class="val" id="cmpTimeS">—</span></div>
-      <div class="compare-row"><span>Tiempo deseado:</span><span class="val" id="cmpTimeD">—</span><span class="diff" id="cmpTimeDiff"></span></div>
-      <div style="margin-top:6px"><button class="btn-run" style="font-size:11px;padding:6px" onclick="runAnalysis()">Recalcular con orden deseado</button></div>
+      <div class="compare-row"><span>Tiempo tu orden:</span><span class="val" id="cmpTimeD">—</span><span class="diff" id="cmpTimeDiff"></span></div>
+      <div class="compare-row"><span>Precio sugerido:</span><span class="val" id="cmpPriceS">—</span></div>
+      <div class="compare-row"><span>Precio tu orden:</span><span class="val" id="cmpPriceD">—</span><span class="diff" id="cmpPriceDiff"></span></div>
+      <div style="margin-top:6px"><button class="btn-run" style="font-size:11px;padding:6px" onclick="runAnalysis()">Recalcular con tu orden</button></div>
     </div>
   </div>
 </div>
@@ -494,9 +500,10 @@ const DAY_DEFAULTS=[true,true,true,true,true,'half',false]; // L-V full, Sat hal
 let destConditions=[];  // per-destination conditions
 let suggestedOrder=[];  // OSRM optimized order
 let userOrder=[];       // user-modified order
+let suggestedKPIs=null; // KPIs from first (suggested) analysis
 
-function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Analiza un viaje para ver los destinos</div>';
-  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];}
+function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>';
+  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;}
 
 function buildDestPanel(trip){
   const list=document.getElementById('destList');list.innerHTML='';
@@ -576,7 +583,7 @@ function buildDestPanel(trip){
     displayCount++;
   }
   document.getElementById('rpBadge').textContent=`${displayCount} destinos · ${trip.pedidos.length} pedidos`;
-  initDragDrop();
+  // Buttons ▲ ▼ handle reorder — no drag needed
 }
 
 // Parsear DIAS_ATENCION string a array de estados [L,M,X,J,V,S,D]
@@ -596,7 +603,7 @@ function timeVal(t){if(!t)return 0;const[h,m]=(t+'').split(':').map(Number);retu
 
 function createDestCard(cond,displayIdx){
   const card=document.createElement('div');
-  card.className='dest-card';card.dataset.idx=cond.idx;card.draggable=true;
+  card.className='dest-card';card.dataset.idx=cond.idx;
   
   let daysHtml='';
   DAYS.forEach((d,di)=>{
@@ -617,8 +624,12 @@ function createDestCard(cond,displayIdx){
   card.innerHTML=`
     <div class="dc-head">
       <span class="num" id="dnum-${cond.idx}">${displayIdx+1}</span>
+      <span class="sug-badge" id="dsug-${cond.idx}" style="display:none" title="Posición sugerida por OSRM"></span>
       <span class="city">${cond.city}${cond.isReturnDest?' <span style="font-size:9px;color:var(--warn);font-weight:600;margin-left:4px">↩ Retorno</span>':''}</span>
-      <span class="drag" title="Arrastrar para reordenar">⠿</span>
+      <span class="dc-arrows">
+        <button class="arr-btn" onclick="moveDestUp(${cond.idx})" title="Subir">▲</button>
+        <button class="arr-btn" onclick="moveDestDown(${cond.idx})" title="Bajar">▼</button>
+      </span>
     </div>
     ${pedCount>0?`<div style="font-size:9px;color:var(--text3);margin-bottom:4px;display:flex;justify-content:space-between"><span>${pedCount} pedido${pedCount>1?'s':''} · ${pesoLabel}</span><span style="color:var(--text2)">${remisiones.length>40?remisiones.substring(0,38)+'...':remisiones}</span></div>`:''}
     ${clientesHtml?`<div style="margin-bottom:4px">${clientesHtml}</div>`:''}
@@ -675,32 +686,26 @@ function updateDestWin(idx){
   c.customWins=true;
 }
 
-// Drag & Drop reorder
-function initDragDrop(){
-  const list=document.getElementById('destList');
-  let dragIdx=null;
-  list.querySelectorAll('.dest-card').forEach(card=>{
-    card.addEventListener('dragstart',e=>{dragIdx=parseInt(card.dataset.idx);card.style.opacity='.4'});
-    card.addEventListener('dragend',()=>{card.style.opacity='';list.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'))});
-    card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('drag-over')});
-    card.addEventListener('dragleave',()=>card.classList.remove('drag-over'));
-    card.addEventListener('drop',e=>{
-      e.preventDefault();card.classList.remove('drag-over');
-      const dropIdx=parseInt(card.dataset.idx);
-      if(dragIdx===null||dragIdx===dropIdx)return;
-      // Reorder userOrder
-      const fromPos=userOrder.indexOf(dragIdx);
-      const toPos=userOrder.indexOf(dropIdx);
-      userOrder.splice(fromPos,1);
-      userOrder.splice(toPos,0,dragIdx);
-      // Re-render numbers
-      userOrder.forEach((origIdx,pos)=>{
-        const numEl=document.getElementById(`dnum-${origIdx}`);
-        if(numEl){numEl.textContent=pos+1;numEl.className='num'+(pos!==origIdx?' changed':'');}
-      });
-      updateCompareBar();
-    });
+// Arrow button reorder
+function moveDestUp(idx){
+  const pos=userOrder.indexOf(idx);
+  if(pos<=0)return; // already first
+  [userOrder[pos-1],userOrder[pos]]=[userOrder[pos],userOrder[pos-1]];
+  reRenderDestList();
+}
+function moveDestDown(idx){
+  const pos=userOrder.indexOf(idx);
+  if(pos>=userOrder.length-1)return; // already last
+  [userOrder[pos],userOrder[pos+1]]=[userOrder[pos+1],userOrder[pos]];
+  reRenderDestList();
+}
+function reRenderDestList(){
+  const list=document.getElementById('destList');list.innerHTML='';
+  userOrder.forEach((origIdx,pos)=>{
+    const cond=destConditions[origIdx];
+    list.appendChild(createDestCard(cond,pos));
   });
+  updateCompareBar();
 }
 
 function updateCompareBar(){
@@ -751,7 +756,7 @@ async function runAnalysis(){
   
   // Build stops from destConditions (already grouped by unique destination)
   const origin=geo(trip.origenes[0]);
-  if(!origin){alert('Sin coords para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Analizar ruta';return}
+  if(!origin){alert('Sin coords para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Calcular ruta sugerida';return}
   
   const destGeo=[];const missing=[];
   for(const cond of destConditions){
@@ -759,7 +764,7 @@ async function runAnalysis(){
     if(!c){missing.push(cond.city);continue}
     destGeo.push({...c,origIdx:cond.idx,isReturnDest:cond.isReturnDest});
   }
-  if(!destGeo.length){alert('Sin destinos con coordenadas');btn.disabled=false;btn.textContent='Analizar ruta';return}
+  if(!destGeo.length){alert('Sin destinos con coordenadas');btn.disabled=false;btn.textContent='Calcular ruta sugerida';return}
   
   // Apply priority: move priority items to front
   let orderedDests=[...destGeo];
@@ -816,6 +821,17 @@ async function runAnalysis(){
     tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
     ordered=osrmStops;
     suggestedOrder=orderedDests.map(d=>d.origIdx);
+    
+    // Show suggested position badges on dest cards
+    suggestedOrder.forEach((origIdx,sugPos)=>{
+      const badge=document.getElementById(`dsug-${origIdx}`);
+      if(badge){
+        const userPos=userOrder.indexOf(origIdx);
+        badge.textContent='Sug: '+(sugPos+1);
+        badge.style.display='inline';
+        badge.className='sug-badge'+(userPos!==sugPos?' diff':'');
+      }
+    });
     
     const legs=tripData.legs||(tripData.legs?tripData.legs:[]);
     const totalKm=Math.round((tripData.distance||0)/1000);
@@ -975,7 +991,7 @@ async function runAnalysis(){
     renderMap(tripData,ordered);
     
   }catch(err){alert('Error: '+err.message);console.error(err)}
-  btn.disabled=false;btn.textContent='Analizar ruta';
+  btn.disabled=false;btn.textContent='Calcular ruta sugerida';
 }
 
 function parseFecha(str){const parts=str.split('/');if(parts.length===3)return new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));return new Date()}
@@ -989,14 +1005,48 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   const precioRidge=estimarPrecio(totalKm,trip.peso,numDests,trip.destinoStr,trip.origenStr);
   const rango=ccRango(totalKm);
   
+  // Save KPIs on first run (suggested route)
+  const currentKPIs={km:totalKm,driveMin:totalDriveMin,days:totalDays,precio:precioRidge,pernoctas:pernoctaCount};
+  const isUserReorder=suggestedKPIs!==null&&JSON.stringify(userOrder)!==JSON.stringify(suggestedOrder.map((_,i)=>i));
+  
+  if(!suggestedKPIs){
+    suggestedKPIs=currentKPIs;
+  }
+  
+  // Fill compare bar
+  if(suggestedKPIs){
+    document.getElementById('cmpKmS').textContent=fmt(suggestedKPIs.km)+' km';
+    document.getElementById('cmpTimeS').textContent=Math.floor(suggestedKPIs.driveMin/60)+'h'+suggestedKPIs.driveMin%60+'m';
+    document.getElementById('cmpPriceS').textContent=ccFmt(suggestedKPIs.precio);
+    
+    document.getElementById('cmpKmD').textContent=fmt(totalKm)+' km';
+    document.getElementById('cmpTimeD').textContent=Math.floor(totalDriveMin/60)+'h'+totalDriveMin%60+'m';
+    document.getElementById('cmpPriceD').textContent=ccFmt(precioRidge);
+    
+    const kmDiff=totalKm-suggestedKPIs.km;
+    const timeDiff=totalDriveMin-suggestedKPIs.driveMin;
+    const priceDiff=precioRidge-suggestedKPIs.precio;
+    
+    const kmDiffEl=document.getElementById('cmpKmDiff');
+    const timeDiffEl=document.getElementById('cmpTimeDiff');
+    const priceDiffEl=document.getElementById('cmpPriceDiff');
+    
+    if(kmDiff!==0){kmDiffEl.textContent=(kmDiff>0?'+':'')+fmt(kmDiff)+' km';kmDiffEl.style.color=kmDiff>0?'var(--danger)':'var(--green)';}else{kmDiffEl.textContent='= igual';}
+    if(timeDiff!==0){timeDiffEl.textContent=(timeDiff>0?'+':'')+timeDiff+' min';timeDiffEl.style.color=timeDiff>0?'var(--danger)':'var(--green)';}else{timeDiffEl.textContent='= igual';}
+    if(priceDiff!==0){priceDiffEl.textContent=(priceDiff>0?'+':'')+ccFmt(priceDiff);priceDiffEl.style.color=priceDiff>0?'var(--danger)':'var(--green)';}else{priceDiffEl.textContent='= igual';}
+    
+    document.getElementById('compareBar').style.display='block';
+  }
+  
   const kw=totalDays>1?'kw':'';const kd=totalDays>2?'kd':'';
+  const routeLabel=isUserReorder?'Tu orden':'Ruta sugerida';
   let h=`<div class="kpis">
-    <div class="kpi"><div class="kpi-l">Km OSRM</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">vs ${trip.km} sheet</div></div>
+    <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder?'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
     <div class="kpi"><div class="kpi-l">Conducción</div><div class="kpi-v">${Math.floor(totalDriveMin/60)}h${totalDriveMin%60}m</div><div class="kpi-s">sin paradas</div></div>
     <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${numDests}h desc. total</div></div>
     <div class="kpi ${kw} ${kd}"><div class="kpi-l">Días</div><div class="kpi-v">${totalDays}</div><div class="kpi-s">${pernoctaCount} pernocta</div></div>
     <div class="kpi"><div class="kpi-l">Precio publicado</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">n8n · ${trip.km} km</div></div>
-    <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ruta real</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
+    <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ${routeLabel}</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
   </div>`;
   
   // Timeline by day

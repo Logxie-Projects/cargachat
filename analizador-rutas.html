@@ -111,10 +111,12 @@ input[type="number"]{font-family:var(--mono)}
 .rp.collapsed{width:0;overflow:hidden;padding:0;border:none}
 
 /* ── TOGGLE BUTTONS ── */
-.toggle-btn{position:fixed;z-index:100;background:var(--navy);color:#fff;border:none;width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.7;transition:opacity .15s}
-.toggle-btn:hover{opacity:1}
-.toggle-sb{top:56px;left:4px}
-.toggle-rp{top:56px;right:4px}
+.toggle-btn{position:fixed;z-index:1000;background:var(--navy);color:#fff;border:none;width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;opacity:.85;transition:all .2s}
+.toggle-btn:hover{opacity:1;background:var(--cyan)}
+.toggle-sb{top:56px;left:284px}
+.toggle-rp{top:56px;right:344px}
+.sb.collapsed ~ .toggle-btn.toggle-sb,.toggle-sb.moved{left:4px}
+.rp.collapsed ~ .toggle-btn.toggle-rp,.toggle-rp.moved{right:4px}
 .leaflet-control-attribution{display:none!important}
 .rp-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg2);z-index:2}
 .rp-hdr h3{font-size:12px;font-weight:600;color:var(--navy)}
@@ -228,7 +230,7 @@ input[type="number"]{font-family:var(--mono)}
     <div class="sb-s">
       <div class="sb-t">Ruta</div>
       <div class="sb-row"><div class="sb-lbl">Retorno a origen</div><select id="inRetorno"><option value="yes" selected>Sí</option><option value="no">No</option></select></div>
-      <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="none">No permitir</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite</option></select></div>
+      <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="18">Hasta 6 PM</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite (24h)</option></select></div>
     </div>
     <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button></div>
   </div>
@@ -258,8 +260,8 @@ input[type="number"]{font-family:var(--mono)}
   </div>
 
   <!-- TOGGLE BUTTONS -->
-  <button class="toggle-btn toggle-sb" onclick="togglePanel('sb')" title="Parámetros">☰</button>
-  <button class="toggle-btn toggle-rp" onclick="togglePanel('rp')" title="Destinos">☰</button>
+  <button class="toggle-btn toggle-sb" onclick="togglePanel('sb')" title="Parámetros">◀</button>
+  <button class="toggle-btn toggle-rp" onclick="togglePanel('rp')" title="Destinos">▶</button>
 
   <!-- RIGHT PANEL -->
   <div class="rp">
@@ -797,7 +799,17 @@ function clearMap(target){
 function togglePanel(panel){
   const el=document.querySelector('.'+panel);
   el.classList.toggle('collapsed');
-  // Invalidate map sizes after transition
+  const isCollapsed=el.classList.contains('collapsed');
+  // Move toggle button
+  if(panel==='sb'){
+    const btn=document.querySelector('.toggle-sb');
+    btn.style.left=isCollapsed?'4px':'284px';
+    btn.textContent=isCollapsed?'▶':'◀';
+  } else {
+    const btn=document.querySelector('.toggle-rp');
+    btn.style.right=isCollapsed?'4px':'344px';
+    btn.textContent=isCollapsed?'◀':'▶';
+  }
   setTimeout(()=>{mapSug.invalidateSize();mapUsr.invalidateSize();},250);
 }
 
@@ -816,8 +828,7 @@ async function runAnalysis(){
   const defaultWinsLV=getWins('winGrid');
   const defaultWinsSat=getWins('winGridSat');
   const includeReturn=document.getElementById('inRetorno').value==='yes';
-  const maxNH=document.getElementById('inNocturno').value;
-  const maxDriveH=maxNH==='none'?18:parseInt(maxNH);
+  const maxDriveH=parseInt(document.getElementById('inNocturno').value)||22;
   
   // Build stops from destConditions (already grouped by unique destination)
   const origin=geo(trip.origenes[0]);
@@ -1130,13 +1141,13 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
     h+=`<div class="tl-day ${dc}"><div class="tl-dh"><span>Día ${d+1}</span><span>${ds} entrega${ds!==1?'s':''}</span></div>`;
     for(const e of de){
       const t=minToTime(e.time);
-      if(e.type==='drive')h+=`<div class="tl-r tl-drive"><span></span><span></span><span>Conduce ${e.action}</span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
-      else if(e.type==='wait')h+=`<div class="tl-r tl-wait"><span class="tl-time">${t}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
-      else if(e.type==='pernocta')h+=`<div class="tl-r tl-pernocta"><span class="tl-time">${t}</span><span></span><span>${e.action}</span><span></span><span></span></div>`;
-      else if(e.type==='cargue')h+=`<div class="tl-r tl-cargue"><span class="tl-time">${t}</span><span class="tl-idx">C</span><span><span class="tl-dot" style="background:var(--cyan)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">0</span><span class="tl-act">${e.dur}m</span></div>`;
-      else if(e.type==='salida')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span></span><span>Sale de planta</span><span></span><span></span></div>`;
-      else if(e.type==='dest')h+=`<div class="tl-r"><span class="tl-time">${t}</span><span class="tl-idx">#${e.idx}</span><span><span class="tl-dot" style="background:var(--navy)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm}</span><span class="tl-act">${e.dur}m</span></div>`;
-      else if(e.type==='return')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span class="tl-idx">R</span><span><span class="tl-dot" style="background:var(--text3)"></span>${e.city}</span><span class="tl-km">${e.cumKm}</span><span></span></div>`;
+      if(e.type==='drive')h+=`<div class="tl-r tl-drive"><span></span><span></span><span>🚛 Conduce ${e.action}</span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
+      else if(e.type==='wait')h+=`<div class="tl-r tl-wait"><span class="tl-time">${t}</span><span></span><span>⏳ ${e.action}</span><span></span><span></span></div>`;
+      else if(e.type==='pernocta')h+=`<div class="tl-r tl-pernocta"><span class="tl-time">${t}</span><span></span><span>🌙 ${e.action}</span><span></span><span></span></div>`;
+      else if(e.type==='cargue')h+=`<div class="tl-r tl-cargue"><span class="tl-time">${t}</span><span class="tl-idx">C</span><span><span class="tl-dot" style="background:var(--cyan)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">inicio</span><span class="tl-act">${e.dur} min cargue</span></div>`;
+      else if(e.type==='salida')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span></span><span>🚀 Sale de planta</span><span></span><span></span></div>`;
+      else if(e.type==='dest')h+=`<div class="tl-r"><span class="tl-time">${t}</span><span class="tl-idx">#${e.idx}</span><span><span class="tl-dot" style="background:var(--navy)"></span><span class="tl-city">${e.city}</span></span><span class="tl-km">${e.cumKm} km</span><span class="tl-act">${e.dur} min desc.</span></div>`;
+      else if(e.type==='return')h+=`<div class="tl-r" style="color:var(--text3)"><span class="tl-time">${t}</span><span class="tl-idx">R</span><span><span class="tl-dot" style="background:var(--text3)"></span>Retorno: ${e.city}</span><span class="tl-km">${e.cumKm} km</span><span></span></div>`;
     }
     h+='</div>';
   }
@@ -1181,14 +1192,17 @@ function renderMap(tripData,ordered,target){
   ordered.forEach((s,i)=>{
     const color=s.type==='origin'?'#00BFDF':(s.type==='return'?'#8890AB':'#0E1B4D');
     const fill=s.type==='dest'?'#fff':color;
-    const r=s.type==='origin'?7:(s.type==='return'?5:5);
+    const r=s.type==='origin'?8:(s.type==='return'?6:6);
     const mk=L.circleMarker([s.lat,s.lng],{radius:r,color,fillColor:fill,fillOpacity:.9,weight:2});
     addLayer(mk);
-    const label=s.type==='origin'?'CARGUE':(s.type==='return'?'RETORNO':`#${i}`);
-    mk.bindTooltip(`<b>${label} ${s.name}</b>`,{direction:'top'});
+    // Click to show name
+    const popupContent=s.type==='origin'?`<b>CARGUE</b><br>${s.name}`:(s.type==='return'?`<b>RETORNO</b><br>${s.name}`:`<b>#${i} ${s.name}</b>`);
+    mk.bindPopup(popupContent,{closeButton:false,className:'map-popup'});
+    // Hover tooltip
+    mk.bindTooltip(`<b>${s.name}</b>`,{direction:'top',offset:[0,-8]});
     if(s.type==='dest'){
-      const tip=L.tooltip({permanent:true,direction:'right',offset:[6,0]}).setLatLng([s.lat,s.lng])
-        .setContent(`<span style="font-size:9px;font-family:monospace;color:${routeColor};font-weight:600">${i}</span>`);
+      const tip=L.tooltip({permanent:true,direction:'right',offset:[8,0]}).setLatLng([s.lat,s.lng])
+        .setContent(`<span style="font-size:10px;font-family:monospace;color:${routeColor};font-weight:700;background:#fff;padding:1px 3px;border-radius:2px;border:1px solid ${routeColor}">${i}</span>`);
       addLayer(tip);
     }
   });

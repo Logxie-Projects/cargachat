@@ -916,6 +916,13 @@ async function runAnalysis(){
     ordered=osrmStops;
     suggestedOrder=orderedDests.map(d=>d.origIdx);
     
+    // If user hasn't manually reordered, align the right panel to the suggested order
+    // so the numbering in the panel matches the delivery order in the plan
+    if(!userReorderedFlag){
+      userOrder=[...suggestedOrder];
+      reRenderDestList();
+    }
+    
     // Show suggested position badges on dest cards
     suggestedOrder.forEach((origIdx,sugPos)=>{
       const badge=document.getElementById(`dsug-${origIdx}`);
@@ -1237,7 +1244,7 @@ async function exportPdf(){
   btn.disabled=true;btn.textContent='⏳ Generando PDF...';
   
   try{
-    const {trip,timeline,totalKm,totalDriveMin,ordered,fecha,destConditions:conds,isUserOrder}=window._lastRoute;
+    const {trip,timeline,totalKm,totalDriveMin,ordered,tripData,fecha,destConditions:conds,isUserOrder}=window._lastRoute;
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
     const pageW=210,pageH=297,margin=12;

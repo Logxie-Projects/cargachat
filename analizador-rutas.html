@@ -551,14 +551,15 @@ const DAY_DEFAULTS=[true,true,true,true,true,'half',false]; // L-V full, Sat hal
 let destConditions=[];  // per-destination conditions
 let suggestedOrder=[];  // OSRM optimized order
 let userOrder=[];       // user-modified order
+let userReorderedFlag=false; // true if user manually reordered with ▲▼
 let suggestedKPIs=null; // KPIs from first (suggested) analysis
 
 function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>';
-  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;}
+  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;userReorderedFlag=false;}
 
 function buildDestPanel(trip){
   const list=document.getElementById('destList');list.innerHTML='';
-  destConditions=[];userOrder=[];
+  destConditions=[];userOrder=[];userReorderedFlag=false;
   const defaultWinsLV=getWins('winGrid');
   const defaultWinsSat=getWins('winGridSat');
   const descMin=parseInt(document.getElementById('inDescargue').value)||60;
@@ -742,12 +743,14 @@ function moveDestUp(idx){
   const pos=userOrder.indexOf(idx);
   if(pos<=0)return; // already first
   [userOrder[pos-1],userOrder[pos]]=[userOrder[pos],userOrder[pos-1]];
+  userReorderedFlag=true;
   reRenderDestList();
 }
 function moveDestDown(idx){
   const pos=userOrder.indexOf(idx);
   if(pos>=userOrder.length-1)return; // already last
   [userOrder[pos],userOrder[pos+1]]=[userOrder[pos+1],userOrder[pos]];
+  userReorderedFlag=true;
   reRenderDestList();
 }
 function reRenderDestList(){
@@ -1064,9 +1067,8 @@ async function runAnalysis(){
     
     // ── RENDER ──
     renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
-    // First run = suggested map (cyan), subsequent runs = user map (navy)
-    const isReorder=suggestedKPIs!==null&&JSON.stringify(userOrder)!==JSON.stringify(suggestedOrder.map((_,i)=>i));
-    if(!isReorder){
+    // First run = suggested map (cyan), subsequent runs with reorder = user map (navy)
+    if(!userReorderedFlag){
       renderMap(tripData,ordered,'sug');
       clearMap('usr'); // Clear user map since this is the suggested route
     } else {
@@ -1090,7 +1092,7 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   
   // Save KPIs on first run (suggested route)
   const currentKPIs={km:totalKm,driveMin:totalDriveMin,days:totalDays,precio:precioRidge,pernoctas:pernoctaCount};
-  const isUserReorder=suggestedKPIs!==null&&JSON.stringify(userOrder)!==JSON.stringify(suggestedOrder.map((_,i)=>i));
+  const isUserReorder=userReorderedFlag;
   
   if(!suggestedKPIs){
     suggestedKPIs=currentKPIs;

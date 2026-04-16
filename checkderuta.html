@@ -211,7 +211,7 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
     h += `<div class="trip-info">
       <div class="trip-info-grid">
         <span class="ti-label">Viaje</span><span class="ti-value">${plan.tripId || '—'}</span>
-        <span class="ti-label">Fecha</span><span class="ti-value">${plan.fecha || '—'}</span>
+        <span class="ti-label">Fecha</span><span class="ti-value"><input type="date" id="execFecha" value="${plan.fecha || ''}" style="background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:2px 6px;border-radius:var(--r);outline:none;width:130px"></span>
         <span class="ti-label">Origen</span><span class="ti-value">${plan.origen.name}</span>
         <span class="ti-label">Km plan</span><span class="ti-value">${plan.totalKm ? Math.round(plan.totalKm)+' km' : '—'}</span>
       </div>

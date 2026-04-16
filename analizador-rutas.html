@@ -314,6 +314,9 @@ const CIUDADES = {
   'umbita':[5.3000,-73.5167],'aquitania':[5.5167,-72.8833],
   'saboya':[5.7000,-73.7667],'samaca':[5.4833,-73.4833],'samacá':[5.4833,-73.4833],
   'sutamarchan':[5.6333,-73.7833],
+  'simijaca':[5.5061,-73.8483],
+  'miraflores':[5.1981,-73.1456],
+  'soraca':[5.5069,-73.3342],'soracá':[5.5069,-73.3342],
   'siberia':[4.8856,-74.1483],'cabrera':[3.9847,-74.4856],
   'fusagasuga':[4.3367,-74.3644],'fusagasugá':[4.3367,-74.3644],
   'silvania':[4.4000,-74.4833],'sibate':[4.4878,-74.2597],'sibaté':[4.4878,-74.2597],
@@ -839,7 +842,12 @@ async function runAnalysis(){
   
   const destGeo=[];const missing=[];
   for(const cond of destConditions){
-    const c=geo(cond.city);
+    let c=geo(cond.city);
+    // Fallback: if not in local dict, try Google Geocoding
+    if(!c){
+      const coords=await geocodeCiudad(cond.city);
+      if(coords)c={lat:coords[0],lng:coords[1],name:cond.city.trim()};
+    }
     if(!c){missing.push(cond.city);continue}
     destGeo.push({...c,origIdx:cond.idx,isReturnDest:cond.isReturnDest});
   }

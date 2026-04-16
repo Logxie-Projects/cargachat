@@ -1425,7 +1425,8 @@ async function exportPdf(){
     if(originStop)legendItems.push({label:'C',city:originStop.name+' (cargue)'});
     destStopsForMap.forEach((s,i)=>{
       const label=i<9?String(i+1):String.fromCharCode(65+i-9);
-      legendItems.push({label,city:s.name});
+      const cityText=i>=9?`${s.name}  (${label}=${i+1})`:`${s.name}`;
+      legendItems.push({label,city:cityText});
     });
     
     // Render as 2-column table (split items evenly)

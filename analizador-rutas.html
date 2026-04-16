@@ -1285,54 +1285,72 @@ async function exportPdf(){
     pdf.text('MAPA DE LA RUTA',margin,y);y+=5;
     pdf.line(margin,y,pageW-margin,y);y+=3;
     
-    // Capture map as image — and draw numbered markers directly on canvas
-    // using Leaflet's projection (html2canvas positions tooltips inconsistently)
-    const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
-    const mapInstance=isUserOrder?mapUsr:mapSug;
-    const scale=2;
-    
-    // First: hide the permanent tooltips (numbers) so html2canvas doesn't render them misplaced
-    const tooltipEls=mapEl.querySelectorAll('.leaflet-tooltip');
-    const savedDisplay=[];
-    tooltipEls.forEach(el=>{savedDisplay.push(el.style.display);el.style.display='none'});
-    
-    const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale,backgroundColor:'#f5f5f5',logging:false});
-    
-    // Restore tooltips for UI
-    tooltipEls.forEach((el,i)=>{el.style.display=savedDisplay[i]||''});
-    
-    // Now draw the numbered labels directly on the canvas using map projection
-    const ctx=canvas.getContext('2d');
-    const mapRect=mapEl.getBoundingClientRect();
+    // Use Google Static Maps API — much more reliable than html2canvas for PDFs
+    // Static Maps supports numbered labels natively and always aligns markers correctly.
     const destStopsForMap=ordered.filter(s=>s.type==='dest');
+    const originStop=ordered.find(s=>s.type==='origin');
+    const routeColorHex=isUserOrder?'0x0E1B4D':'0x00BFDF';
     
-    ctx.font='bold '+(13*scale)+'px Arial, sans-serif';
-    ctx.textAlign='left';ctx.textBaseline='middle';
-    
+    // Build markers: origin (blue C) + destinations (numbered)
+    const markerParams=[];
+    if(originStop){
+      markerParams.push(`markers=color:${isUserOrder?'blue':'0x00BFDF'}|label:C|size:mid|${originStop.lat},${originStop.lng}`);
+    }
+    // Add numbered destinations — Static Maps only supports single char labels, so use colors to show order
+    // Split into groups of up to 9 per marker param (labels 1-9, then use A-Z for 10-35)
     destStopsForMap.forEach((s,i)=>{
-      // Convert lat/lng to container pixel coordinates
-      const pt=mapInstance.latLngToContainerPoint([s.lat,s.lng]);
-      const x=pt.x*scale+8*scale;   // offset right of the marker
-      const y=pt.y*scale;
-      const num=String(i+1);
-      const textW=ctx.measureText(num).width;
-      const padX=4*scale,padY=3*scale;
-      const boxW=textW+padX*2,boxH=14*scale+padY;
-      // White rounded box with border
-      ctx.fillStyle='#ffffff';
-      ctx.strokeStyle=isUserOrder?'#0E1B4D':'#00BFDF';
-      ctx.lineWidth=1.5*scale;
-      ctx.fillRect(x,y-boxH/2,boxW,boxH);
-      ctx.strokeRect(x,y-boxH/2,boxW,boxH);
-      // Number text
-      ctx.fillStyle=isUserOrder?'#0E1B4D':'#00BFDF';
-      ctx.fillText(num,x+padX,y+1);
+      const n=i+1;
+      // Labels can be 1 alphanumeric char. For stops 1-9 use digit, 10+ use letter A=10, B=11, etc
+      const label=n<=9?String(n):String.fromCharCode(64+(n-9)); // 10->A, 11->B, ...
+      markerParams.push(`markers=color:${isUserOrder?'0x0E1B4D':'0x00BFDF'}|label:${label}|size:mid|${s.lat},${s.lng}`);
     });
     
-    const imgData=canvas.toDataURL('image/jpeg',0.9);
-    const mapH=85;
-    pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapH);
-    y+=mapH+6;
+    // Build path (route) — use the OSRM geometry, sampled to fit URL length limit (~8KB)
+    let pathParam='';
+    if(tripData.geometry&&tripData.geometry.coordinates){
+      const coords=tripData.geometry.coordinates;
+      // Sample to max ~100 points to stay under URL limit
+      const step=Math.max(1,Math.floor(coords.length/100));
+      const sampled=[];
+      for(let i=0;i<coords.length;i+=step)sampled.push(coords[i]);
+      if(sampled[sampled.length-1]!==coords[coords.length-1])sampled.push(coords[coords.length-1]);
+      const pathStr=sampled.map(c=>`${c[1].toFixed(4)},${c[0].toFixed(4)}`).join('|');
+      pathParam=`path=color:${routeColorHex}|weight:4|${pathStr}`;
+    }
+    
+    const mapW=640,mapH=400; // Static Maps dimensions (max 640x640 free tier)
+    const staticUrl=`https://maps.googleapis.com/maps/api/staticmap?size=${mapW}x${mapH}&scale=2&maptype=roadmap&${pathParam}&${markerParams.join('&')}&key=${GMAPS_KEY}`;
+    
+    // Fetch the static map image and add to PDF
+    let imgData;
+    try{
+      const imgResp=await fetch(staticUrl);
+      if(!imgResp.ok)throw new Error('Static Maps API error '+imgResp.status);
+      const blob=await imgResp.blob();
+      imgData=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(reader.result);
+        reader.onerror=reject;
+        reader.readAsDataURL(blob);
+      });
+    }catch(e){
+      console.error('Error fetching static map:',e);
+      // Fallback: capture the interactive map (less accurate but works offline)
+      const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
+      const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5',logging:false});
+      imgData=canvas.toDataURL('image/jpeg',0.9);
+    }
+    
+    // Add legend note for labels > 9 (10→A, 11→B...)
+    const mapPdfH=85;
+    pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
+    y+=mapPdfH+2;
+    if(destStopsForMap.length>9){
+      pdf.setFont('helvetica','italic');pdf.setFontSize(7);pdf.setTextColor(100,100,100);
+      pdf.text('Leyenda: C=cargue, 1-9=primeras paradas, A=10, B=11, C=12, D=13, E=14, F=15, G=16, H=17, I=18, J=19, K=20...',margin,y);
+      pdf.setTextColor(0,0,0);y+=4;
+    }
+    y+=4;
     
     // ── PLAN DE VIAJE (timeline) ──
     if(y>pageH-60){pdf.addPage();y=margin;}

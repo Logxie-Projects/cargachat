@@ -238,9 +238,11 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
       // Preserve existing values
       const prevStatus = document.getElementById('status-'+origIdx);
       const prevTime = document.getElementById('realTime-'+origIdx);
+      const prevDate = document.getElementById('realDate-'+origIdx);
       const prevNotes = document.getElementById('notes-'+origIdx);
       const statusVal = prevStatus ? prevStatus.value : 'pendiente';
       const timeVal = prevTime ? prevTime.value : '';
+      const dateVal = prevDate ? prevDate.value : (plan.fecha || '');
       const notesVal = prevNotes ? prevNotes.value : '';
 
       h += `<div class="exec-card ${statusVal!=='pendiente'?'st-'+statusVal:''}" data-orig="${origIdx}" data-pos="${pos}" id="execCard-${origIdx}" draggable="true">
@@ -257,6 +259,10 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
             <span class="exec-plan-time">${d.planTime || '—'}</span>
             <label>Real:</label>
             <input type="time" id="realTime-${origIdx}" value="${timeVal}" data-orig="${origIdx}">
+          </div>
+          <div class="exec-row">
+            <label>Fecha:</label>
+            <input type="date" id="realDate-${origIdx}" value="${dateVal}" data-orig="${origIdx}" style="background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 6px;border-radius:var(--r);outline:none;width:130px">
           </div>
           <div class="exec-row">
             <label>Estado:</label>
@@ -475,6 +481,9 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
       sel.addEventListener('change', onAnyChange);
     });
     document.querySelectorAll('#execScroll input[type="time"]').forEach(inp => {
+      inp.addEventListener('change', onAnyChange);
+    });
+    document.querySelectorAll('#execScroll input[type="date"]').forEach(inp => {
       inp.addEventListener('change', onAnyChange);
     });
     document.querySelectorAll('#execScroll .exec-notes').forEach(inp => {

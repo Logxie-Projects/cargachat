@@ -98,6 +98,39 @@ Gmail (Avgust/Fateco) → n8n → Google Sheets (CSV público)
 
 ---
 
+## Publish-to-Web del Google Sheet — SENSIBLE
+
+**Pestaña publicada actualmente:** `gid=1690776181` (desde 2026-04-16)
+**CSV_URL en `index.html` línea 1186** apunta a este gid.
+
+### Reglas
+- **NO** detener la publicación del sheet sin coordinar.
+- **NO** cambiar de pestaña sin actualizar `const CSV_URL` en `index.html`.
+- **NO** cambiar el sharing básico del sheet a "Restringido" — debe ser "Cualquier persona con el enlace → Lector".
+- El n8n debe escribir en la **misma** pestaña que está publicada. Si se cambia la pestaña de publicación, verificar que el nodo Google Sheets del workflow n8n también apunte ahí.
+
+### Síntoma de que se rompió
+- Mapa de `netfleet.app` muestra solo 2 viajes hardcoded (Funza→Cucuta y Yumbo→El Tigre).
+- Consola del navegador: `TypeError: Failed to fetch` desde `cargarViajes()`.
+- Network tab: el CSV devuelve HTTP 503 + redirect a `accounts.google.com/ServiceLogin`.
+
+### Cómo arreglarlo
+1. Abrir el sheet con cuenta **dueña** (`bernardoaristizabal@logxie.com`).
+2. `Archivo` → `Compartir` → `Publicar en la Web`.
+3. Si aparece "Detener publicación" → clic → confirmar → volver a publicar.
+4. Si aparece "Publicar" → elegir pestaña de viajes + formato `.csv` → clic.
+5. Copiar link generado. Verificar en incógnito que descargue CSV (no pida login).
+6. Actualizar `const CSV_URL` en `index.html` línea 1186 con el nuevo link.
+7. `git commit -am "fix: actualizar CSV_URL" && git push origin main`.
+
+### Fallback hardcoded
+Si el fetch del CSV falla, `index.html` muestra 2 viajes demo (ver catch en líneas 2273-2284). **Esto es intencional** pero puede confundir porque no hay banner visible indicando modo demo. Pendiente decidir si se agrega aviso.
+
+### Migración futura
+La tabla `viajes` de Supabase (en pendientes) elimina esta dependencia de Google Sheets.
+
+---
+
 ## Base de Datos Supabase
 
 ### Tabla `perfiles`

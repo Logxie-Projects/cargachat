@@ -755,6 +755,7 @@ function moveDestUp(idx){
   [userOrder[pos-1],userOrder[pos]]=[userOrder[pos],userOrder[pos-1]];
   userReorderedFlag=true;
   reRenderDestList();
+  showSugBadges();
 }
 function moveDestDown(idx){
   const pos=userOrder.indexOf(idx);
@@ -762,6 +763,20 @@ function moveDestDown(idx){
   [userOrder[pos],userOrder[pos+1]]=[userOrder[pos+1],userOrder[pos]];
   userReorderedFlag=true;
   reRenderDestList();
+  showSugBadges();
+}
+
+function showSugBadges(){
+  if(!suggestedOrder.length)return;
+  suggestedOrder.forEach((origIdx,sugPos)=>{
+    const badge=document.getElementById(`dsug-${origIdx}`);
+    if(badge){
+      const userPos=userOrder.indexOf(origIdx);
+      badge.textContent='Sug: '+(sugPos+1);
+      badge.style.display='inline';
+      badge.className='sug-badge'+(userPos!==sugPos?' diff':'');
+    }
+  });
 }
 function reRenderDestList(){
   const list=document.getElementById('destList');list.innerHTML='';
@@ -914,25 +929,31 @@ async function runAnalysis(){
     const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
     tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
     ordered=osrmStops;
-    suggestedOrder=orderedDests.map(d=>d.origIdx);
     
-    // If user hasn't manually reordered, align the right panel to the suggested order
-    // so the numbering in the panel matches the delivery order in the plan
+    // Only overwrite suggestedOrder on the FIRST calculation (when user hasn't reordered).
+    // After reordering, keep the original suggested order as reference for comparison.
     if(!userReorderedFlag){
+      suggestedOrder=orderedDests.map(d=>d.origIdx);
+      // Align the right panel to the suggested order so numbers match the plan
       userOrder=[...suggestedOrder];
       reRenderDestList();
     }
     
-    // Show suggested position badges on dest cards
-    suggestedOrder.forEach((origIdx,sugPos)=>{
-      const badge=document.getElementById(`dsug-${origIdx}`);
-      if(badge){
-        const userPos=userOrder.indexOf(origIdx);
-        badge.textContent='Sug: '+(sugPos+1);
-        badge.style.display='inline';
-        badge.className='sug-badge'+(userPos!==sugPos?' diff':'');
-      }
-    });
+    // Show "Sug: N" badges ONLY when user has reordered (otherwise the badge is redundant)
+    if(userReorderedFlag){
+      suggestedOrder.forEach((origIdx,sugPos)=>{
+        const badge=document.getElementById(`dsug-${origIdx}`);
+        if(badge){
+          const userPos=userOrder.indexOf(origIdx);
+          badge.textContent='Sug: '+(sugPos+1);
+          badge.style.display='inline';
+          badge.className='sug-badge'+(userPos!==sugPos?' diff':'');
+        }
+      });
+    } else {
+      // Hide all Sug badges since user order = suggested order
+      document.querySelectorAll('.sug-badge').forEach(el=>el.style.display='none');
+    }
     
     const legs=tripData.legs||(tripData.legs?tripData.legs:[]);
     const totalKm=Math.round((tripData.distance||0)/1000);
@@ -1298,18 +1319,22 @@ async function exportPdf(){
     const originStop=ordered.find(s=>s.type==='origin');
     const routeColorHex=isUserOrder?'0x0E1B4D':'0x00BFDF';
     
-    // Build markers: origin (blue C) + destinations (numbered)
+    // Build markers: origin (C pin) + destinations (numbered pins with full number)
+    // Uses chart.googleapis.com (free, unlimited) to generate PNG pin icons with labels 1-99
+    const pinColor=isUserOrder?'0E1B4D':'00BFDF';
+    const originPinColor='00BFDF'; // cyan for cargue
     const markerParams=[];
+    
     if(originStop){
-      markerParams.push(`markers=color:${isUserOrder?'blue':'0x00BFDF'}|label:C|size:mid|${originStop.lat},${originStop.lng}`);
+      // Origin: custom icon with "C" label
+      const iconUrl=encodeURIComponent(`https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=C|${originPinColor}|ffffff`);
+      markerParams.push(`markers=icon:${iconUrl}|${originStop.lat},${originStop.lng}`);
     }
-    // Add numbered destinations — Static Maps only supports single char labels, so use colors to show order
-    // Split into groups of up to 9 per marker param (labels 1-9, then use A-Z for 10-35)
+    // Destinations: each with full number (1, 2, ..., 28) via Chart API
     destStopsForMap.forEach((s,i)=>{
       const n=i+1;
-      // Labels can be 1 alphanumeric char. For stops 1-9 use digit, 10+ use letter A=10, B=11, etc
-      const label=n<=9?String(n):String.fromCharCode(64+(n-9)); // 10->A, 11->B, ...
-      markerParams.push(`markers=color:${isUserOrder?'0x0E1B4D':'0x00BFDF'}|label:${label}|size:mid|${s.lat},${s.lng}`);
+      const iconUrl=encodeURIComponent(`https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=${n}|${pinColor}|ffffff`);
+      markerParams.push(`markers=icon:${iconUrl}|${s.lat},${s.lng}`);
     });
     
     // Build path (route) — use the OSRM geometry, sampled to fit URL length limit (~8KB)
@@ -1348,16 +1373,51 @@ async function exportPdf(){
       imgData=canvas.toDataURL('image/jpeg',0.9);
     }
     
-    // Add legend note for labels > 9 (10→A, 11→B...)
+    // Add map to PDF
     const mapPdfH=85;
     pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
-    y+=mapPdfH+2;
-    if(destStopsForMap.length>9){
-      pdf.setFont('helvetica','italic');pdf.setFontSize(7);pdf.setTextColor(100,100,100);
-      pdf.text('Leyenda: C=cargue, 1-9=primeras paradas, A=10, B=11, C=12, D=13, E=14, F=15, G=16, H=17, I=18, J=19, K=20...',margin,y);
-      pdf.setTextColor(0,0,0);y+=4;
+    y+=mapPdfH+4;
+    
+    // ── CONVENCIONES DEL MAPA ──
+    // Table with label → city for each stop, so the transportador can read the map
+    if(y>pageH-40){pdf.addPage();y=margin;}
+    pdf.setFont('helvetica','bold');pdf.setFontSize(9);
+    pdf.text('CONVENCIONES DEL MAPA',margin,y);y+=4;
+    pdf.setDrawColor(200,200,200);pdf.line(margin,y,pageW-margin,y);y+=4;
+    
+    // Build legend items: [label, city]
+    const legendItems=[];
+    if(originStop)legendItems.push({label:'C',city:originStop.name+' (cargue)'});
+    destStopsForMap.forEach((s,i)=>{
+      const label=String(i+1);
+      legendItems.push({label,city:s.name});
+    });
+    
+    // Render as 2-column table (split items evenly)
+    const colW=(pageW-2*margin)/2;
+    const halfCount=Math.ceil(legendItems.length/2);
+    pdf.setFont('helvetica','normal');pdf.setFontSize(8);
+    const rowH=4.5;
+    const startY=y;
+    const labelColor=isUserOrder?[14,27,77]:[0,191,223];
+    
+    for(let i=0;i<legendItems.length;i++){
+      const col=i<halfCount?0:1;
+      const rowInCol=i<halfCount?i:i-halfCount;
+      const rowY=startY+(rowInCol*rowH);
+      const rowX=margin+(col*colW);
+      // Label in colored box
+      pdf.setFillColor(labelColor[0],labelColor[1],labelColor[2]);
+      pdf.setTextColor(255,255,255);
+      pdf.setFont('helvetica','bold');
+      const labelBoxW=8;
+      pdf.rect(rowX,rowY-3,labelBoxW,rowH-0.5,'F');
+      pdf.text(legendItems[i].label,rowX+labelBoxW/2,rowY,{align:'center'});
+      // City name
+      pdf.setTextColor(0,0,0);pdf.setFont('helvetica','normal');
+      pdf.text(legendItems[i].city.substring(0,38),rowX+labelBoxW+2,rowY);
     }
-    y+=4;
+    y=startY+(halfCount*rowH)+4;
     
     // ── PLAN DE VIAJE (timeline) ──
     if(y>pageH-60){pdf.addPage();y=margin;}

@@ -1237,21 +1237,34 @@ function renderMap(tripData,ordered,target){
     const line=L.polyline(coords,{color:routeColor,weight:3,opacity:.7});addLayer(line);
     m.fitBounds(line.getBounds(),{padding:[30,30]});
   }
+  
+  // Build numbered dest markers (divIcons are picked up by html2canvas and render the number on pin)
+  let destCounter=0;
   ordered.forEach((s,i)=>{
-    const color=s.type==='origin'?'#00BFDF':(s.type==='return'?'#8890AB':'#0E1B4D');
-    const fill=s.type==='dest'?'#fff':color;
-    const r=s.type==='origin'?8:(s.type==='return'?6:6);
-    const mk=L.circleMarker([s.lat,s.lng],{radius:r,color,fillColor:fill,fillOpacity:.9,weight:2});
-    addLayer(mk);
-    // Click to show name
-    const popupContent=s.type==='origin'?`<b>CARGUE</b><br>${s.name}`:(s.type==='return'?`<b>RETORNO</b><br>${s.name}`:`<b>#${i} ${s.name}</b>`);
-    mk.bindPopup(popupContent,{closeButton:false,className:'map-popup'});
-    // Hover tooltip
-    mk.bindTooltip(`<b>${s.name}</b>`,{direction:'top',offset:[0,-8]});
-    if(s.type==='dest'){
-      const tip=L.tooltip({permanent:true,direction:'right',offset:[8,0]}).setLatLng([s.lat,s.lng])
-        .setContent(`<span style="font-size:10px;font-family:monospace;color:${routeColor};font-weight:700;background:#fff;padding:1px 3px;border-radius:2px;border:1px solid ${routeColor}">${i}</span>`);
-      addLayer(tip);
+    if(s.type==='origin'){
+      // Origin: cyan pin with "C" inside
+      const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:12px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">C</div>`;
+      const icon=L.divIcon({className:'num-marker',html,iconSize:[26,26],iconAnchor:[13,13]});
+      const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:1000});
+      mk.bindPopup(`<b>CARGUE</b><br>${s.name}`,{closeButton:false});
+      mk.bindTooltip(`<b>${s.name}</b>`,{direction:'top',offset:[0,-14]});
+      addLayer(mk);
+    } else if(s.type==='dest'){
+      destCounter++;
+      const n=destCounter;
+      const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:${n>99?9:n>9?11:13}px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">${n}</div>`;
+      const icon=L.divIcon({className:'num-marker',html,iconSize:[26,26],iconAnchor:[13,13]});
+      const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:500+n});
+      mk.bindPopup(`<b>#${n} ${s.name}</b>`,{closeButton:false});
+      mk.bindTooltip(`<b>#${n} ${s.name}</b>`,{direction:'top',offset:[0,-14]});
+      addLayer(mk);
+    } else if(s.type==='return'){
+      // Return: smaller gray marker, no number (it's the origin)
+      const html=`<div style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#8890AB;color:#fff;font-weight:700;font-size:10px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">R</div>`;
+      const icon=L.divIcon({className:'num-marker',html,iconSize:[20,20],iconAnchor:[10,10]});
+      const mk=L.marker([s.lat,s.lng],{icon});
+      mk.bindPopup(`<b>RETORNO</b><br>${s.name}`,{closeButton:false});
+      addLayer(mk);
     }
   });
 }
@@ -1314,64 +1327,23 @@ async function exportPdf(){
     pdf.line(margin,y,pageW-margin,y);y+=3;
     
     // Use Google Static Maps API — much more reliable than html2canvas for PDFs
-    // Static Maps supports numbered labels natively and always aligns markers correctly.
+    // Capture the interactive Leaflet map — markers are now divIcons with numbers visible,
+    // so html2canvas captures them perfectly aligned with the map
     const destStopsForMap=ordered.filter(s=>s.type==='dest');
     const originStop=ordered.find(s=>s.type==='origin');
-    const routeColorHex=isUserOrder?'0x0E1B4D':'0x00BFDF';
+    const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
     
-    // Build markers: origin (C pin) + destinations (numbered pins with full number)
-    // Uses chart.googleapis.com (free, unlimited) to generate PNG pin icons with labels 1-99
-    const pinColor=isUserOrder?'0E1B4D':'00BFDF';
-    const originPinColor='00BFDF'; // cyan for cargue
-    const markerParams=[];
+    // Wait a moment to ensure map tiles finished loading
+    await new Promise(r=>setTimeout(r,500));
     
-    if(originStop){
-      // Origin: custom icon with "C" label
-      const iconUrl=encodeURIComponent(`https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=C|${originPinColor}|ffffff`);
-      markerParams.push(`markers=icon:${iconUrl}|${originStop.lat},${originStop.lng}`);
-    }
-    // Destinations: each with full number (1, 2, ..., 28) via Chart API
-    destStopsForMap.forEach((s,i)=>{
-      const n=i+1;
-      const iconUrl=encodeURIComponent(`https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=${n}|${pinColor}|ffffff`);
-      markerParams.push(`markers=icon:${iconUrl}|${s.lat},${s.lng}`);
+    const canvas=await html2canvas(mapEl,{
+      useCORS:true,
+      allowTaint:true,
+      scale:2,
+      backgroundColor:'#f5f5f5',
+      logging:false
     });
-    
-    // Build path (route) — use the OSRM geometry, sampled to fit URL length limit (~8KB)
-    let pathParam='';
-    if(tripData.geometry&&tripData.geometry.coordinates){
-      const coords=tripData.geometry.coordinates;
-      // Sample to max ~100 points to stay under URL limit
-      const step=Math.max(1,Math.floor(coords.length/100));
-      const sampled=[];
-      for(let i=0;i<coords.length;i+=step)sampled.push(coords[i]);
-      if(sampled[sampled.length-1]!==coords[coords.length-1])sampled.push(coords[coords.length-1]);
-      const pathStr=sampled.map(c=>`${c[1].toFixed(4)},${c[0].toFixed(4)}`).join('|');
-      pathParam=`path=color:${routeColorHex}|weight:4|${pathStr}`;
-    }
-    
-    const mapW=640,mapH=400; // Static Maps dimensions (max 640x640 free tier)
-    const staticUrl=`https://maps.googleapis.com/maps/api/staticmap?size=${mapW}x${mapH}&scale=2&maptype=roadmap&${pathParam}&${markerParams.join('&')}&key=${GMAPS_KEY}`;
-    
-    // Fetch the static map image and add to PDF
-    let imgData;
-    try{
-      const imgResp=await fetch(staticUrl);
-      if(!imgResp.ok)throw new Error('Static Maps API error '+imgResp.status);
-      const blob=await imgResp.blob();
-      imgData=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=()=>resolve(reader.result);
-        reader.onerror=reject;
-        reader.readAsDataURL(blob);
-      });
-    }catch(e){
-      console.error('Error fetching static map:',e);
-      // Fallback: capture the interactive map (less accurate but works offline)
-      const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
-      const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5',logging:false});
-      imgData=canvas.toDataURL('image/jpeg',0.9);
-    }
+    const imgData=canvas.toDataURL('image/jpeg',0.9);
     
     // Add map to PDF
     const mapPdfH=85;

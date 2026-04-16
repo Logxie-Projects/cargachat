@@ -1350,81 +1350,135 @@ async function exportPdf(){
     
     const destStopsForMap=ordered.filter(s=>s.type==='dest');
     const originStop=ordered.find(s=>s.type==='origin');
-    const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
-    const mapInstance=isUserOrder?mapUsr:mapSug;
     const routeColor=isUserOrder?'#0E1B4D':'#00BFDF';
+    const routeColorHex=isUserOrder?'0x0E1B4D':'0x00BFDF';
     
-    // html2canvas has a known bug with transformed Leaflet markers (divIcon matrix transforms).
-    // Workaround: hide the markers before capture, then draw the numbered pins directly on
-    // the canvas using Leaflet's projection (which is 100% accurate).
+    // Strategy: use Google Static Maps for the BASE MAP ONLY (no markers).
+    // Google returns a clean raster image with predictable Web Mercator projection,
+    // so we can draw numbered pins on top with perfect alignment.
     
-    // 1. Hide all marker layers
-    const markerEls=mapEl.querySelectorAll('.leaflet-marker-pane .leaflet-marker-icon');
-    const savedVisibility=[];
-    markerEls.forEach(el=>{savedVisibility.push(el.style.visibility);el.style.visibility='hidden'});
+    // 1. Compute bounds of all stops + origin (and return if present)
+    const allPoints=[];
+    if(originStop)allPoints.push([originStop.lat,originStop.lng]);
+    destStopsForMap.forEach(s=>allPoints.push([s.lat,s.lng]));
+    const returnStop=ordered.find(s=>s.type==='return');
+    if(returnStop)allPoints.push([returnStop.lat,returnStop.lng]);
     
-    // Let tiles finish loading
-    await new Promise(r=>setTimeout(r,500));
+    // 2. Build polyline path param (sample OSRM geometry)
+    let pathParam='';
+    if(tripData.geometry&&tripData.geometry.coordinates){
+      const gcoords=tripData.geometry.coordinates;
+      const step=Math.max(1,Math.floor(gcoords.length/80));
+      const sampled=[];
+      for(let i=0;i<gcoords.length;i+=step)sampled.push(gcoords[i]);
+      if(sampled[sampled.length-1]!==gcoords[gcoords.length-1])sampled.push(gcoords[gcoords.length-1]);
+      const pathStr=sampled.map(c=>`${c[1].toFixed(4)},${c[0].toFixed(4)}`).join('|');
+      pathParam=`&path=color:${routeColorHex}|weight:4|${pathStr}`;
+    }
     
-    // 2. Capture map (tiles + polyline, NO markers)
-    const canvas=await html2canvas(mapEl,{
-      useCORS:true,
-      allowTaint:true,
-      scale:2,
-      backgroundColor:'#f5f5f5',
-      logging:false
-    });
+    // 3. Add invisible markers at the bounds so Google auto-fits the viewport around them
+    const boundsMarkers=allPoints.map(p=>`markers=size:tiny|color:white|${p[0]},${p[1]}`).join('&');
     
-    // 3. Restore marker visibility (for the UI)
-    markerEls.forEach((el,i)=>{el.style.visibility=savedVisibility[i]||''});
+    // 4. Request the static map (no visible markers, just tiles + polyline)
+    const mapW=640,mapH=400;
+    const staticUrl=`https://maps.googleapis.com/maps/api/staticmap?size=${mapW}x${mapH}&scale=2&maptype=roadmap&${boundsMarkers}${pathParam}&key=${GMAPS_KEY}`;
     
-    // 4. Draw numbered pins directly on the canvas using Leaflet's latLngToContainerPoint
-    const ctx=canvas.getContext('2d');
-    const SCALE=2;
-    const R=13*SCALE; // radius of pin
-    ctx.font='bold '+(13*SCALE)+'px Arial, sans-serif';
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
+    let baseMapImg,skipPinDrawing=false;
+    try{
+      const imgResp=await fetch(staticUrl);
+      if(!imgResp.ok)throw new Error('Static Maps '+imgResp.status);
+      const blob=await imgResp.blob();
+      baseMapImg=await new Promise((resolve,reject)=>{
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>resolve(img);
+        img.onerror=reject;
+        img.src=URL.createObjectURL(blob);
+      });
+    }catch(e){
+      console.error('Static Maps failed, falling back to html2canvas',e);
+      const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
+      const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5',logging:false});
+      const imgData=canvas.toDataURL('image/jpeg',0.9);
+      pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,85);
+      y+=85+4;
+      skipPinDrawing=true;
+    }
     
+    if(!skipPinDrawing){
+    // 5. Draw base map to a working canvas
+    const workCanvas=document.createElement('canvas');
+    workCanvas.width=mapW*2;workCanvas.height=mapH*2; // scale=2 from Google
+    const ctx=workCanvas.getContext('2d');
+    ctx.drawImage(baseMapImg,0,0);
+    
+    // 6. Compute Web Mercator projection for the Google Static Map
+    // Google used auto-bounds around allPoints; we need to know which bounds/zoom it picked.
+    // We can compute this from allPoints: min/max lat/lng, then calculate zoom that fits mapW×mapH.
+    let minLat=90,maxLat=-90,minLng=180,maxLng=-180;
+    for(const [la,ln] of allPoints){
+      if(la<minLat)minLat=la;if(la>maxLat)maxLat=la;
+      if(ln<minLng)minLng=ln;if(ln>maxLng)maxLng=ln;
+    }
+    // Add 10% padding
+    const latPad=(maxLat-minLat)*0.15||0.05;
+    const lngPad=(maxLng-minLng)*0.15||0.05;
+    minLat-=latPad;maxLat+=latPad;minLng-=lngPad;maxLng+=lngPad;
+    
+    // Web Mercator projection (used by Google Maps)
+    function latLngToPixel(lat,lng,zoom){
+      const x=(lng+180)/360*Math.pow(2,zoom)*256;
+      const y=(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,zoom)*256;
+      return {x,y};
+    }
+    // Find zoom level that fits the bounding box in mapW × mapH
+    let zoom=10;
+    for(let z=18;z>=0;z--){
+      const nw=latLngToPixel(maxLat,minLng,z);
+      const se=latLngToPixel(minLat,maxLng,z);
+      if((se.x-nw.x)<=mapW&&(se.y-nw.y)<=mapH){zoom=z;break;}
+    }
+    // Center of bbox
+    const centerLat=(minLat+maxLat)/2,centerLng=(minLng+maxLng)/2;
+    const centerPx=latLngToPixel(centerLat,centerLng,zoom);
+    // Convert any lat/lng to canvas pixel
+    function projectToCanvas(lat,lng){
+      const p=latLngToPixel(lat,lng,zoom);
+      const cx=mapW/2+(p.x-centerPx.x);
+      const cy=mapH/2+(p.y-centerPx.y);
+      return {x:cx*2,y:cy*2}; // scale=2
+    }
+    
+    // 7. Draw numbered pins
+    const R=13*2;
     function drawPin(lat,lng,label,color){
-      const pt=mapInstance.latLngToContainerPoint([lat,lng]);
-      const x=pt.x*SCALE,y=pt.y*SCALE;
+      const {x,y:py}=projectToCanvas(lat,lng);
+      // Shadow
+      ctx.beginPath();ctx.arc(x+1,py+2,R+2,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,.25)';ctx.fill();
       // White outer ring
-      ctx.beginPath();ctx.arc(x,y,R+2,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(x,py,R+2,0,Math.PI*2);
       ctx.fillStyle='#ffffff';ctx.fill();
-      // Shadow (simple dark ring below)
-      ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=1;ctx.stroke();
       // Colored fill
-      ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(x,py,R,0,Math.PI*2);
       ctx.fillStyle=color;ctx.fill();
       // Text
       ctx.fillStyle='#ffffff';
-      // Adjust font size for multi-digit
-      const size=label.length>2?11*SCALE:(label.length>1?12*SCALE:14*SCALE);
+      const size=label.length>2?18:(label.length>1?20:22);
       ctx.font='bold '+size+'px Arial, sans-serif';
-      ctx.fillText(label,x,y+1);
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(label,x,py+1);
     }
     
-    // Draw origin
-    if(originStop){
-      drawPin(originStop.lat,originStop.lng,'C',routeColor);
-    }
-    // Draw destinations
-    destStopsForMap.forEach((s,i)=>{
-      drawPin(s.lat,s.lng,String(i+1),routeColor);
-    });
-    // Draw return if exists
-    const returnStop=ordered.find(s=>s.type==='return');
-    if(returnStop&&returnStop!==originStop){
-      drawPin(returnStop.lat,returnStop.lng,'R','#8890AB');
-    }
+    if(originStop)drawPin(originStop.lat,originStop.lng,'C',routeColor);
+    destStopsForMap.forEach((s,i)=>drawPin(s.lat,s.lng,String(i+1),routeColor));
+    if(returnStop&&returnStop!==originStop)drawPin(returnStop.lat,returnStop.lng,'R','#8890AB');
     
-    const imgData=canvas.toDataURL('image/jpeg',0.9);
-    
-    // Add map to PDF
+    const imgData=workCanvas.toDataURL('image/jpeg',0.9);
     const mapPdfH=85;
     pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
     y+=mapPdfH+4;
+    }
     
     // ── CONVENCIONES DEL MAPA ──
     // Table with label → city for each stop, so the transportador can read the map
@@ -1499,6 +1553,7 @@ async function exportPdf(){
         else if(e.type==='dest'){line=t+'  #'+String(e.idx).padEnd(3)+' '+e.city+' - '+e.dur+' min descargue  ('+e.cumKm+' km)';}
         else if(e.type==='return'){line=t+'  [R] Retorno: '+e.city+'  ('+e.cumKm+' km)';textColor=[100,100,100];}
         
+        line=clean(line);
         pdf.setTextColor(textColor[0],textColor[1],textColor[2]);
         pdf.setFont('helvetica',fontStyle);
         // Wrap long lines and render each wrapped segment
@@ -1554,9 +1609,9 @@ async function exportPdf(){
       
       for(const [lbl,val] of details){
         if(y>pageH-8){pdf.addPage();y=margin;}
-        pdf.setFont('helvetica','bold');pdf.text(lbl,margin+3,y);
+        pdf.setFont('helvetica','bold');pdf.text(clean(lbl),margin+3,y);
         pdf.setFont('helvetica','normal');
-        const wrapped=pdf.splitTextToSize(String(val),pageW-margin-35);
+        const wrapped=pdf.splitTextToSize(clean(String(val)),pageW-margin-35);
         pdf.text(wrapped,margin+28,y);
         y+=4+((wrapped.length-1)*3.5);
       }

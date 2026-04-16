@@ -235,6 +235,7 @@ input[type="number"]{font-family:var(--mono)}
     <div class="sb-s">
       <button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button>
       <button class="btn-run" id="btnPdf" onclick="exportPdf()" style="margin-top:8px;background:var(--cyan);color:var(--navy);display:none">📄 Exportar PDF</button>
+      <button class="btn-run" id="btnCheck" onclick="openCheckRuta()" style="margin-top:6px;background:var(--green);color:#fff;display:none">📋 Check de Ruta</button>
     </div>
   </div>
 
@@ -565,6 +566,7 @@ let suggestedKPIs=null; // KPIs from first (suggested) analysis
 function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>';
   document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;userReorderedFlag=false;
   const pdfBtn=document.getElementById('btnPdf');if(pdfBtn)pdfBtn.style.display='none';
+  const chkBtn=document.getElementById('btnCheck');if(chkBtn)chkBtn.style.display='none';
   window._lastRoute=null;}
 
 function buildDestPanel(trip){
@@ -1113,6 +1115,7 @@ async function runAnalysis(){
     // Save data globally for PDF export
     window._lastRoute={trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,fecha:dateFechaBase,destConditions:[...destConditions],isUserOrder:userReorderedFlag};
     document.getElementById('btnPdf').style.display='block';
+    document.getElementById('btnCheck').style.display='block';
     // First run = suggested map (cyan), subsequent runs with reorder = user map (navy)
     if(!userReorderedFlag){
       renderMap(tripData,ordered,'sug');
@@ -1569,6 +1572,37 @@ async function exportPdf(){
     alert('Error generando PDF: '+err.message);console.error(err);
   }
   btn.disabled=false;btn.textContent='📄 Exportar PDF';
+}
+
+// ================================================================
+// CHECK DE RUTA — export plan to localStorage and open page
+// ================================================================
+function openCheckRuta(){
+  if(!window._lastRoute){alert('Primero calcula una ruta');return}
+  const r=window._lastRoute;
+  const trip=r.trip, ordered=r.ordered, timeline=r.timeline;
+  const origen=ordered.find(s=>s.type==='origin');
+  const destinos=ordered.filter(s=>s.type==='dest').map((s,i)=>{
+    const tlEntry=timeline.find(t=>t.type==='dest'&&t.city===s.name);
+    return {
+      name:s.name,
+      lat:s.lat,
+      lng:s.lng,
+      planTime:tlEntry?minToTime(tlEntry.time):'—',
+      planOrder:i+1,
+      cumKm:tlEntry?tlEntry.cumKm:0
+    };
+  });
+  const plan={
+    tripId:trip.id,
+    origen:origen?{name:origen.name,lat:origen.lat,lng:origen.lng}:null,
+    destinos,
+    timeline:timeline.map(t=>({time:t.time,day:t.day,type:t.type,city:t.city,action:t.action,idx:t.idx,cumKm:t.cumKm})),
+    totalKm:r.totalKm,
+    fecha:r.fecha?r.fecha.toISOString().slice(0,10):new Date().toISOString().slice(0,10)
+  };
+  localStorage.setItem('checkRutaPlan',JSON.stringify(plan));
+  window.open('checkderuta.html','_blank');
 }
 
 // ================================================================

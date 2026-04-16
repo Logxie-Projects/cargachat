@@ -232,7 +232,10 @@ input[type="number"]{font-family:var(--mono)}
       <div class="sb-row"><div class="sb-lbl">Retorno a origen</div><select id="inRetorno"><option value="yes" selected>Sí</option><option value="no">No</option></select></div>
       <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="18">Hasta 6 PM</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite (24h)</option></select></div>
     </div>
-    <div class="sb-s"><button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button></div>
+    <div class="sb-s">
+      <button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button>
+      <button class="btn-run" id="btnPdf" onclick="exportPdf()" style="margin-top:8px;background:var(--cyan);color:var(--navy);display:none">📄 Exportar PDF</button>
+    </div>
   </div>
 
   <!-- CENTER: 2 route rows -->
@@ -281,6 +284,8 @@ input[type="number"]{font-family:var(--mono)}
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // ================================================================
 // NETFLEET CORE — Diccionario, Geocoding, Pricing (idéntico a index.html)
@@ -1075,6 +1080,9 @@ async function runAnalysis(){
     
     // ── RENDER ──
     renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
+    // Save data globally for PDF export
+    window._lastRoute={trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,fecha:dateFechaBase,destConditions:[...destConditions],isUserOrder:userReorderedFlag};
+    document.getElementById('btnPdf').style.display='block';
     // First run = suggested map (cyan), subsequent runs with reorder = user map (navy)
     if(!userReorderedFlag){
       renderMap(tripData,ordered,'sug');
@@ -1216,6 +1224,178 @@ function renderMap(tripData,ordered,target){
       addLayer(tip);
     }
   });
+}
+
+// ================================================================
+// PDF EXPORT
+// ================================================================
+async function exportPdf(){
+  if(!window._lastRoute){alert('Primero calcula una ruta');return}
+  const btn=document.getElementById('btnPdf');
+  btn.disabled=true;btn.textContent='⏳ Generando PDF...';
+  
+  try{
+    const {trip,timeline,totalKm,totalDriveMin,ordered,fecha,destConditions:conds,isUserOrder}=window._lastRoute;
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pageW=210,pageH=297,margin=12;
+    let y=margin;
+    
+    // ── HEADER ──
+    pdf.setFillColor(14,27,77); // navy
+    pdf.rect(0,0,pageW,24,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFont('helvetica','bold');pdf.setFontSize(16);
+    pdf.text('LogxIA — Plan de Viaje',margin,11);
+    pdf.setFont('helvetica','normal');pdf.setFontSize(9);
+    pdf.text((isUserOrder?'Tu orden':'Ruta sugerida')+' · '+new Date().toLocaleString('es-CO'),margin,18);
+    pdf.setTextColor(0,0,0);
+    y=30;
+    
+    // ── INFO GENERAL ──
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+    pdf.text('INFORMACIÓN DEL VIAJE',margin,y);y+=5;
+    pdf.setDrawColor(200,200,200);pdf.line(margin,y,pageW-margin,y);y+=4;
+    pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);
+    const fechaStr=fecha.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const numDests=conds.length;
+    const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
+    const totalDays=Math.max(...timeline.map(t=>t.day||0))+1;
+    const info=[
+      ['Viaje ID:',trip.id,'Fecha cargue:',fechaStr],
+      ['Origen:',trip.origenes[0],'Empresas:',trip.empresas||'-'],
+      ['Zonas:',trip.zonas||'-','Pedidos:',String(trip.pedidos.length)],
+      ['Destinos:',String(numDests),'Peso total:',(trip.pesoTotal||'-')+' kg'],
+      ['Valor mercancía:','$'+(trip.valorTotal||'-'),'Km totales:',fmt(totalKm)+' km'],
+      ['Duración conducción:',Math.floor(totalDriveMin/60)+'h '+(totalDriveMin%60)+'m','Días estimados:',totalDays+' ('+pernoctaCount+' pernocta)']
+    ];
+    for(const row of info){
+      pdf.setFont('helvetica','bold');pdf.text(row[0],margin,y);
+      pdf.setFont('helvetica','normal');pdf.text(String(row[1]).substring(0,40),margin+28,y);
+      pdf.setFont('helvetica','bold');pdf.text(row[2],pageW/2+5,y);
+      pdf.setFont('helvetica','normal');pdf.text(String(row[3]).substring(0,40),pageW/2+35,y);
+      y+=4.5;
+    }
+    y+=4;
+    
+    // ── MAPA ──
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+    pdf.text('MAPA DE LA RUTA',margin,y);y+=5;
+    pdf.line(margin,y,pageW-margin,y);y+=3;
+    
+    // Capture map as image
+    const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
+    const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5'});
+    const imgData=canvas.toDataURL('image/jpeg',0.85);
+    const mapH=85;
+    pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapH);
+    y+=mapH+6;
+    
+    // ── PLAN DE VIAJE (timeline) ──
+    if(y>pageH-60){pdf.addPage();y=margin;}
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+    pdf.text('PLAN DE VIAJE',margin,y);y+=5;
+    pdf.line(margin,y,pageW-margin,y);y+=4;
+    
+    // Group timeline by day
+    for(let d=0;d<totalDays;d++){
+      const dayEvents=timeline.filter(t=>t.day===d);
+      if(!dayEvents.length)continue;
+      if(y>pageH-25){pdf.addPage();y=margin;}
+      
+      const dayDate=new Date(fecha);dayDate.setDate(dayDate.getDate()+d);
+      pdf.setFont('helvetica','bold');pdf.setFontSize(9);
+      pdf.setFillColor(0,191,223);pdf.rect(margin,y-3,pageW-2*margin,5,'F');
+      pdf.setTextColor(14,27,77);
+      pdf.text('DÍA '+(d+1)+' · '+dayDate.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'short'}).toUpperCase(),margin+2,y);
+      pdf.setTextColor(0,0,0);y+=6;
+      
+      pdf.setFont('helvetica','normal');pdf.setFontSize(8);
+      for(const e of dayEvents){
+        if(y>pageH-10){pdf.addPage();y=margin;}
+        const t=minToTime(e.time);
+        let line='',icon='';
+        if(e.type==='cargue'){icon='[C]';line=t+'  '+icon+' '+e.city+' (cargue) — '+e.dur+' min';}
+        else if(e.type==='salida'){icon='[>]';line=t+'  '+icon+' Sale de planta';}
+        else if(e.type==='drive'){icon='   ';line='     '+icon+' Conduce '+e.action+'  |  acum: '+e.cumKm+' km';pdf.setTextColor(100,100,100);}
+        else if(e.type==='wait'){icon='[~]';line=t+'  '+icon+' '+e.action;pdf.setTextColor(180,120,0);}
+        else if(e.type==='pernocta'){icon='[P]';line=t+'  '+icon+' '+e.action;pdf.setTextColor(200,50,50);pdf.setFont('helvetica','bold');}
+        else if(e.type==='dest'){icon='#'+e.idx;line=t+'  '+icon.padEnd(4)+' '+e.city+' — '+e.dur+' min descargue  |  '+e.cumKm+' km';}
+        else if(e.type==='return'){icon='[R]';line=t+'  '+icon+' Retorno: '+e.city+'  |  '+e.cumKm+' km';pdf.setTextColor(100,100,100);}
+        pdf.text(line.substring(0,95),margin+2,y);
+        pdf.setTextColor(0,0,0);pdf.setFont('helvetica','normal');
+        y+=4;
+      }
+      y+=2;
+    }
+    
+    // ── DETALLE DE PARADAS ──
+    pdf.addPage();y=margin;
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+    pdf.text('DETALLE DE PARADAS',margin,y);y+=5;
+    pdf.line(margin,y,pageW-margin,y);y+=4;
+    
+    // Use ordered array to show stops in route order
+    const destStops=ordered.filter(s=>s.type==='dest');
+    for(let i=0;i<destStops.length;i++){
+      const s=destStops[i];
+      const cond=conds.find(c=>c.idx===s.origIdx);
+      if(!cond)continue;
+      if(y>pageH-30){pdf.addPage();y=margin;}
+      
+      // Stop header
+      pdf.setFont('helvetica','bold');pdf.setFontSize(9);
+      pdf.setFillColor(240,240,245);pdf.rect(margin,y-3,pageW-2*margin,5,'F');
+      pdf.text('#'+(i+1)+'  '+s.name,margin+2,y);y+=6;
+      
+      pdf.setFont('helvetica','normal');pdf.setFontSize(8);
+      const v1=cond.winsLV&&cond.winsLV[0]?`${Math.floor(cond.winsLV[0].from/60)}:${String(cond.winsLV[0].from%60).padStart(2,'0')} - ${Math.floor(cond.winsLV[0].to/60)}:${String(cond.winsLV[0].to%60).padStart(2,'0')}`:'—';
+      const v2=cond.winsLV&&cond.winsLV[1]?`${Math.floor(cond.winsLV[1].from/60)}:${String(cond.winsLV[1].from%60).padStart(2,'0')} - ${Math.floor(cond.winsLV[1].to/60)}:${String(cond.winsLV[1].to%60).padStart(2,'0')}`:'—';
+      
+      // Collect all pedidos for this destination
+      const pedidosDest=trip.pedidos.filter(p=>p.destino===cond.city);
+      const remisiones=pedidosDest.map(p=>p.remision).join(', ');
+      const peso=pedidosDest.reduce((a,p)=>a+(p.peso||0),0);
+      
+      const details=[
+        ['Cliente:',cond.cliente||'—'],
+        ['Contacto:',(cond.contacto||'—')+(cond.telefono?'  ·  Tel: '+cond.telefono:'')],
+        ['Dirección:',cond.direccion||'—'],
+        ['Ventanas:',v1+(v2!=='—'?'  /  '+v2:'')],
+        ['Días atención:',cond.diasStr||cond.diasAtencion||'LV'],
+        ['Remisiones:',remisiones.substring(0,85)],
+        ['Peso:',peso.toFixed(2)+' kg'],
+      ];
+      if(cond.notas)details.push(['Notas:',cond.notas]);
+      
+      for(const [lbl,val] of details){
+        if(y>pageH-8){pdf.addPage();y=margin;}
+        pdf.setFont('helvetica','bold');pdf.text(lbl,margin+3,y);
+        pdf.setFont('helvetica','normal');
+        const wrapped=pdf.splitTextToSize(String(val),pageW-margin-35);
+        pdf.text(wrapped,margin+28,y);
+        y+=4+((wrapped.length-1)*3.5);
+      }
+      y+=3;
+    }
+    
+    // ── FOOTER on every page ──
+    const pageCount=pdf.internal.getNumberOfPages();
+    for(let p=1;p<=pageCount;p++){
+      pdf.setPage(p);
+      pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(120,120,120);
+      pdf.text('LogxIA · NETFLEET.app · '+trip.id,margin,pageH-5);
+      pdf.text('Página '+p+' de '+pageCount,pageW-margin-15,pageH-5);
+    }
+    
+    // Save
+    const filename='plan-viaje-'+trip.id+'-'+fecha.toISOString().slice(0,10)+'.pdf';
+    pdf.save(filename);
+    
+  }catch(err){
+    alert('Error generando PDF: '+err.message);console.error(err);
+  }
+  btn.disabled=false;btn.textContent='📄 Exportar PDF';
 }
 
 // ================================================================

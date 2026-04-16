@@ -31,66 +31,79 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .hdr-r a{color:var(--cyan);text-decoration:none;font-size:11px;border:1px solid rgba(255,255,255,.25);padding:3px 8px;border-radius:4px}
 .hdr-r a:hover{background:rgba(255,255,255,.08)}
 
-/* ── MAIN LAYOUT ── */
-.app{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 48px)}
+/* ── MAIN 3-COL LAYOUT: plan | map | ejecución ── */
+.app{display:grid;grid-template-columns:280px 1fr 340px;height:calc(100vh - 48px)}
+
+/* ── PLAN PANEL (left) ── */
+.plan-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg2);border-right:1px solid var(--border)}
+.panel-title{padding:10px 14px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;gap:6px}
+.panel-title .badge{font-size:10px;background:var(--navy);color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
+.plan-scroll{flex:1;overflow-y:auto;padding:8px 0}
+
+/* plan stop rows */
+.plan-row{display:grid;grid-template-columns:32px 1fr 60px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--border);font-size:11px;transition:background .15s}
+.plan-row:hover{background:var(--bg3)}
+.plan-row.active{background:rgba(0,191,223,.08)}
+.plan-num{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.plan-num.origin{background:var(--cyan);color:var(--navy)}
+.plan-city{font-weight:500;color:var(--text)}
+.plan-time{font-family:var(--mono);font-size:10px;color:var(--text2);text-align:right}
+.plan-km{font-family:var(--mono);font-size:9px;color:var(--text3)}
 
 /* ── MAP ── */
 .map-panel{position:relative}
 .map-el{width:100%;height:100%}
 .leaflet-control-attribution{display:none!important}
+.map-legend{position:absolute;bottom:10px;left:10px;z-index:999;background:rgba(255,255,255,.92);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;border:1px solid var(--border2)}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:4px}
 
-/* ── CHECKLIST PANEL ── */
-.check-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+/* ── EXEC PANEL (right) ── */
+.exec-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);border-left:1px solid var(--border)}
+.exec-scroll{flex:1;overflow-y:auto;padding:8px 12px}
 
 /* ── SUMMARY BAR ── */
 .summary-bar{background:var(--navy);display:grid;grid-template-columns:repeat(4,1fr);gap:1px;flex-shrink:0}
-.sum-item{padding:10px 12px;text-align:center}
-.sum-label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:2px}
-.sum-value{display:block;font-size:13px;font-weight:600;color:#fff;font-family:var(--mono)}
+.sum-item{padding:8px 6px;text-align:center}
+.sum-label{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.5);margin-bottom:1px}
+.sum-value{display:block;font-size:12px;font-weight:600;color:#fff;font-family:var(--mono)}
 .sum-value.ok{color:var(--green)}
 .sum-value.altered{color:var(--warn)}
 
-/* ── CHECKLIST SCROLL ── */
-.check-scroll{flex:1;overflow-y:auto;padding:12px 16px}
+/* ── TRIP INFO (compact) ── */
+.trip-info{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;margin-bottom:8px}
+.trip-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px}
+.ti-label{color:var(--text3)}
+.ti-value{font-weight:500}
 
-/* ── TRIP INFO CARD ── */
-.trip-info{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin-bottom:12px}
-.trip-info-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);margin-bottom:8px}
-.trip-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px}
-.trip-info-grid .ti-label{color:var(--text3)}
-.trip-info-grid .ti-value{font-weight:500;color:var(--text)}
+/* ── EXEC STOP CARDS ── */
+.exec-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;overflow:hidden;border-left:3px solid transparent;transition:border-color .2s,box-shadow .2s;cursor:grab}
+.exec-card.dragging{opacity:.5;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.exec-card.drag-over{border-top:3px solid var(--cyan)}
+.exec-card.st-entregado{border-left-color:var(--green)}
+.exec-card.st-parcial{border-left-color:var(--green)}
+.exec-card.st-no_entregado{border-left-color:var(--danger)}
+.exec-card.st-cliente_cerrado{border-left-color:var(--danger)}
+.exec-card.st-reprogramado{border-left-color:var(--warn)}
 
-/* ── CARGUE ROW ── */
-.cargue-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--cyan)}
-.cargue-card .stop-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.cargue-card .stop-num{width:26px;height:26px;border-radius:50%;background:var(--cyan);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.cargue-card .stop-name{font-weight:600;font-size:12px;flex:1}
-.cargue-card .stop-row{display:flex;align-items:center;gap:8px;font-size:11px}
-.cargue-card .stop-row label,.cargue-card .stop-label{color:var(--text2);font-size:11px;min-width:36px}
-.cargue-card .stop-plan-time{font-family:var(--mono);font-size:11px;font-weight:500;min-width:60px}
+.exec-head{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:11px}
+.exec-order{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.exec-order.pending{background:var(--text3)}
+.exec-name{font-weight:600;flex:1;font-size:11px}
+.exec-vs{font-family:var(--mono);font-size:9px;color:var(--text3)}
+.exec-check{font-size:14px;flex-shrink:0}
+.drag-handle{cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0;padding:0 2px;user-select:none}
 
-/* ── STOP CARDS ── */
-.stop-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:0;margin-bottom:8px;overflow:hidden;border-left:3px solid transparent;transition:border-color .2s}
-.stop-card.st-entregado{border-left-color:var(--green)}
-.stop-card.st-parcial{border-left-color:var(--green)}
-.stop-card.st-no_entregado{border-left-color:var(--danger)}
-.stop-card.st-cliente_cerrado{border-left-color:var(--danger)}
-.stop-card.st-reprogramado{border-left-color:var(--warn)}
-.stop-header{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:default}
-.stop-num{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.stop-name{font-weight:600;font-size:12px;flex:1}
-.stop-check{font-size:16px;flex-shrink:0}
-.stop-body{padding:6px 14px 12px;border-top:1px solid var(--border)}
-.stop-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
-.stop-row:last-child{margin-bottom:0}
-.stop-row label,.stop-label{color:var(--text2);font-size:11px;min-width:52px}
-.stop-plan-time{font-family:var(--mono);font-size:11px;font-weight:500;min-width:60px}
-.stop-real-time{width:110px;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:var(--r);outline:none}
-.stop-real-time:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
-.stop-status{width:140px;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:4px 6px;border-radius:var(--r);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234A5580'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px}
-.stop-status:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
-.stop-notes{flex:1;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:4px 6px;border-radius:var(--r);outline:none}
-.stop-notes:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+.exec-body{padding:4px 10px 8px;border-top:1px solid var(--border)}
+.exec-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px}
+.exec-row:last-child{margin-bottom:0}
+.exec-row label{color:var(--text2);font-size:10px;min-width:44px}
+.exec-plan-time{font-family:var(--mono);font-size:10px;color:var(--text2);min-width:58px}
+input[type="time"]{width:100px;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 6px;border-radius:var(--r);outline:none}
+input[type="time"]:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+select{width:130px;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:3px 6px;border-radius:var(--r);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234A5580'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:18px}
+select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+.exec-notes{flex:1;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:3px 6px;border-radius:var(--r);outline:none;min-width:0}
+.exec-notes:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
 
 /* ── EMPTY STATE ── */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;padding:32px;text-align:center;font-size:12px}
@@ -99,11 +112,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .empty-icon{font-size:40px;opacity:.4}
 
 /* ── RESPONSIVE ── */
-@media(max-width:767px){
+@media(max-width:900px){
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto}
-  .map-panel{height:45vh}
-  .check-panel{height:auto;min-height:55vh}
+  .plan-panel{height:auto;max-height:30vh}
+  .map-panel{height:40vh}
+  .exec-panel{height:auto;min-height:40vh}
 }
 </style>
 </head>
@@ -128,7 +142,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 (function(){
   'use strict';
 
-  /* ── Parse plan from localStorage ── */
   const raw = localStorage.getItem('checkRutaPlan');
   let plan = null;
   try{ plan = raw ? JSON.parse(raw) : null; }catch(e){ plan = null; }
@@ -140,148 +153,144 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     return;
   }
 
-  /* ── Build DOM ── */
+  // Execution order array — starts same as plan, user can reorder
+  let execOrder = plan.destinos.map((_,i) => i);
+
+  // ── BUILD DOM ──
   app.innerHTML = `
-    <div class="map-panel"><div class="map-el" id="map"></div></div>
-    <div class="check-panel">
+    <div class="plan-panel">
+      <div class="panel-title">📋 Plan <span class="badge">${plan.destinos.length} paradas</span></div>
+      <div class="plan-scroll" id="planScroll"></div>
+    </div>
+    <div class="map-panel">
+      <div class="map-el" id="map"></div>
+      <div class="map-legend">
+        <span class="legend-dot" style="background:var(--navy)"></span> Planeado<br>
+        <span class="legend-dot" style="background:var(--green)"></span> Ejecutado<br>
+        <span class="legend-dot" style="background:var(--danger)"></span> No entregado
+      </div>
+    </div>
+    <div class="exec-panel">
       <div class="summary-bar">
         <div class="sum-item"><span class="sum-label">Entregas</span><span class="sum-value" id="sumEntregas">0/${plan.destinos.length}</span></div>
         <div class="sum-item"><span class="sum-label">Orden</span><span class="sum-value" id="sumOrden">&mdash;</span></div>
         <div class="sum-item"><span class="sum-label">&Delta; tiempo</span><span class="sum-value" id="sumDelta">&mdash;</span></div>
         <div class="sum-item"><span class="sum-label">Novedades</span><span class="sum-value" id="sumNovedades">0</span></div>
       </div>
-      <div class="check-scroll" id="checkScroll"></div>
+      <div class="panel-title">🚛 Ejecución real <span class="badge" style="background:var(--green)">arrastra para reordenar</span></div>
+      <div class="exec-scroll" id="execScroll"></div>
     </div>`;
 
-  const checkScroll = document.getElementById('checkScroll');
+  // ── RENDER PLAN PANEL (left, fixed order) ──
+  function renderPlan(){
+    const el = document.getElementById('planScroll');
+    let h = '';
+    // Cargue row
+    const cargueTime = plan.timeline && plan.timeline.length ? plan.timeline.find(t=>t.type==='cargue') : null;
+    h += `<div class="plan-row">
+      <div class="plan-num origin">C</div>
+      <div><span class="plan-city">${plan.origen.name}</span><br><span class="plan-km">Cargue</span></div>
+      <div class="plan-time">${cargueTime ? minToTime(cargueTime.time) : '—'}</div>
+    </div>`;
+    // Destinations
+    plan.destinos.forEach((d,i) => {
+      h += `<div class="plan-row" id="planRow-${i}">
+        <div class="plan-num">${i+1}</div>
+        <div><span class="plan-city">${d.name}</span><br><span class="plan-km">${d.cumKm ? d.cumKm+' km' : ''}</span></div>
+        <div class="plan-time">${d.planTime || '—'}</div>
+      </div>`;
+    });
+    el.innerHTML = h;
+  }
 
-  /* ── Trip info card ── */
-  const fecha = plan.fecha || '—';
-  checkScroll.innerHTML = `
-    <div class="trip-info">
-      <div class="trip-info-title">Informacion del viaje</div>
+  // ── RENDER EXEC PANEL (right, reorderable) ──
+  function renderExec(){
+    const el = document.getElementById('execScroll');
+    let h = '';
+    // Trip info
+    h += `<div class="trip-info">
       <div class="trip-info-grid">
-        <span class="ti-label">Trip ID</span><span class="ti-value">${plan.tripId || '—'}</span>
-        <span class="ti-label">Fecha</span><span class="ti-value">${fecha}</span>
-        <span class="ti-label">Origen</span><span class="ti-value">${plan.origen.name || '—'}</span>
+        <span class="ti-label">Viaje</span><span class="ti-value">${plan.tripId || '—'}</span>
+        <span class="ti-label">Fecha</span><span class="ti-value">${plan.fecha || '—'}</span>
+        <span class="ti-label">Origen</span><span class="ti-value">${plan.origen.name}</span>
         <span class="ti-label">Km plan</span><span class="ti-value">${plan.totalKm ? Math.round(plan.totalKm)+' km' : '—'}</span>
       </div>
     </div>`;
-
-  /* ── Cargue row ── */
-  const carguePlanTime = (plan.timeline && plan.timeline.length) ? plan.timeline[0].time || '' : '';
-  checkScroll.innerHTML += `
-    <div class="cargue-card" id="cargueCard">
-      <div class="stop-header">
-        <span class="stop-num">C</span>
-        <span class="stop-name">Cargue &mdash; ${plan.origen.name || ''}</span>
+    // Cargue
+    h += `<div class="exec-card" style="border-left-color:var(--cyan);cursor:default">
+      <div class="exec-head">
+        <div class="exec-order" style="background:var(--cyan);color:var(--navy)">C</div>
+        <span class="exec-name">Cargue — ${plan.origen.name}</span>
       </div>
-      <div class="stop-row">
-        <span class="stop-label">Plan:</span>
-        <span class="stop-plan-time">${carguePlanTime}</span>
-        <span class="stop-label">Real:</span>
-        <input type="time" class="stop-real-time" id="cargueRealTime">
+      <div class="exec-body">
+        <div class="exec-row">
+          <label>Real:</label>
+          <input type="time" id="cargueRealTime">
+        </div>
       </div>
     </div>`;
+    // Destinations in exec order
+    execOrder.forEach((origIdx, pos) => {
+      const d = plan.destinos[origIdx];
+      const planPos = origIdx + 1;
+      const execPos = pos + 1;
+      const diff = execPos !== planPos ? `<span class="exec-vs">plan #${planPos}</span>` : '';
+      // Preserve existing values
+      const prevStatus = document.getElementById('status-'+origIdx);
+      const prevTime = document.getElementById('realTime-'+origIdx);
+      const prevNotes = document.getElementById('notes-'+origIdx);
+      const statusVal = prevStatus ? prevStatus.value : 'pendiente';
+      const timeVal = prevTime ? prevTime.value : '';
+      const notesVal = prevNotes ? prevNotes.value : '';
 
-  /* ── Destination cards ── */
-  plan.destinos.forEach(function(d, i){
-    checkScroll.innerHTML += `
-      <div class="stop-card" data-idx="${i}" id="stop-${i}">
-        <div class="stop-header">
-          <span class="stop-num">#${d.planOrder || (i+1)}</span>
-          <span class="stop-name">${d.name}</span>
-          <span class="stop-check" id="check-${i}">\u2610</span>
+      h += `<div class="exec-card ${statusVal!=='pendiente'?'st-'+statusVal:''}" data-orig="${origIdx}" data-pos="${pos}" id="execCard-${origIdx}" draggable="true">
+        <div class="exec-head">
+          <span class="drag-handle" title="Arrastra para reordenar">⠿</span>
+          <div class="exec-order ${statusVal==='pendiente'?'pending':''}" id="execNum-${origIdx}">${execPos}</div>
+          <span class="exec-name">${d.name}</span>
+          ${diff}
+          <span class="exec-check" id="check-${origIdx}">${statusIcon(statusVal)}</span>
         </div>
-        <div class="stop-body">
-          <div class="stop-row">
-            <span class="stop-label">Plan:</span>
-            <span class="stop-plan-time">${d.planTime || '—'}</span>
-            <span class="stop-label">Real:</span>
-            <input type="time" class="stop-real-time" data-idx="${i}" id="realTime-${i}">
+        <div class="exec-body">
+          <div class="exec-row">
+            <label>Plan:</label>
+            <span class="exec-plan-time">${d.planTime || '—'}</span>
+            <label>Real:</label>
+            <input type="time" id="realTime-${origIdx}" value="${timeVal}" data-orig="${origIdx}">
           </div>
-          <div class="stop-row">
+          <div class="exec-row">
             <label>Estado:</label>
-            <select class="stop-status" data-idx="${i}" id="status-${i}">
-              <option value="pendiente">Pendiente</option>
-              <option value="entregado">Entregado</option>
-              <option value="parcial">Parcial</option>
-              <option value="no_entregado">No entregado</option>
-              <option value="cliente_cerrado">Cliente cerrado</option>
-              <option value="reprogramado">Reprogramado</option>
+            <select id="status-${origIdx}" data-orig="${origIdx}">
+              <option value="pendiente"${statusVal==='pendiente'?' selected':''}>Pendiente</option>
+              <option value="entregado"${statusVal==='entregado'?' selected':''}>Entregado</option>
+              <option value="parcial"${statusVal==='parcial'?' selected':''}>Parcial</option>
+              <option value="no_entregado"${statusVal==='no_entregado'?' selected':''}>No entregado</option>
+              <option value="cliente_cerrado"${statusVal==='cliente_cerrado'?' selected':''}>Cliente cerrado</option>
+              <option value="reprogramado"${statusVal==='reprogramado'?' selected':''}>Reprogramado</option>
             </select>
           </div>
-          <div class="stop-row">
+          <div class="exec-row">
             <label>Novedad:</label>
-            <input type="text" class="stop-notes" data-idx="${i}" id="notes-${i}" placeholder="Opcional...">
+            <input type="text" class="exec-notes" id="notes-${origIdx}" data-orig="${origIdx}" value="${notesVal}" placeholder="Opcional...">
           </div>
         </div>
       </div>`;
-  });
-
-  /* ── MAP ── */
-  const map = L.map('map',{zoomControl:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:19, subdomains:'abcd'
-  }).addTo(map);
-
-  /* pins + polyline state */
-  const markers = [];
-  let planPolyline = null;
-  let execPolyline = null;
-
-  function makeIcon(label, color, size){
-    size = size || 26;
-    return L.divIcon({
-      className:'',
-      iconSize:[size,size],
-      iconAnchor:[size/2,size/2],
-      html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)">'+label+'</div>'
     });
+    el.innerHTML = h;
+    attachExecListeners();
+    initDragDrop();
   }
 
-  /* Origin marker */
-  const originIcon = makeIcon('C','#00BFDF');
-  L.marker([plan.origen.lat, plan.origen.lng],{icon:originIcon}).addTo(map).bindTooltip(plan.origen.name,{direction:'top',offset:[0,-14]});
-
-  /* Destination markers */
-  const coords = [[plan.origen.lat, plan.origen.lng]];
-  plan.destinos.forEach(function(d,i){
-    var icon = makeIcon('#'+(d.planOrder||(i+1)), '#0E1B4D');
-    var m = L.marker([d.lat, d.lng],{icon:icon}).addTo(map).bindTooltip(d.name,{direction:'top',offset:[0,-14]});
-    markers.push(m);
-    coords.push([d.lat, d.lng]);
-  });
-  coords.push([plan.origen.lat, plan.origen.lng]);
-
-  /* Plan polyline (blue) */
-  planPolyline = L.polyline(coords,{color:'#0E1B4D',weight:3,opacity:.6}).addTo(map);
-
-  /* Fit bounds */
-  var bounds = L.latLngBounds(coords);
-  map.fitBounds(bounds,{padding:[40,40],maxZoom:12});
-
-  /* ── UPDATE FUNCTIONS ── */
-
-  function getStopData(){
-    var data = [];
-    plan.destinos.forEach(function(d,i){
-      var status = document.getElementById('status-'+i).value;
-      var realTime = document.getElementById('realTime-'+i).value;
-      var notes = document.getElementById('notes-'+i).value;
-      data.push({
-        idx: i,
-        name: d.name,
-        lat: d.lat,
-        lng: d.lng,
-        planOrder: d.planOrder || (i+1),
-        planTime: d.planTime || '',
-        status: status,
-        realTime: realTime,
-        notes: notes
-      });
-    });
-    return data;
+  // ── HELPERS ──
+  function minToTime(m){
+    while(m<0)m+=24*60;
+    const d=Math.floor(m/(24*60));m=m%(24*60);
+    const h=Math.floor(m/60),mm=Math.round(m%60);
+    const ap=h>=12?'PM':'AM';
+    const h12=h===0?12:(h>12?h-12:h);
+    let s=`${h12}:${String(mm).padStart(2,'0')} ${ap}`;
+    if(d>0)s+=` (+${d}d)`;
+    return s;
   }
 
   function statusColor(st){
@@ -292,79 +301,131 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   }
 
   function statusIcon(st){
-    if(st==='entregado') return '\u2705';
-    if(st==='parcial') return '\u2705';
+    if(st==='entregado'||st==='parcial') return '\u2705';
     if(st==='no_entregado'||st==='cliente_cerrado') return '\u274C';
     if(st==='reprogramado') return '\u23F3';
     return '\u2610';
   }
 
-  function updateMap(){
-    var stops = getStopData();
-
-    /* Update marker colors + checkbox icons */
-    stops.forEach(function(s,i){
-      var color = statusColor(s.status);
-      var icon = makeIcon('#'+s.planOrder, color);
-      markers[i].setIcon(icon);
-
-      /* Card class */
-      var card = document.getElementById('stop-'+i);
-      card.className = 'stop-card' + (s.status !== 'pendiente' ? ' st-'+s.status : '');
-
-      /* Check icon */
-      document.getElementById('check-'+i).textContent = statusIcon(s.status);
-    });
-
-    /* Green dashed execution polyline */
-    if(execPolyline){ map.removeLayer(execPolyline); execPolyline = null; }
-    var executed = stops.filter(function(s){ return s.realTime; });
-    if(executed.length > 0){
-      executed.sort(function(a,b){ return a.realTime.localeCompare(b.realTime); });
-      var execCoords = [[plan.origen.lat, plan.origen.lng]];
-      executed.forEach(function(s){ execCoords.push([s.lat, s.lng]); });
-      execPolyline = L.polyline(execCoords,{color:'#22c55e',weight:3,opacity:.8,dashArray:'8 6'}).addTo(map);
-    }
-  }
-
   function parsePlanTime(t){
-    /* "10:30 AM" or "2:00 PM" → minutes since midnight */
     if(!t) return null;
-    var m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if(!m) return null;
-    var h = parseInt(m[1],10);
-    var min = parseInt(m[2],10);
+    let h = parseInt(m[1],10);
+    const min = parseInt(m[2],10);
     if(m[3]){
-      var ampm = m[3].toUpperCase();
-      if(ampm==='PM' && h!==12) h+=12;
-      if(ampm==='AM' && h===12) h=0;
+      const ap = m[3].toUpperCase();
+      if(ap==='PM' && h!==12) h+=12;
+      if(ap==='AM' && h===12) h=0;
     }
     return h*60+min;
   }
 
   function parseRealTime(t){
-    /* "14:30" (24h from input) → minutes since midnight */
     if(!t) return null;
-    var p = t.split(':');
+    const p = t.split(':');
     return parseInt(p[0],10)*60+parseInt(p[1],10);
   }
 
+  // ── MAP ──
+  const map = L.map('map',{zoomControl:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    maxZoom:19, subdomains:'abcd'
+  }).addTo(map);
+
+  const markers = {}; // keyed by origIdx
+  let planPolyline = null;
+  let execPolyline = null;
+
+  function makeIcon(label, color, size){
+    size = size || 26;
+    return L.divIcon({
+      className:'',
+      iconSize:[size,size],
+      iconAnchor:[size/2,size/2],
+      html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)">${label}</div>`
+    });
+  }
+
+  // Origin marker
+  L.marker([plan.origen.lat, plan.origen.lng],{icon:makeIcon('C','#00BFDF')})
+    .addTo(map).bindTooltip(plan.origen.name,{direction:'top',offset:[0,-14]});
+
+  // Destination markers + plan polyline
+  const planCoords = [[plan.origen.lat, plan.origen.lng]];
+  plan.destinos.forEach((d,i) => {
+    const m = L.marker([d.lat, d.lng],{icon:makeIcon(i+1,'#0E1B4D')})
+      .addTo(map).bindTooltip(`#${i+1} ${d.name}`,{direction:'top',offset:[0,-14]});
+    markers[i] = m;
+    planCoords.push([d.lat, d.lng]);
+  });
+  planCoords.push([plan.origen.lat, plan.origen.lng]);
+  planPolyline = L.polyline(planCoords,{color:'#0E1B4D',weight:3,opacity:.5}).addTo(map);
+  map.fitBounds(L.latLngBounds(planCoords),{padding:[40,40],maxZoom:12});
+
+  // ── UPDATE MAP ──
+  function updateMap(){
+    // Update marker icons based on status
+    execOrder.forEach((origIdx, pos) => {
+      const st = document.getElementById('status-'+origIdx);
+      const status = st ? st.value : 'pendiente';
+      const color = statusColor(status);
+      const label = pos + 1;
+      markers[origIdx].setIcon(makeIcon(label, color));
+    });
+
+    // Exec polyline (green dashed, in exec order)
+    if(execPolyline){ map.removeLayer(execPolyline); execPolyline = null; }
+    const execCoords = [[plan.origen.lat, plan.origen.lng]];
+    let hasExec = false;
+    execOrder.forEach(origIdx => {
+      const st = document.getElementById('status-'+origIdx);
+      const rt = document.getElementById('realTime-'+origIdx);
+      if(st && st.value !== 'pendiente'){
+        const d = plan.destinos[origIdx];
+        execCoords.push([d.lat, d.lng]);
+        hasExec = true;
+      }
+    });
+    if(hasExec){
+      execPolyline = L.polyline(execCoords,{color:'#22c55e',weight:3,opacity:.8,dashArray:'8 6'}).addTo(map);
+    }
+  }
+
+  // ── UPDATE SUMMARY ──
   function updateSummary(){
-    var stops = getStopData();
-    var n = stops.length;
-    var entregados = stops.filter(function(s){ return s.status==='entregado'||s.status==='parcial'; }).length;
+    const n = plan.destinos.length;
+    let entregados = 0;
+    let deltas = [];
+    let novedades = 0;
+
+    execOrder.forEach(origIdx => {
+      const st = document.getElementById('status-'+origIdx);
+      const rt = document.getElementById('realTime-'+origIdx);
+      const nt = document.getElementById('notes-'+origIdx);
+      const status = st ? st.value : 'pendiente';
+      const realTime = rt ? rt.value : '';
+      const notes = nt ? nt.value : '';
+
+      if(status==='entregado'||status==='parcial') entregados++;
+      if(notes && notes.trim()) novedades++;
+      if(realTime){
+        const planMin = parsePlanTime(plan.destinos[origIdx].planTime);
+        const realMin = parseRealTime(realTime);
+        if(planMin !== null && realMin !== null) deltas.push(realMin - planMin);
+      }
+    });
 
     document.getElementById('sumEntregas').textContent = entregados+'/'+n;
 
-    /* Order check: compare planOrder sequence vs execution sequence by real time */
-    var withTime = stops.filter(function(s){ return s.realTime; });
-    var sumOrdenEl = document.getElementById('sumOrden');
-    if(withTime.length >= 2){
-      var sorted = withTime.slice().sort(function(a,b){ return a.realTime.localeCompare(b.realTime); });
-      var planSeq = withTime.map(function(s){ return s.planOrder; });
-      var execSeq = sorted.map(function(s){ return s.planOrder; });
-      var match = planSeq.length === execSeq.length && planSeq.every(function(v,i){ return v===execSeq[i]; });
-      if(match){
+    // Order check: is exec order same as plan order?
+    const sumOrdenEl = document.getElementById('sumOrden');
+    const orderMatch = execOrder.every((origIdx, pos) => origIdx === pos);
+    if(execOrder.some(origIdx => {
+      const st = document.getElementById('status-'+origIdx);
+      return st && st.value !== 'pendiente';
+    })){
+      if(orderMatch){
         sumOrdenEl.textContent = '\u2705 Cumplido';
         sumOrdenEl.className = 'sum-value ok';
       } else {
@@ -376,20 +437,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       sumOrdenEl.className = 'sum-value';
     }
 
-    /* Delta: average time difference plan vs real */
-    var deltas = [];
-    stops.forEach(function(s){
-      if(!s.realTime) return;
-      var planMin = parsePlanTime(s.planTime);
-      var realMin = parseRealTime(s.realTime);
-      if(planMin !== null && realMin !== null){
-        deltas.push(realMin - planMin);
-      }
-    });
-    var sumDeltaEl = document.getElementById('sumDelta');
+    // Delta
+    const sumDeltaEl = document.getElementById('sumDelta');
     if(deltas.length > 0){
-      var avg = Math.round(deltas.reduce(function(a,b){ return a+b; },0) / deltas.length);
-      var sign = avg >= 0 ? '+' : '';
+      const avg = Math.round(deltas.reduce((a,b) => a+b, 0) / deltas.length);
+      const sign = avg >= 0 ? '+' : '';
       sumDeltaEl.textContent = sign + avg + ' min';
       sumDeltaEl.className = 'sum-value' + (Math.abs(avg) > 30 ? ' altered' : avg <= 0 ? ' ok' : '');
     } else {
@@ -397,28 +449,99 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       sumDeltaEl.className = 'sum-value';
     }
 
-    /* Novedades count */
-    var novedades = stops.filter(function(s){ return s.notes && s.notes.trim(); }).length;
     document.getElementById('sumNovedades').textContent = novedades;
   }
 
   function onAnyChange(){
     updateMap();
     updateSummary();
+    // Update card classes
+    execOrder.forEach(origIdx => {
+      const st = document.getElementById('status-'+origIdx);
+      const card = document.getElementById('execCard-'+origIdx);
+      const numEl = document.getElementById('execNum-'+origIdx);
+      const checkEl = document.getElementById('check-'+origIdx);
+      if(!st||!card) return;
+      const status = st.value;
+      card.className = 'exec-card' + (status!=='pendiente'?' st-'+status:'');
+      card.setAttribute('draggable','true');
+      if(numEl) numEl.className = 'exec-order' + (status==='pendiente'?' pending':'');
+      if(checkEl) checkEl.textContent = statusIcon(status);
+    });
   }
 
-  /* ── EVENT LISTENERS ── */
-  document.querySelectorAll('.stop-status').forEach(function(sel){
-    sel.addEventListener('change', onAnyChange);
+  function attachExecListeners(){
+    document.querySelectorAll('#execScroll select').forEach(sel => {
+      sel.addEventListener('change', onAnyChange);
+    });
+    document.querySelectorAll('#execScroll input[type="time"]').forEach(inp => {
+      inp.addEventListener('change', onAnyChange);
+    });
+    document.querySelectorAll('#execScroll .exec-notes').forEach(inp => {
+      inp.addEventListener('input', onAnyChange);
+    });
+  }
+
+  // ── DRAG & DROP REORDER ──
+  let dragIdx = null;
+
+  function initDragDrop(){
+    const cards = document.querySelectorAll('.exec-card[draggable="true"]');
+    cards.forEach(card => {
+      card.addEventListener('dragstart', e => {
+        dragIdx = parseInt(card.dataset.pos);
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        dragIdx = null;
+      });
+      card.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over');
+      });
+      card.addEventListener('drop', e => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        const dropPos = parseInt(card.dataset.pos);
+        if(dragIdx === null || dragIdx === dropPos) return;
+        // Reorder
+        const item = execOrder.splice(dragIdx, 1)[0];
+        execOrder.splice(dropPos, 0, item);
+        renderExec();
+        updateMap();
+        updateSummary();
+      });
+    });
+  }
+
+  // ── HIGHLIGHT PLAN ROW on hover of exec card ──
+  document.addEventListener('mouseover', e => {
+    const card = e.target.closest('.exec-card[data-orig]');
+    if(card){
+      const origIdx = card.dataset.orig;
+      const planRow = document.getElementById('planRow-'+origIdx);
+      if(planRow) planRow.classList.add('active');
+    }
   });
-  document.querySelectorAll('.stop-real-time').forEach(function(inp){
-    inp.addEventListener('change', onAnyChange);
-  });
-  document.querySelectorAll('.stop-notes').forEach(function(inp){
-    inp.addEventListener('input', onAnyChange);
+  document.addEventListener('mouseout', e => {
+    const card = e.target.closest('.exec-card[data-orig]');
+    if(card){
+      const origIdx = card.dataset.orig;
+      const planRow = document.getElementById('planRow-'+origIdx);
+      if(planRow) planRow.classList.remove('active');
+    }
   });
 
-  /* Initial render */
+  // ── INIT ──
+  renderPlan();
+  renderExec();
   updateSummary();
 
 })();

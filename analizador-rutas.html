@@ -1353,18 +1353,15 @@ async function exportPdf(){
     const routeColor=isUserOrder?'#0E1B4D':'#00BFDF';
     const routeColorHex=isUserOrder?'0x0E1B4D':'0x00BFDF';
     
-    // Strategy: use Google Static Maps for the BASE MAP ONLY (no markers).
-    // Google returns a clean raster image with predictable Web Mercator projection,
-    // so we can draw numbered pins on top with perfect alignment.
-    
-    // 1. Compute bounds of all stops + origin (and return if present)
-    const allPoints=[];
-    if(originStop)allPoints.push([originStop.lat,originStop.lng]);
-    destStopsForMap.forEach(s=>allPoints.push([s.lat,s.lng]));
+    // Strategy: use Google Static Maps with NATIVE markers — no manual projection needed.
+    // Google places markers at exact coordinates, eliminating alignment issues.
+
     const returnStop=ordered.find(s=>s.type==='return');
-    if(returnStop)allPoints.push([returnStop.lat,returnStop.lng]);
-    
-    // 2. Build polyline path param (sample OSRM geometry)
+
+    // Label sequence: 1-9, then A-Z for >9 destinations
+    function destLabel(idx){return idx<9?String(idx+1):String.fromCharCode(65+idx-9);}
+
+    // 1. Build polyline path param (sample OSRM geometry)
     let pathParam='';
     if(tripData.geometry&&tripData.geometry.coordinates){
       const gcoords=tripData.geometry.coordinates;
@@ -1375,109 +1372,45 @@ async function exportPdf(){
       const pathStr=sampled.map(c=>`${c[1].toFixed(4)},${c[0].toFixed(4)}`).join('|');
       pathParam=`&path=color:${routeColorHex}|weight:4|${pathStr}`;
     }
-    
-    // 3. Add invisible markers at the bounds so Google auto-fits the viewport around them
-    const boundsMarkers=allPoints.map(p=>`markers=size:tiny|color:white|${p[0]},${p[1]}`).join('&');
-    
-    // 4. Request the static map (no visible markers, just tiles + polyline)
+
+    // 2. Build native Google markers for origin, destinations, and return
+    const markerColor=isUserOrder?'0x0E1B4D':'0x00BFDF';
+    let markersParam='';
+    if(originStop)markersParam+=`&markers=color:${markerColor}|label:C|${originStop.lat},${originStop.lng}`;
+    destStopsForMap.forEach((s,i)=>{
+      markersParam+=`&markers=color:${markerColor}|label:${destLabel(i)}|${s.lat},${s.lng}`;
+    });
+    if(returnStop&&returnStop!==originStop)markersParam+=`&markers=color:0x8890AB|label:R|${returnStop.lat},${returnStop.lng}`;
+
+    // 3. Request static map with markers + polyline (Google auto-fits bounds)
     const mapW=640,mapH=400;
-    const staticUrl=`https://maps.googleapis.com/maps/api/staticmap?size=${mapW}x${mapH}&scale=2&maptype=roadmap&${boundsMarkers}${pathParam}&key=${GMAPS_KEY}`;
-    
-    let baseMapImg,skipPinDrawing=false;
+    const staticUrl=`https://maps.googleapis.com/maps/api/staticmap?size=${mapW}x${mapH}&scale=2&maptype=roadmap${markersParam}${pathParam}&key=${GMAPS_KEY}`;
+
+    const mapPdfH=85;
     try{
       const imgResp=await fetch(staticUrl);
       if(!imgResp.ok)throw new Error('Static Maps '+imgResp.status);
       const blob=await imgResp.blob();
-      baseMapImg=await new Promise((resolve,reject)=>{
+      const mapImg=await new Promise((resolve,reject)=>{
         const img=new Image();
         img.crossOrigin='anonymous';
         img.onload=()=>resolve(img);
         img.onerror=reject;
         img.src=URL.createObjectURL(blob);
       });
+      const cvs=document.createElement('canvas');
+      cvs.width=mapW*2;cvs.height=mapH*2;
+      const cx=cvs.getContext('2d');cx.drawImage(mapImg,0,0);
+      const imgData=cvs.toDataURL('image/jpeg',0.9);
+      pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
+      y+=mapPdfH+4;
     }catch(e){
       console.error('Static Maps failed, falling back to html2canvas',e);
       const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
       const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5',logging:false});
       const imgData=canvas.toDataURL('image/jpeg',0.9);
-      pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,85);
-      y+=85+4;
-      skipPinDrawing=true;
-    }
-    
-    if(!skipPinDrawing){
-    // 5. Draw base map to a working canvas
-    const workCanvas=document.createElement('canvas');
-    workCanvas.width=mapW*2;workCanvas.height=mapH*2; // scale=2 from Google
-    const ctx=workCanvas.getContext('2d');
-    ctx.drawImage(baseMapImg,0,0);
-    
-    // 6. Compute Web Mercator projection for the Google Static Map
-    // Google used auto-bounds around allPoints; we need to know which bounds/zoom it picked.
-    // We can compute this from allPoints: min/max lat/lng, then calculate zoom that fits mapW×mapH.
-    let minLat=90,maxLat=-90,minLng=180,maxLng=-180;
-    for(const [la,ln] of allPoints){
-      if(la<minLat)minLat=la;if(la>maxLat)maxLat=la;
-      if(ln<minLng)minLng=ln;if(ln>maxLng)maxLng=ln;
-    }
-    // Add 10% padding
-    const latPad=(maxLat-minLat)*0.15||0.05;
-    const lngPad=(maxLng-minLng)*0.15||0.05;
-    minLat-=latPad;maxLat+=latPad;minLng-=lngPad;maxLng+=lngPad;
-    
-    // Web Mercator projection (used by Google Maps)
-    function latLngToPixel(lat,lng,zoom){
-      const x=(lng+180)/360*Math.pow(2,zoom)*256;
-      const y=(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,zoom)*256;
-      return {x,y};
-    }
-    // Find zoom level that fits the bounding box in mapW × mapH
-    let zoom=10;
-    for(let z=18;z>=0;z--){
-      const nw=latLngToPixel(maxLat,minLng,z);
-      const se=latLngToPixel(minLat,maxLng,z);
-      if((se.x-nw.x)<=mapW&&(se.y-nw.y)<=mapH){zoom=z;break;}
-    }
-    // Center of bbox
-    const centerLat=(minLat+maxLat)/2,centerLng=(minLng+maxLng)/2;
-    const centerPx=latLngToPixel(centerLat,centerLng,zoom);
-    // Convert any lat/lng to canvas pixel
-    function projectToCanvas(lat,lng){
-      const p=latLngToPixel(lat,lng,zoom);
-      const cx=mapW/2+(p.x-centerPx.x);
-      const cy=mapH/2+(p.y-centerPx.y);
-      return {x:cx*2,y:cy*2}; // scale=2
-    }
-    
-    // 7. Draw numbered pins
-    const R=13*2;
-    function drawPin(lat,lng,label,color){
-      const {x,y:py}=projectToCanvas(lat,lng);
-      // Shadow
-      ctx.beginPath();ctx.arc(x+1,py+2,R+2,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,0,0,.25)';ctx.fill();
-      // White outer ring
-      ctx.beginPath();ctx.arc(x,py,R+2,0,Math.PI*2);
-      ctx.fillStyle='#ffffff';ctx.fill();
-      // Colored fill
-      ctx.beginPath();ctx.arc(x,py,R,0,Math.PI*2);
-      ctx.fillStyle=color;ctx.fill();
-      // Text
-      ctx.fillStyle='#ffffff';
-      const size=label.length>2?18:(label.length>1?20:22);
-      ctx.font='bold '+size+'px Arial, sans-serif';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(label,x,py+1);
-    }
-    
-    if(originStop)drawPin(originStop.lat,originStop.lng,'C',routeColor);
-    destStopsForMap.forEach((s,i)=>drawPin(s.lat,s.lng,String(i+1),routeColor));
-    if(returnStop&&returnStop!==originStop)drawPin(returnStop.lat,returnStop.lng,'R','#8890AB');
-    
-    const imgData=workCanvas.toDataURL('image/jpeg',0.9);
-    const mapPdfH=85;
-    pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
-    y+=mapPdfH+4;
+      pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapPdfH);
+      y+=mapPdfH+4;
     }
     
     // ── CONVENCIONES DEL MAPA ──
@@ -1491,7 +1424,7 @@ async function exportPdf(){
     const legendItems=[];
     if(originStop)legendItems.push({label:'C',city:originStop.name+' (cargue)'});
     destStopsForMap.forEach((s,i)=>{
-      const label=String(i+1);
+      const label=i<9?String(i+1):String.fromCharCode(65+i-9);
       legendItems.push({label,city:s.name});
     });
     

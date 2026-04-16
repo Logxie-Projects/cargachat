@@ -105,6 +105,31 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
 .exec-notes{flex:1;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:3px 6px;border-radius:var(--r);outline:none;min-width:0}
 .exec-notes:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
 
+/* ── REPORTE / DESTINATARIOS ── */
+.report-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--navy)}
+.report-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.report-row{margin-bottom:6px}
+.report-row label{display:block;font-size:10px;color:var(--text2);margin-bottom:2px}
+.report-mails{width:100%;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:11px;padding:5px 7px;border-radius:var(--r);outline:none;resize:vertical;min-height:40px}
+.report-mails:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+.report-webhook{width:100%;background:#fff;border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;border-radius:var(--r);outline:none}
+.report-webhook:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
+.report-actions{display:flex;gap:6px;margin-top:6px}
+.btn-send{flex:1;padding:7px 10px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-send:hover{background:#162566}
+.btn-send:disabled{opacity:.4;cursor:not-allowed}
+.btn-send.sending{background:var(--warn)}
+.btn-send.sent{background:var(--green)}
+.btn-sheet{padding:7px 10px;background:var(--bg3);color:var(--navy);border:1px solid var(--border2);border-radius:var(--r);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.btn-sheet:hover{background:var(--bg4)}
+.btn-sheet.hidden{display:none}
+.report-status{font-size:10px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+.report-status.ok{color:var(--green)}
+.report-status.err{color:var(--danger)}
+details.report-config{margin-top:4px}
+details.report-config summary{font-size:10px;color:var(--text3);cursor:pointer;padding:2px 0;user-select:none}
+details.report-config summary:hover{color:var(--text2)}
+
 /* ── EMPTY STATE ── */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;padding:32px;text-align:center;font-size:12px}
 .empty a{color:var(--cyan);text-decoration:none;font-weight:500}
@@ -216,6 +241,31 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
         <span class="ti-label">Km plan</span><span class="ti-value">${plan.totalKm ? Math.round(plan.totalKm)+' km' : '—'}</span>
       </div>
     </div>`;
+
+    // Reporte / destinatarios
+    const prevMails = document.getElementById('reportMails');
+    const prevWebhook = document.getElementById('reportWebhook');
+    const mailsVal = prevMails ? prevMails.value : (localStorage.getItem('checkRuta_mails_'+plan.tripId) || '');
+    const webhookVal = prevWebhook ? prevWebhook.value : (localStorage.getItem('checkRuta_webhook') || '');
+    const sheetUrl = localStorage.getItem('checkRuta_sheet_'+plan.tripId) || '';
+    h += `<div class="report-card">
+      <div class="report-title">📨 Reporte a generadores</div>
+      <div class="report-row">
+        <label>Correos (separados por coma)</label>
+        <textarea id="reportMails" class="report-mails" placeholder="juan@empresa.com, maria@empresa.com">${mailsVal}</textarea>
+      </div>
+      <div class="report-actions">
+        <button class="btn-send" id="btnSendReport" onclick="sendReport()">📨 Enviar actualización</button>
+        <a class="btn-sheet ${sheetUrl?'':'hidden'}" id="btnOpenSheet" href="${sheetUrl}" target="_blank">📊 Abrir Sheet</a>
+      </div>
+      <div class="report-status" id="reportStatus"></div>
+      <details class="report-config">
+        <summary>⚙ Configuración webhook n8n</summary>
+        <div style="margin-top:4px">
+          <input type="text" id="reportWebhook" class="report-webhook" placeholder="https://n8n.tu-dominio.com/webhook/..." value="${webhookVal}">
+        </div>
+      </details>
+    </div>`;
     // Cargue
     h += `<div class="exec-card" style="border-left-color:var(--cyan);cursor:default">
       <div class="exec-head">
@@ -289,6 +339,7 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
     el.innerHTML = h;
     attachExecListeners();
     initDragDrop();
+    if(typeof attachReportListeners === 'function') attachReportListeners();
   }
 
   // ── HELPERS ──
@@ -552,10 +603,151 @@ select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,191,223,.12)}
     }
   });
 
+  // ── REPORTE: persistir mails + webhook y enviar al webhook n8n ──
+  function attachReportListeners(){
+    const mailsEl = document.getElementById('reportMails');
+    const webhookEl = document.getElementById('reportWebhook');
+    if(mailsEl){
+      mailsEl.addEventListener('input', () => {
+        localStorage.setItem('checkRuta_mails_'+plan.tripId, mailsEl.value);
+      });
+    }
+    if(webhookEl){
+      webhookEl.addEventListener('input', () => {
+        localStorage.setItem('checkRuta_webhook', webhookEl.value); // global, no por viaje
+      });
+    }
+  }
+
+  function buildReportPayload(){
+    const mailsRaw = (document.getElementById('reportMails')||{}).value || '';
+    const mails = mailsRaw.split(/[,;\s]+/).map(s=>s.trim()).filter(s=>s && s.includes('@'));
+
+    const cargueDate = (document.getElementById('cargueRealDate')||{}).value || '';
+    const cargueTime = (document.getElementById('cargueRealTime')||{}).value || '';
+
+    const ejecucion = execOrder.map((origIdx, pos) => {
+      const d = plan.destinos[origIdx];
+      const st = (document.getElementById('status-'+origIdx)||{}).value || 'pendiente';
+      const rt = (document.getElementById('realTime-'+origIdx)||{}).value || '';
+      const rd = (document.getElementById('realDate-'+origIdx)||{}).value || '';
+      const nt = (document.getElementById('notes-'+origIdx)||{}).value || '';
+      return {
+        exec_order: pos+1,
+        plan_order: origIdx+1,
+        reordenado: (pos !== origIdx),
+        destino: d.name,
+        lat: d.lat,
+        lng: d.lng,
+        plan_time: d.planTime || '',
+        plan_km: d.cumKm || 0,
+        real_fecha: rd,
+        real_hora: rt,
+        estado: st,
+        novedad: nt
+      };
+    });
+
+    const n = plan.destinos.length;
+    const entregados = ejecucion.filter(e => e.estado==='entregado'||e.estado==='parcial').length;
+    const noEntregados = ejecucion.filter(e => e.estado==='no_entregado'||e.estado==='cliente_cerrado').length;
+    const novedades = ejecucion.filter(e => e.novedad && e.novedad.trim()).length;
+    const orderMatch = execOrder.every((origIdx, pos) => origIdx === pos);
+
+    return {
+      tripId: plan.tripId,
+      fecha_plan: plan.fecha,
+      origen: plan.origen.name,
+      origen_lat: plan.origen.lat,
+      origen_lng: plan.origen.lng,
+      km_plan: plan.totalKm || 0,
+      destinatarios: mails,
+      cargue: {
+        fecha_real: cargueDate,
+        hora_real: cargueTime
+      },
+      ejecucion,
+      resumen: {
+        entregas_ok: entregados,
+        entregas_total: n,
+        no_entregados: noEntregados,
+        novedades,
+        orden_cumplido: orderMatch
+      },
+      sheet_url_previo: localStorage.getItem('checkRuta_sheet_'+plan.tripId) || '',
+      reportado_en: new Date().toISOString()
+    };
+  }
+
+  window.sendReport = async function(){
+    const btn = document.getElementById('btnSendReport');
+    const statusEl = document.getElementById('reportStatus');
+    const webhook = (document.getElementById('reportWebhook')||{}).value || '';
+
+    if(!webhook){
+      statusEl.className = 'report-status err';
+      statusEl.textContent = '⚠ Configura primero la URL del webhook n8n (abajo, en ⚙ Configuración)';
+      return;
+    }
+
+    const payload = buildReportPayload();
+    if(!payload.destinatarios.length){
+      statusEl.className = 'report-status err';
+      statusEl.textContent = '⚠ Ingresa al menos un correo de destinatario';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.className = 'btn-send sending';
+    btn.textContent = '⏳ Enviando...';
+    statusEl.className = 'report-status';
+    statusEl.textContent = '';
+
+    try{
+      const resp = await fetch(webhook, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      let data = {};
+      try{ data = await resp.json(); }catch(e){ /* webhook might return plain text */ }
+
+      // n8n should return { sheet_url: "...", mail_sent: true }
+      if(data && data.sheet_url){
+        localStorage.setItem('checkRuta_sheet_'+plan.tripId, data.sheet_url);
+        const sheetBtn = document.getElementById('btnOpenSheet');
+        if(sheetBtn){
+          sheetBtn.href = data.sheet_url;
+          sheetBtn.classList.remove('hidden');
+        }
+      }
+
+      btn.className = 'btn-send sent';
+      btn.textContent = '✅ Enviado';
+      statusEl.className = 'report-status ok';
+      const when = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+      statusEl.textContent = `Enviado ${when} a ${payload.destinatarios.length} destinatario(s)`;
+
+      setTimeout(() => {
+        btn.className = 'btn-send';
+        btn.textContent = '📨 Enviar actualización';
+        btn.disabled = false;
+      }, 2500);
+    }catch(err){
+      btn.className = 'btn-send';
+      btn.textContent = '📨 Reintentar envío';
+      btn.disabled = false;
+      statusEl.className = 'report-status err';
+      statusEl.textContent = '❌ Error: '+err.message;
+    }
+  };
+
   // ── INIT ──
   renderPlan();
   renderExec();
   updateSummary();
+  attachReportListeners();
 
 })();
 </script>

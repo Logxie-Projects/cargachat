@@ -563,7 +563,9 @@ let userReorderedFlag=false; // true if user manually reordered with ▲▼
 let suggestedKPIs=null; // KPIs from first (suggested) analysis
 
 function clearDestPanel(){document.getElementById('destList').innerHTML='<div class="rp-empty">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>';
-  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;userReorderedFlag=false;}
+  document.getElementById('rpBadge').textContent='—';document.getElementById('compareBar').style.display='none';destConditions=[];userOrder=[];suggestedKPIs=null;userReorderedFlag=false;
+  const pdfBtn=document.getElementById('btnPdf');if(pdfBtn)pdfBtn.style.display='none';
+  window._lastRoute=null;}
 
 function buildDestPanel(trip){
   const list=document.getElementById('destList');list.innerHTML='';
@@ -1283,10 +1285,51 @@ async function exportPdf(){
     pdf.text('MAPA DE LA RUTA',margin,y);y+=5;
     pdf.line(margin,y,pageW-margin,y);y+=3;
     
-    // Capture map as image
+    // Capture map as image — and draw numbered markers directly on canvas
+    // using Leaflet's projection (html2canvas positions tooltips inconsistently)
     const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
-    const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale:2,backgroundColor:'#f5f5f5'});
-    const imgData=canvas.toDataURL('image/jpeg',0.85);
+    const mapInstance=isUserOrder?mapUsr:mapSug;
+    const scale=2;
+    
+    // First: hide the permanent tooltips (numbers) so html2canvas doesn't render them misplaced
+    const tooltipEls=mapEl.querySelectorAll('.leaflet-tooltip');
+    const savedDisplay=[];
+    tooltipEls.forEach(el=>{savedDisplay.push(el.style.display);el.style.display='none'});
+    
+    const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:true,scale,backgroundColor:'#f5f5f5',logging:false});
+    
+    // Restore tooltips for UI
+    tooltipEls.forEach((el,i)=>{el.style.display=savedDisplay[i]||''});
+    
+    // Now draw the numbered labels directly on the canvas using map projection
+    const ctx=canvas.getContext('2d');
+    const mapRect=mapEl.getBoundingClientRect();
+    const destStopsForMap=ordered.filter(s=>s.type==='dest');
+    
+    ctx.font='bold '+(13*scale)+'px Arial, sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    
+    destStopsForMap.forEach((s,i)=>{
+      // Convert lat/lng to container pixel coordinates
+      const pt=mapInstance.latLngToContainerPoint([s.lat,s.lng]);
+      const x=pt.x*scale+8*scale;   // offset right of the marker
+      const y=pt.y*scale;
+      const num=String(i+1);
+      const textW=ctx.measureText(num).width;
+      const padX=4*scale,padY=3*scale;
+      const boxW=textW+padX*2,boxH=14*scale+padY;
+      // White rounded box with border
+      ctx.fillStyle='#ffffff';
+      ctx.strokeStyle=isUserOrder?'#0E1B4D':'#00BFDF';
+      ctx.lineWidth=1.5*scale;
+      ctx.fillRect(x,y-boxH/2,boxW,boxH);
+      ctx.strokeRect(x,y-boxH/2,boxW,boxH);
+      // Number text
+      ctx.fillStyle=isUserOrder?'#0E1B4D':'#00BFDF';
+      ctx.fillText(num,x+padX,y+1);
+    });
+    
+    const imgData=canvas.toDataURL('image/jpeg',0.9);
     const mapH=85;
     pdf.addImage(imgData,'JPEG',margin,y,pageW-2*margin,mapH);
     y+=mapH+6;

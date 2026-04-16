@@ -1012,7 +1012,7 @@ async function runAnalysis(){
         // Before returning, check if there are skipped destinations to deliver
         if(skippedDests.length>0){
           timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
-            action:`⚠ ${skippedDests.length} destino${skippedDests.length>1?'s':''} pendiente${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — requiere ruta adicional o espera`,dur:0});
+            action:`[!] ${skippedDests.length} destino${skippedDests.length>1?'s':''} pendiente${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — requiere ruta adicional o espera`,dur:0});
           // Add skipped dests as pending deliveries at end
           for(const sk of skippedDests){
             const nextOpen=findNextOpenDay(sk.destIdx,Math.floor(clock/(24*60)));
@@ -1057,7 +1057,7 @@ async function runAnalysis(){
         if(daysUntilOpen>1){
           // More than 1 day wait — SKIP this destination, continue with others
           timeline.push({time:eff,day:effDay,type:'wait',city:'',
-            action:`⏭ ${to.name}: cerrado hoy (abre en ${daysUntilOpen} días) — se continúa con otros destinos`,dur:0});
+            action:`[>>] ${to.name}: cerrado hoy (abre en ${daysUntilOpen} días) — se continúa con otros destinos`,dur:0});
           skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
           // Don't advance clock — next destination departs from current position
           clock=eff; // reset clock to not count the undelivered stop time
@@ -1078,7 +1078,7 @@ async function runAnalysis(){
           const daysUntilOpen=nextOpen-effDay;
           if(daysUntilOpen>1){
             timeline.push({time:eff,day:effDay,type:'wait',city:'',
-              action:`⏭ ${to.name}: ventana cerrada, próx. apertura en ${daysUntilOpen} días — se sigue`,dur:0});
+              action:`[>>] ${to.name}: ventana cerrada, próx. apertura en ${daysUntilOpen} días — se sigue`,dur:0});
             skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
             clock=eff;
             continue;
@@ -1284,14 +1284,36 @@ async function exportPdf(){
     const pageW=210,pageH=297,margin=12;
     let y=margin;
     
+    // Sanitize text: replace Unicode emojis/special chars that jsPDF helvetica can't render
+    // (these cause letter-spacing bugs like "8 : 4 0 AM ( + 1 d )")
+    function clean(s){
+      if(!s)return '';
+      return String(s)
+        .replace(/⚠/g,'[!]')
+        .replace(/⏭/g,'>>')
+        .replace(/⏳/g,'...')
+        .replace(/🌙/g,'[P]')
+        .replace(/🚛/g,'>')
+        .replace(/🚀/g,'>')
+        .replace(/[—–]/g,'-')        // em-dash, en-dash → hyphen
+        .replace(/[""]/g,'"')         // smart quotes → straight
+        .replace(/['']/g,"'")
+        .replace(/[•●▪▫◉○]/g,'*')
+        .replace(/→/g,'->')
+        .replace(/↩|↪/g,'<-')
+        .replace(/✓/g,'OK')
+        .replace(/✗|✕|×/g,'X')
+        .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F]/g,''); // strip remaining non-latin chars
+    }
+    
     // ── HEADER ──
     pdf.setFillColor(14,27,77); // navy
     pdf.rect(0,0,pageW,24,'F');
     pdf.setTextColor(255,255,255);
     pdf.setFont('helvetica','bold');pdf.setFontSize(16);
-    pdf.text('LogxIA — Plan de Viaje',margin,11);
+    pdf.text('LogxIA - Plan de Viaje',margin,11);
     pdf.setFont('helvetica','normal');pdf.setFontSize(9);
-    pdf.text((isUserOrder?'Tu orden':'Ruta sugerida')+' · '+new Date().toLocaleString('es-CO'),margin,18);
+    pdf.text((isUserOrder?'Tu orden':'Ruta sugerida')+' - '+new Date().toLocaleString('es-CO'),margin,18);
     pdf.setTextColor(0,0,0);
     y=30;
     
@@ -1309,14 +1331,14 @@ async function exportPdf(){
       ['Origen:',trip.origenes[0],'Empresas:',trip.empresas||'-'],
       ['Zonas:',trip.zonas||'-','Pedidos:',String(trip.pedidos.length)],
       ['Destinos:',String(numDests),'Peso total:',(trip.pesoTotal||'-')+' kg'],
-      ['Valor mercancía:','$'+(trip.valorTotal||'-'),'Km totales:',fmt(totalKm)+' km'],
-      ['Duración conducción:',Math.floor(totalDriveMin/60)+'h '+(totalDriveMin%60)+'m','Días estimados:',totalDays+' ('+pernoctaCount+' pernocta)']
+      ['Valor mercancia:','$'+(trip.valorTotal||'-'),'Km totales:',fmt(totalKm)+' km'],
+      ['Conduccion:',Math.floor(totalDriveMin/60)+'h '+(totalDriveMin%60)+'m','Dias estimados:',totalDays+' ('+pernoctaCount+' pernocta)']
     ];
     for(const row of info){
       pdf.setFont('helvetica','bold');pdf.text(row[0],margin,y);
-      pdf.setFont('helvetica','normal');pdf.text(String(row[1]).substring(0,40),margin+28,y);
+      pdf.setFont('helvetica','normal');pdf.text(String(row[1]).substring(0,40),margin+32,y);
       pdf.setFont('helvetica','bold');pdf.text(row[2],pageW/2+5,y);
-      pdf.setFont('helvetica','normal');pdf.text(String(row[3]).substring(0,40),pageW/2+35,y);
+      pdf.setFont('helvetica','normal');pdf.text(String(row[3]).substring(0,40),pageW/2+38,y);
       y+=4.5;
     }
     y+=4;
@@ -1326,16 +1348,25 @@ async function exportPdf(){
     pdf.text('MAPA DE LA RUTA',margin,y);y+=5;
     pdf.line(margin,y,pageW-margin,y);y+=3;
     
-    // Use Google Static Maps API — much more reliable than html2canvas for PDFs
-    // Capture the interactive Leaflet map — markers are now divIcons with numbers visible,
-    // so html2canvas captures them perfectly aligned with the map
     const destStopsForMap=ordered.filter(s=>s.type==='dest');
     const originStop=ordered.find(s=>s.type==='origin');
     const mapEl=document.getElementById(isUserOrder?'mapUsuario':'mapSugerido');
+    const mapInstance=isUserOrder?mapUsr:mapSug;
+    const routeColor=isUserOrder?'#0E1B4D':'#00BFDF';
     
-    // Wait a moment to ensure map tiles finished loading
+    // html2canvas has a known bug with transformed Leaflet markers (divIcon matrix transforms).
+    // Workaround: hide the markers before capture, then draw the numbered pins directly on
+    // the canvas using Leaflet's projection (which is 100% accurate).
+    
+    // 1. Hide all marker layers
+    const markerEls=mapEl.querySelectorAll('.leaflet-marker-pane .leaflet-marker-icon');
+    const savedVisibility=[];
+    markerEls.forEach(el=>{savedVisibility.push(el.style.visibility);el.style.visibility='hidden'});
+    
+    // Let tiles finish loading
     await new Promise(r=>setTimeout(r,500));
     
+    // 2. Capture map (tiles + polyline, NO markers)
     const canvas=await html2canvas(mapEl,{
       useCORS:true,
       allowTaint:true,
@@ -1343,6 +1374,51 @@ async function exportPdf(){
       backgroundColor:'#f5f5f5',
       logging:false
     });
+    
+    // 3. Restore marker visibility (for the UI)
+    markerEls.forEach((el,i)=>{el.style.visibility=savedVisibility[i]||''});
+    
+    // 4. Draw numbered pins directly on the canvas using Leaflet's latLngToContainerPoint
+    const ctx=canvas.getContext('2d');
+    const SCALE=2;
+    const R=13*SCALE; // radius of pin
+    ctx.font='bold '+(13*SCALE)+'px Arial, sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    
+    function drawPin(lat,lng,label,color){
+      const pt=mapInstance.latLngToContainerPoint([lat,lng]);
+      const x=pt.x*SCALE,y=pt.y*SCALE;
+      // White outer ring
+      ctx.beginPath();ctx.arc(x,y,R+2,0,Math.PI*2);
+      ctx.fillStyle='#ffffff';ctx.fill();
+      // Shadow (simple dark ring below)
+      ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=1;ctx.stroke();
+      // Colored fill
+      ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);
+      ctx.fillStyle=color;ctx.fill();
+      // Text
+      ctx.fillStyle='#ffffff';
+      // Adjust font size for multi-digit
+      const size=label.length>2?11*SCALE:(label.length>1?12*SCALE:14*SCALE);
+      ctx.font='bold '+size+'px Arial, sans-serif';
+      ctx.fillText(label,x,y+1);
+    }
+    
+    // Draw origin
+    if(originStop){
+      drawPin(originStop.lat,originStop.lng,'C',routeColor);
+    }
+    // Draw destinations
+    destStopsForMap.forEach((s,i)=>{
+      drawPin(s.lat,s.lng,String(i+1),routeColor);
+    });
+    // Draw return if exists
+    const returnStop=ordered.find(s=>s.type==='return');
+    if(returnStop&&returnStop!==originStop){
+      drawPin(returnStop.lat,returnStop.lng,'R','#8890AB');
+    }
+    
     const imgData=canvas.toDataURL('image/jpeg',0.9);
     
     // Add map to PDF
@@ -1407,26 +1483,34 @@ async function exportPdf(){
       pdf.setFont('helvetica','bold');pdf.setFontSize(9);
       pdf.setFillColor(0,191,223);pdf.rect(margin,y-3,pageW-2*margin,5,'F');
       pdf.setTextColor(14,27,77);
-      pdf.text('DÍA '+(d+1)+' · '+dayDate.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'short'}).toUpperCase(),margin+2,y);
+      pdf.text('DIA '+(d+1)+' - '+dayDate.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'short'}).toUpperCase(),margin+2,y);
       pdf.setTextColor(0,0,0);y+=6;
       
       pdf.setFont('helvetica','normal');pdf.setFontSize(8);
       for(const e of dayEvents){
-        if(y>pageH-10){pdf.addPage();y=margin;}
+        if(y>pageH-12){pdf.addPage();y=margin;}
         const t=minToTime(e.time);
-        let line='',icon='';
-        if(e.type==='cargue'){icon='[C]';line=t+'  '+icon+' '+e.city+' (cargue) — '+e.dur+' min';}
-        else if(e.type==='salida'){icon='[>]';line=t+'  '+icon+' Sale de planta';}
-        else if(e.type==='drive'){icon='   ';line='     '+icon+' Conduce '+e.action+'  |  acum: '+e.cumKm+' km';pdf.setTextColor(100,100,100);}
-        else if(e.type==='wait'){icon='[~]';line=t+'  '+icon+' '+e.action;pdf.setTextColor(180,120,0);}
-        else if(e.type==='pernocta'){icon='[P]';line=t+'  '+icon+' '+e.action;pdf.setTextColor(200,50,50);pdf.setFont('helvetica','bold');}
-        else if(e.type==='dest'){icon='#'+e.idx;line=t+'  '+icon.padEnd(4)+' '+e.city+' — '+e.dur+' min descargue  |  '+e.cumKm+' km';}
-        else if(e.type==='return'){icon='[R]';line=t+'  '+icon+' Retorno: '+e.city+'  |  '+e.cumKm+' km';pdf.setTextColor(100,100,100);}
-        pdf.text(line.substring(0,95),margin+2,y);
+        let line='',textColor=[0,0,0],fontStyle='normal';
+        if(e.type==='cargue'){line=t+'  [C] '+e.city+' (cargue) - '+e.dur+' min';}
+        else if(e.type==='salida'){line=t+'  [>] Sale de planta';}
+        else if(e.type==='drive'){line='     >>> Conduce '+String(e.action).replace(/\|/g,'/')+'  (acum: '+e.cumKm+' km)';textColor=[100,100,100];}
+        else if(e.type==='wait'){line=t+'  [~] '+String(e.action).replace(/\|/g,'/');textColor=[180,120,0];}
+        else if(e.type==='pernocta'){line=t+'  [P] '+String(e.action).replace(/\|/g,'/');textColor=[200,50,50];fontStyle='bold';}
+        else if(e.type==='dest'){line=t+'  #'+String(e.idx).padEnd(3)+' '+e.city+' - '+e.dur+' min descargue  ('+e.cumKm+' km)';}
+        else if(e.type==='return'){line=t+'  [R] Retorno: '+e.city+'  ('+e.cumKm+' km)';textColor=[100,100,100];}
+        
+        pdf.setTextColor(textColor[0],textColor[1],textColor[2]);
+        pdf.setFont('helvetica',fontStyle);
+        // Wrap long lines and render each wrapped segment
+        const wrapped=pdf.splitTextToSize(line,pageW-2*margin-4);
+        for(const seg of wrapped){
+          if(y>pageH-8){pdf.addPage();y=margin;}
+          pdf.text(seg,margin+2,y);
+          y+=4.2;
+        }
         pdf.setTextColor(0,0,0);pdf.setFont('helvetica','normal');
-        y+=4;
       }
-      y+=2;
+      y+=3;
     }
     
     // ── DETALLE DE PARADAS ──
@@ -1484,7 +1568,7 @@ async function exportPdf(){
     for(let p=1;p<=pageCount;p++){
       pdf.setPage(p);
       pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(120,120,120);
-      pdf.text('LogxIA · NETFLEET.app · '+trip.id,margin,pageH-5);
+      pdf.text('LogxIA - NETFLEET.app - '+trip.id,margin,pageH-5);
       pdf.text('Página '+p+' de '+pageCount,pageW-margin-15,pageH-5);
     }
     

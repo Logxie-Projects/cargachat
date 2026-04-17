@@ -1,0 +1,158 @@
+{
+  "name": "LogxIA — PRODUCCIÓN v2 (Mails Avgust)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "minute": 5
+            }
+          ]
+        },
+        "filters": {
+          "sender": "proyectos@avgust.com.co",
+          "subject": "SOLICITUD DE SERVICIOS"
+        },
+        "simplifyOutput": true
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "gmail-trigger",
+      "name": "Gmail — Mails de Avgust",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wwd5v7WrftObobuR",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "full"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        0
+      ],
+      "id": "http-read",
+      "name": "Leer Body Completo",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wwd5v7WrftObobuR",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const msg = item.json;\n  let body = '';\n\n  function decodeB64(data) {\n    if (!data) return '';\n    return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');\n  }\n  function findTextPlain(part) {\n    if (!part) return '';\n    if (part.mimeType === 'text/plain' && part.body && part.body.data) return decodeB64(part.body.data);\n    if (part.parts) { for (const sub of part.parts) { const r = findTextPlain(sub); if (r) return r; } }\n    return '';\n  }\n\n  if (msg.payload) body = findTextPlain(msg.payload);\n  if (!body && msg.snippet) body = msg.snippet;\n  if (!body || !body.includes('SOLICITUD DE SERVICIO')) continue;\n  \n  // === NORMALIZACIÓN GLOBAL ===\n  // Quitar asteriscos (formato forwarded HTML→text: *bold* → bold)\n  body = body.replace(/\\*/g, '');\n  // Doble colon\n  body = body.replace(/::/g, ':');\n  // Normalizar \"SOLICITUD DE SERVICIO\" (singular) para que pase el check anterior\n  // ya pasó\n\n  const get = (pat) => { const m = body.match(pat); return m ? m[1].trim() : ''; };\n  const empresas = get(/Empresa\\(s\\):\\s*([^\\r\\n]+)/i);\n  const zonas = get(/Zona\\(s\\):\\s*([^\\r\\n]+)/i);\n  const origenesRaw = get(/Origen\\(es\\):\\s*([^\\r\\n]+)/i);\n  const fechaCargue = get(/Fecha de Cargue:\\s*([^\\r\\n,]+)/i);\n  const cantPedidos = parseInt(get(/Cantidad de pedidos:\\s*(\\d+)/i)) || 0;\n  const pesoTotal = get(/Peso Total Transportado:\\s*([\\d.,]+)/i);\n  const valorTotal = get(/Valor Total Mercancía:\\s*\\$?([\\d.,]+)/i);\n\n  const hdrs = msg.payload?.headers || [];\n  const subjectH = hdrs.find(h => h.name === 'Subject');\n  const subject = subjectH ? subjectH.value : '';\n  const mailId = msg.id || '';\n  const epoch = msg.internalDate || Date.now();\n  const viajeId = 'VJ-' + String(epoch).substring(0, 13);\n  const origenesConocidos = origenesRaw.split(',').map(o => o.trim().toUpperCase()).filter(Boolean);\n\n  // Buscar inicio de \"DETALLE DE PEDIDOS INDIVIDUALES:\"\n  // Puede estar al inicio de línea o pegada a otro texto (ej: \"$97.065.106 DETALLE DE PEDIDOS INDIVIDUALES:\")\n  const detMatch = body.match(/DETALLE DE PEDIDOS INDIVIDUALES:/i);\n  if (!detMatch) continue;\n  const detStart = detMatch.index + detMatch[0].length;\n  const totMatch = body.substring(detStart).match(/\\r?\\n\\s*TOTALES:/i);\n  const totStart = totMatch ? detStart + totMatch.index : body.length;\n  const detalle = body.substring(detStart, totStart);\n\n  // Split por inicio de pedido: número + (espacios) + RM-/TI-/TIT-/DEVOLUCION\n  const pedChunks = detalle.split(/\\r?\\n(?=\\s*\\d{1,2}\\s+(?:RM-|TI-|TIT-|DEVOLUCI))/i);\n\n  for (const chunk of pedChunks) {\n    const clean = chunk.replace(/\\s*\\r?\\n\\s*/g, ' ').trim();\n    const headMatch = clean.match(/^(\\d{1,2})\\s+(.+?)\\s+(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(.+)/s);\n    if (!headMatch) continue;\n\n    const num = parseInt(headMatch[1]);\n    const remision = headMatch[2].trim();\n    const fechaConsolidacion = headMatch[3];\n    const resto = headMatch[4].trim();\n    const esDevolucion = /DEVOLUCI[ÓO]N/i.test(remision);\n\n    const tokens = resto.split(/\\s+/);\n    const empresa = tokens[0] || '';\n    const zona = tokens[1] || '';\n    const restoUpper = resto.toUpperCase();\n    let origen = '', destino = '';\n\n    if (esDevolucion) {\n      for (const oc of origenesConocidos) {\n        const idx = restoUpper.indexOf(oc);\n        if (idx >= 0) { const b = resto.substring(0, idx).trim().split(/\\s+/); origen = b.slice(2).join(' ') || ''; destino = oc; break; }\n      }\n    } else {\n      for (const oc of origenesConocidos) {\n        const idx = restoUpper.indexOf(oc);\n        if (idx >= 0) { origen = oc; const a = resto.substring(idx + oc.length).trim(); const dm = a.match(/^([A-ZÁÉÍÓÚÑÜ\\s]+?)\\s+\\d/); destino = dm ? dm[1].trim() : ''; break; }\n      }\n    }\n\n    // Normalización de orígenes → Funza\n    origen = origen\n      .replace(/BOY 3PL SAN DIEGO FUNZA/gi, 'Funza')\n      .replace(/CENTRO 3PL FUNZA/gi, 'Funza')\n      .replace(/CUN 3PL SAN DIEGO FUNZA/gi, 'Funza')\n      .replace(/3PL.*FUNZA/gi, 'Funza')\n      .trim();\n\n    const pesoMatch = resto.match(/(\\d+\\.\\d{2})\\s+\\d+\\s+\\d+\\s+\\d+\\s+\\d+\\s+\\d+\\s+\\$/);\n    const peso = pesoMatch ? parseFloat(pesoMatch[1]) : 0;\n    const valMatch = resto.match(/\\$([\\d.,]+)/);\n    const valorMercancia = valMatch ? valMatch[1] : '';\n\n    const valorIdx = resto.indexOf('$');\n    let obsPart = '';\n    if (valorIdx > 0) { const am = resto.substring(valorIdx).match(/\\$[\\d.,]+\\s+(.+)/); if (am) obsPart = am[1].trim(); }\n\n    let horarioRaw = '', dias = 'LV', v1Desde = '', v1Hasta = '', v2Desde = '', v2Hasta = '';\n    let contacto = '', telefono = '', direccion = '', cliente = '', notas = '', llamarAntes = false, horarioSabado = '';\n\n    if (obsPart) {\n      // === HORARIO ===\n      // Estrategia: capturar desde primer dígito después de palabra clave\n      // hasta encontrar \" RM-\", \" TI-\", \" TIT-\" o fin de string.\n      // Usamos lookahead, NO [^:] (porque los horarios tienen ':' como en \"12:30\")\n      const stopBoundary = '(?=\\\\s+(?:RM|TI|TIT|DEVOLUCION)[-\\\\s]|$)';\n      const hPats = [\n        // HORARIO DE RECIBO: L-V: 7 AM A 12 PM ...\n        new RegExp('HORARIO[^\\\\n]*?(?:L[-\\\\s]*V|M[-\\\\s]*J|L[-\\\\s]*S)\\\\s*:?\\\\s*(\\\\d{1,2}.+?)' + stopBoundary, 'i'),\n        // HORARIO ... 7:30 AM A ...\n        new RegExp('HORARIO[^\\\\n]*?(\\\\d{1,2}[\\\\s:].+?)' + stopBoundary, 'i'),\n        // L-V: 8am a 4pm.  (sin palabra HORARIO)\n        new RegExp('(?:L[-\\\\s]V|M[-\\\\s]J|L[-\\\\s]S)\\\\s*:?\\\\s*(\\\\d{1,2}.+?)' + stopBoundary, 'i'),\n        // Lunes a viernes 7 am a 12:30...\n        new RegExp('(?:Lunes a viernes|lunes a viernes|LUNES A VIERNES)[^\\\\n]*?(?:de\\\\s+)?(\\\\d{1,2}.+?)' + stopBoundary, 'i'),\n        // horario de recepción: ...\n        new RegExp('horario de recepci[oó]n:\\\\s*(\\\\d{1,2}.+?)' + stopBoundary, 'i'),\n        // recibidos/atención de 7 a 10 am\n        new RegExp('(?:recibidos?|atenci[oó]n)[^\\\\n]*?(?:de\\\\s+)?(\\\\d{1,2}.+?)' + stopBoundary, 'i')\n      ];\n      for (const p of hPats) { \n        const hm = obsPart.match(p); \n        if (hm && hm[1]) { \n          const candidate = hm[1].trim();\n          // Descartar si es solo dirección (empieza con número + coma o letra)\n          if (/\\d/.test(candidate) && !/^\\d+\\s*,\\s*[A-Z]/.test(candidate)) {\n            horarioRaw = candidate; \n            break; \n          }\n        } \n      }\n\n      // === DÍAS DE ATENCIÓN ===\n      const obsUp = obsPart.toUpperCase();\n      \n      // NO RECIBEN LOS VIERNES / NO RECIBE JUEVES etc → L-V sin día específico\n      let noDay = '';\n      const noDayM = obsUp.match(/NO RECIB[EA]N?\\s+(?:PEDIDOS\\s+)?(?:LOS\\s+|EL\\s+|DIA\\s+)?(LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|DOMINGO)/i);\n      if (noDayM) {\n        const m = { 'LUNES':'L','MARTES':'M','MIERCOLES':'X','MIÉRCOLES':'X','JUEVES':'J','VIERNES':'V','SABADO':'S','SÁBADO':'S','DOMINGO':'D' };\n        noDay = m[noDayM[1].toUpperCase()] || '';\n      }\n      \n      // Detección de patrón de días\n      if (/\\bMJ\\b|\\bM[-\\s]J\\s*:/i.test(obsUp)) {\n        // MJ o M-J : lista Martes y Jueves (convención Avgust confirmada)\n        dias = 'MJ';\n      } else if (/L[-\\s]S\\b|LUNES A S[AÁ]BADO/i.test(obsUp)) {\n        dias = 'LS';\n      } else if (/L[-\\s]V|LUNES A VIERNES/i.test(obsUp)) {\n        dias = 'LV';\n        // Si además menciona sábado → LVS\n        if (/S[AÁ]BADO|\\bS\\s*:|Y\\s*S\\s*:|YS\\s*:/i.test(obsUp)) dias = 'LVS';\n      } else {\n        dias = 'LV';\n        if (/S[AÁ]BADO|\\bS\\s*:|Y\\s*S\\s*:|YS\\s*:/i.test(obsUp)) dias = 'LVS';\n      }\n      \n      // Si hay exclusión explícita (ej: \"NO RECIBEN LOS VIERNES\"), marcar\n      if (noDay) {\n        // Mapear a código personalizado: LV-V = L,M,X,J (excluye V)\n        dias = dias + '-' + noDay;\n      }\n\n      // === VENTANAS ===\n      // Solo extraer ventanas SI hay horarioRaw válido. Evita capturar números de tel/dir\n      const pairRx = /(\\d{1,2}(?::\\d{2})?\\s*(?:AM|PM|M|am|pm|a\\.?m\\.?|p\\.?m\\.?)?)\\s*(?:a|-|A|–|al?)\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:AM|PM|M|am|pm|a\\.?m\\.?|p\\.?m\\.?)?)/gi;\n      const ventanas = []; let tm;\n      if (horarioRaw) {\n        while ((tm = pairRx.exec(horarioRaw)) !== null) ventanas.push({ desde: normTime(tm[1]), hasta: normTime(tm[2]) });\n      }\n      if (ventanas.length >= 1) { v1Desde = ventanas[0].desde; v1Hasta = ventanas[0].hasta; }\n      if (ventanas.length >= 2) { v2Desde = ventanas[1].desde; v2Hasta = ventanas[1].hasta; }\n\n      // === SÁBADO ===\n      const sabM = obsPart.match(/[Ss][AÁaá]bado[s]?[:\\s]+(?:de\\s+)?(\\d{1,2}(?::\\d{2})?\\s*(?:AM|am|a\\.?m)?)\\s*(?:a|-|A|–)\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:AM|PM|am|pm|M)?)/i);\n      if (sabM) horarioSabado = normTime(sabM[1]) + '-' + normTime(sabM[2]);\n      else { const s2 = obsPart.match(/\\bS\\s*:\\s*(\\d{1,2}(?::\\d{2})?)\\s*(?:a|-|–)\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:AM|PM|am|pm|aM)?)/i); if (s2) horarioSabado = normTime(s2[1]) + '-' + normTime(s2[2]); }\n\n      // === CONTACTO ===\n      const cM = obsPart.match(/CONTACTO:\\s*([^,/]+)/i); if (cM) contacto = cM[1].trim();\n      const tM = obsPart.match(/CEL:\\s*([\\d\\s\\-]+)/i); if (tM) telefono = tM[1].trim().split(/\\s*-\\s*/)[0];\n      if (!telefono) { const t2 = obsPart.match(/(3\\d{9})/); if (t2) telefono = t2[1]; }\n      const clM = obsPart.match(/DESTINO:\\s*([^,]+)/i); if (clM) cliente = clM[1].trim();\n\n      // === DIRECCIÓN ===\n      const remKey = esDevolucion ? 'DEVOLUCION' : remision.split('/')[0].split(' ')[0];\n      const dirP = obsPart.split(new RegExp(remKey.replace(/[\\-\\/]/g, '[\\\\-\\\\/]?') + '[^:]*:', 'i')).filter(Boolean);\n      if (dirP.length >= 2) direccion = dirP[dirP.length - 1].trim();\n\n      // === NOTAS ===\n      if (/LLAMAR.*(?:DI|DÍ)A.*ANTERIOR/i.test(obsPart)) { llamarAntes = true; notas += 'LLAMAR DÍA ANTERIOR. '; }\n      if (/avisar.*(?:día|dia).*anticipaci[oó]n/i.test(obsPart)) { llamarAntes = true; notas += 'AVISAR DÍA ANTERIOR. '; }\n      if (/NO CONFUNDIR/i.test(obsPart)) { const nc = obsPart.match(/NO CONFUNDIR[^/]*/i); if (nc) notas += nc[0].trim() + '. '; }\n      if (/RECOGER/i.test(obsPart)) notas += 'RECOGER (devolución). ';\n      if (/LLAMAR.*(?:CONTACTO|ANTES)/i.test(obsPart) && !llamarAntes) notas += 'LLAMAR ANTES DE ENTREGA. ';\n      if (noDayM) notas += 'NO RECIBE ' + noDayM[1].toUpperCase() + '. ';\n    }\n\n    results.push({ json: {\n      VIAJE_ID: viajeId, NUMERO: num, REMISION: remision, FECHA_CONSOLIDACION: fechaConsolidacion,\n      EMPRESA: empresa, ZONA: zona, ORIGEN: origen || 'Funza', DESTINO: destino,\n      PESO_KG: peso, VALOR_MERCANCIA: valorMercancia, ES_DEVOLUCION: esDevolucion ? 'SI' : 'NO',\n      DIAS_ATENCION: dias, HORARIO_RAW: horarioRaw, V1_DESDE: v1Desde, V1_HASTA: v1Hasta,\n      V2_DESDE: v2Desde, V2_HASTA: v2Hasta, HORARIO_SABADO: horarioSabado,\n      CLIENTE: cliente, CONTACTO: contacto, TELEFONO: telefono, DIRECCION: direccion,\n      NOTAS: notas.trim(), LLAMAR_ANTES: llamarAntes ? 'SI' : 'NO',\n      VIAJE_EMPRESAS: empresas, VIAJE_ZONAS: zonas, VIAJE_FECHA_CARGUE: fechaCargue,\n      VIAJE_PESO_TOTAL: pesoTotal, VIAJE_VALOR_TOTAL: valorTotal, VIAJE_CANT_PEDIDOS: cantPedidos,\n      MAIL_SUBJECT: subject, MAIL_ID: mailId,\n    }});\n  }\n}\n\nfunction normTime(t) {\n  if (!t) return '';\n  t = t.trim().toUpperCase().replace(/\\./g, '');\n  const m = t.match(/(\\d{1,2})(?::(\\d{2}))?\\s*(AM|PM|M|A|P)?/);\n  if (!m) return '';\n  let h = parseInt(m[1]); const min = m[2] ? parseInt(m[2]) : 0; const ap = m[3] || '';\n  if (ap === 'M' && h === 12) {}\n  else if (ap === 'PM' || ap === 'P') { if (h < 12) h += 12; }\n  else if (ap === 'AM' || ap === 'A') { if (h === 12) h = 0; }\n  else { if (h >= 1 && h <= 6) h += 12; }\n  return String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0');\n}\n\nconsole.log('[Parser v2] TOTAL pedidos:', results.length);\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "parser",
+      "name": "Parsear Detalle Pedidos v2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "DETALLE_PEDIDOS",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        840,
+        0
+      ],
+      "id": "write-sheet",
+      "name": "Escribir DETALLE_PEDIDOS",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IuCNLIa09oW4ZWBu",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail — Mails de Avgust": {
+      "main": [
+        [
+          {
+            "node": "Leer Body Completo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Body Completo": {
+      "main": [
+        [
+          {
+            "node": "Parsear Detalle Pedidos v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Detalle Pedidos v2": {
+      "main": [
+        [
+          {
+            "node": "Escribir DETALLE_PEDIDOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "LogxIA"
+    }
+  ]
+}

@@ -1,0 +1,344 @@
+{
+  "name": "LogxIA - Bot Telegram Conversacional",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "c1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [220, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $input.first().json.message;\nconst chatId = msg.chat.id;\nconst userId = msg.from.id;\nconst texto = msg.text || '';\n\nconst USUARIOS = {\n  ADMIN_IDS: [],\n  PROVEEDORES: {\n    'PRACARGO': [],\n    'ENTRAPETROL': [],\n    'TRASAMER S.A.S': [],\n    'LOGISTICA Y SERVICIOS JR S.A.S': [],\n    'TRANSPORTE NUEVA COLOMBIA': []\n  }\n};\n\nconst BOT_TOKEN = 'TU_BOT_TOKEN_AQUI';\n\nconsole.log(`[Bot] Mensaje de userId: ${userId} chatId: ${chatId}`);\n\nif (USUARIOS.ADMIN_IDS.includes(userId)) {\n  return [{ json: { rol: 'admin', proveedorNombre: '', mensaje: texto, chatId, userId } }];\n}\n\nfor (const [nombre, ids] of Object.entries(USUARIOS.PROVEEDORES)) {\n  if (ids.includes(userId)) {\n    return [{ json: { rol: 'proveedor', proveedorNombre: nombre, mensaje: texto, chatId, userId } }];\n  }\n}\n\nconsole.log(`[Bot] Usuario NO autorizado: ${userId}`);\ntry {\n  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ chat_id: chatId, text: 'No estás autorizado para usar LogxIA. Contacta a Logxie Connect.' })\n  });\n} catch (e) {\n  console.log('[Bot] Error enviando rechazo:', e.message);\n}\nreturn [];"
+      },
+      "id": "c1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Validar Usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "notes": "CONFIGURAR: 1) Agregar Telegram user IDs a ADMIN_IDS y PROVEEDORES. 2) Reemplazar BOT_TOKEN con el token real del bot."
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Ejecutar Lector de Pedidos",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [700, 300],
+      "notes": "Seleccionar workflow 'LogxIA - Lector de Pedidos' después de importar."
+    },
+    {
+      "parameters": {
+        "jsCode": "const userData = $('Validar Usuario').first().json;\nconst { rol, proveedorNombre, mensaje, chatId } = userData;\n\nconst lectorOutput = $input.first().json;\nlet listaPedidos = lectorOutput.listaPedidos || [];\n\nif (rol === 'proveedor' && proveedorNombre) {\n  listaPedidos = listaPedidos.filter(p => (p.proveedor || '').trim() === proveedorNombre);\n}\n\nconst totalPedidos = listaPedidos.length;\nconst msgLower = (mensaje || '').toLowerCase().trim();\n\nconsole.log(`[Bot] Rol: ${rol} | Pedidos: ${totalPedidos} | Msg: ${mensaje}`);\n\nconst PROVEEDORES_ALIASES = {\n  'PRACARGO': ['pracargo'],\n  'ENTRAPETROL': ['entrapetrol'],\n  'TRASAMER S.A.S': ['trasamer'],\n  'LOGISTICA Y SERVICIOS JR S.A.S': ['jr', 'jr logistic', 'logistica jr', 'jrlogistic', 'servicios jr'],\n  'TRANSPORTE NUEVA COLOMBIA': ['nueva colombia', 'transnuevacolombia', 'transporte nueva']\n};\n\n// === CASO 1: Consecutivo específico ===\nconst patronConsec = /\\b(tit|rm|sa|ti|rt)[-\\s]?\\d{3,}/gi;\nconst patronNumero = /\\b\\d{4,}\\b/g;\nconst matchesConsec = msgLower.match(patronConsec);\nconst matchesNum = msgLower.match(patronNumero);\n\nif (matchesConsec || matchesNum) {\n  let buscados = [];\n  if (matchesConsec) {\n    buscados = buscados.concat(matchesConsec.map(m => m.replace(/[\\s-]/g, '').toUpperCase()));\n  }\n  const numeros = matchesNum ? matchesNum.map(m => m.trim()) : [];\n\n  const encontrados = listaPedidos.filter(p => {\n    const c = (p.consecutivo || '').replace(/[\\s-]/g, '').toUpperCase();\n    const rt = (p.rtTotal || '').replace(/[\\s-]/g, '').toUpperCase();\n    const matchPrefijo = buscados.some(b => c.includes(b) || rt.includes(b));\n    const matchNumero = numeros.some(n => c.includes(n) || rt.includes(n));\n    return matchPrefijo || matchNumero;\n  });\n\n  const terminosBusca = [...buscados, ...numeros];\n\n  let respuesta;\n  if (encontrados.length > 0) {\n    const lineas = encontrados.map(p => {\n      const est = (p.estado || '').trim() || 'Sin reporte';\n      let txt = `📦 ${p.consecutivo}\\nCliente: ${p.cliente || '-'}\\nRuta: ${p.origen || '-'} → ${p.destino || '-'}\\nEstado: ${est}\\nProveedor: ${p.proveedor || '-'}`;\n      if ((p.novedad || '').trim()) txt += `\\nNovedad: ${p.novedad}`;\n      if ((p.comentarioNovedad1 || '').trim()) txt += `\\nComentario: ${p.comentarioNovedad1}`;\n      return txt;\n    });\n    respuesta = lineas.join('\\n\\n');\n  } else {\n    respuesta = `No encontré el pedido ${terminosBusca.join(', ')} en los registros del mes actual.`;\n  }\n  const pedidosSinEstado = encontrados.filter(p => !(p.estado || '').trim() || (p.estado || '').trim() === 'Pendiente');\n  console.log(`[Bot] CASO 1: consecutivo/numero. Busca: ${terminosBusca.join(', ')}. Pendientes: ${pedidosSinEstado.length}. Sin Claude.`);\n  return [{ json: { necesitaClaude: 'no', respuestaDirecta: respuesta, claudeRequestBody: null, chatId, mensaje, listaPedidos, pedidosSinEstado } }];\n}\n\n// Stopwords compartidas entre Caso 2 y 2b\nconst stopwords = ['hay', 'pedidos', 'pedido', 'a', 'de', 'para', 'el', 'la', 'los', 'las',\n  'cuántos', 'cuantos', 'como', 'cómo', 'va', 'van', 'en', 'con', 'que', 'si', 'del',\n  'al', 'un', 'una', 'sus', 'es', 'lo', 'le', 'me', 'mi', 'por', 'algo', 'ver',\n  'dame', 'dime', 'muestra', 'busca', 'tiene', 'tienen', 'tengo', 'cual', 'cuál',\n  'estado', 'estados', 'resumen', 'reporte', 'total', 'mes', 'general', 'hoy', 'dia'];\nconst palabrasClave = msgLower.split(/\\s+/).filter(w => w.length >= 3 && !stopwords.includes(w));\n\n// === CASO 2: Resumen / contadores ===\nconst palabrasResumen = ['cuántos', 'cuantos', 'resumen', 'reporte', 'total',\n  'pendientes', 'estado general', 'estadísticas', 'estadisticas',\n  'dashboard', 'cómo va', 'como va', 'cómo están', 'como estan',\n  'cuál es el estado', 'cual es el estado', 'como van'];\n\nif (palabrasResumen.some(p => msgLower.includes(p)) && palabrasClave.length === 0) {\n  const sinEstado = listaPedidos.filter(p => !(p.estado || '').trim()).length;\n  const pend = listaPedidos.filter(p => (p.estado || '').trim() === 'Pendiente').length;\n  const ok = listaPedidos.filter(p => (p.estado || '').trim() === 'Entregado OK').length;\n  const nov = listaPedidos.filter(p => (p.estado || '').trim() === 'Entregado con Novedad').length;\n  const rech = listaPedidos.filter(p => (p.estado || '').trim() === 'Rechazado por Cliente').length;\n\n  const respuesta = `📊 Resumen del mes\\nTotal pedidos: ${totalPedidos}\\n✅ Entregados OK: ${ok}\\n🔄 Sin reporte: ${sinEstado}\\n⏳ Pendientes: ${pend}\\n⚠️ Con novedad: ${nov}\\n❌ Rechazados: ${rech}`;\n  console.log('[Bot] CASO 2: resumen directo. Sin Claude.');\n  return [{ json: { necesitaClaude: 'no', respuestaDirecta: respuesta, claudeRequestBody: null, chatId, mensaje, listaPedidos } }];\n}\n\n// === CASO 2b: Búsqueda por destino, origen o cliente ===\nif (palabrasClave.length > 0) {\n  const termino = palabrasClave.join(' ');\n\n  const idsVistos = new Set();\n  const encontradosDestino = listaPedidos.filter(p => {\n    const dest = (p.destino || '').toLowerCase();\n    if (palabrasClave.some(kw => dest.includes(kw))) { idsVistos.add(p.consecutivo); return true; }\n    return false;\n  });\n  const encontradosCliente = listaPedidos.filter(p => {\n    if (idsVistos.has(p.consecutivo)) return false;\n    const cli = (p.cliente || '').toLowerCase();\n    if (palabrasClave.some(kw => cli.includes(kw))) { idsVistos.add(p.consecutivo); return true; }\n    return false;\n  });\n  const encontradosOrigen = listaPedidos.filter(p => {\n    if (idsVistos.has(p.consecutivo)) return false;\n    const orig = (p.origen || '').toLowerCase();\n    if (palabrasClave.some(kw => orig.includes(kw))) { idsVistos.add(p.consecutivo); return true; }\n    return false;\n  });\n\n  const todosEncontrados = [...encontradosDestino, ...encontradosCliente, ...encontradosOrigen];\n\n  if (todosEncontrados.length > 0) {\n    const mostrar = todosEncontrados.slice(0, 10);\n    const lineas = mostrar.map(p => {\n      const est = (p.estado || '').trim() || 'Sin reporte';\n      return `• ${p.consecutivo || '-'} | ${p.cliente || '-'} → ${p.destino || '-'} | ${est}`;\n    }).join('\\n');\n    let respuesta = `📍 ${todosEncontrados.length} pedido(s) relacionados con '${termino}':\\n${lineas}`;\n    if (todosEncontrados.length > 10) {\n      respuesta += `\\n... y ${todosEncontrados.length - 10} pedidos más. Sé más específico para filtrar mejor.`;\n    }\n    const pedidosSinEstado = todosEncontrados.filter(p => !(p.estado || '').trim() || (p.estado || '').trim() === 'Pendiente');\n    console.log(`[Bot] CASO 2b: destino/origen/cliente. Termino: ${termino}. Total: ${todosEncontrados.length}. Pendientes: ${pedidosSinEstado.length}. Sin Claude.`);\n    return [{ json: { necesitaClaude: 'no', respuestaDirecta: respuesta, claudeRequestBody: null, chatId, mensaje, listaPedidos, pedidosSinEstado } }];\n  }\n}\n\n// === CASO 3: Proveedor específico (con aliases) ===\nlet provMencionado = null;\nfor (const [nombre, aliases] of Object.entries(PROVEEDORES_ALIASES)) {\n  if (msgLower.includes(nombre.toLowerCase()) || aliases.some(a => msgLower.includes(a))) {\n    provMencionado = nombre;\n    break;\n  }\n}\nif (provMencionado) {\n  const filtrados = listaPedidos.filter(p => (p.proveedor || '').trim() === provMencionado);\n  if (filtrados.length > 0) {\n    const items = filtrados.map(p => {\n      const est = (p.estado || '').trim() || 'Sin reporte';\n      return `• ${p.consecutivo}: ${est}`;\n    }).join('\\n');\n    const respuesta = `🚚 ${provMencionado} — ${filtrados.length} pedidos\\n${items}`;\n    console.log(`[Bot] CASO 3: proveedor directo. Sin Claude.`);\n    return [{ json: { necesitaClaude: 'no', respuestaDirecta: respuesta, claudeRequestBody: null, chatId, mensaje, listaPedidos } }];\n  }\n}\n\n// === CASO 4: Pregunta compleja (>5 palabras) ===\nconst palabras = mensaje.trim().split(/\\s+/);\nif (palabras.length > 5) {\n  console.log('[Bot] CASO 4: pregunta compleja -> necesita Claude.');\n\n  function limpiar(p) {\n    return {\n      consecutivo: p.consecutivo, cliente: p.cliente,\n      origen: p.origen, destino: p.destino,\n      estado: p.estado || 'Sin reporte', novedad: p.novedad,\n      proveedor: p.proveedor,\n      comentarioNovedad1: p.comentarioNovedad1,\n      comentarioNovedad2: p.comentarioNovedad2,\n      comentarioNovedad3: p.comentarioNovedad3\n    };\n  }\n\n  const datosParaClaude = listaPedidos.slice(0, 20).map(limpiar);\n\n  const claudeRequestBody = {\n    model: 'claude-sonnet-4-20250514',\n    max_tokens: 1000,\n    system: 'Eres LogxIA, agente de seguimiento logístico de Logxie Connect. Responde SIEMPRE de forma corta y directa. Reglas:\\n- NUNCA revelar valores de flete\\n- Para resúmenes: lista corta con emojis, sin párrafos\\n- Sin saludos ni despedidas\\n- Si no encuentras el pedido: una sola línea indicándolo',\n    messages: [{\n      role: 'user',\n      content: `Datos (${datosParaClaude.length} pedidos):\\n${JSON.stringify(datosParaClaude)}\\n\\nPregunta: ${mensaje}`\n    }]\n  };\n\n  return [{ json: { necesitaClaude: 'si', respuestaDirecta: null, claudeRequestBody, chatId, mensaje, listaPedidos } }];\n}\n\n// === CASO 5: Saludo / ayuda ===\nconsole.log('[Bot] CASO 5: saludo/ayuda. Sin Claude.');\nconst respuesta = '¿En qué puedo ayudarte?\\n\\nPuedo responder sobre:\\n• Pedido específico: TIT-123, RM-456\\n• Viaje completo: RT-TOTAL-123\\n• Destino/cliente: \"pedidos a Espinal\", \"pedidos de El Faro\"\\n• Proveedor: \"estado de JR\"\\n• Resumen: \"¿cuántos pedidos hay?\"';\nreturn [{ json: { necesitaClaude: 'no', respuestaDirecta: respuesta, claudeRequestBody: null, chatId, mensaje, listaPedidos } }];"
+      },
+      "id": "c1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Resolver Consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond_claude",
+              "leftValue": "={{ $json.necesitaClaude }}",
+              "rightValue": "si",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0012-4000-8000-000000000012",
+      "name": "Necesita Claude?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.claudeRequestBody }}",
+        "options": {}
+      },
+      "id": "c1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Llamar Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic API Key"
+        }
+      },
+      "notes": "Crear credencial Header Auth con Name: x-api-key y Value: tu API key de Anthropic."
+    },
+    {
+      "parameters": {
+        "jsCode": "const CORREOS_PROVEEDORES = {\n  'PRACARGO': { to: 'despachos@pracargo.com', cc: '' },\n  'ENTRAPETROL': { to: 'gerencia@stentrapetrol.com', cc: 'trafico@stentrapetrol.com' },\n  'TRASAMER S.A.S': { to: 'trasamergerencia@gmail.com', cc: '' },\n  'LOGISTICA Y SERVICIOS JR S.A.S': { to: 'comercial1jrlogistic@gmail.com', cc: 'comercial1@logisticjr.com' },\n  'TRANSPORTE NUEVA COLOMBIA': { to: 'despachoscali2@transnuevacolombia.com', cc: 'cristian.gomez@transnuevacolombia.com' }\n};\n\nconst CC_INTERNO = 'bernardojaristizabal@gmail.com, proyectos@avgust.com.co';\n\nconst inputData = $input.first().json;\n\n// === Determinar de dónde viene la respuesta ===\nlet respuestaTelegram;\nlet chatId, mensaje, listaPedidos;\n\nif (inputData.content && inputData.content.length > 0) {\n  respuestaTelegram = inputData.content[0].text;\n  const resolverData = $('Resolver Consulta').first().json;\n  chatId = resolverData.chatId;\n  mensaje = resolverData.mensaje;\n  listaPedidos = resolverData.listaPedidos;\n  console.log('[Bot] Respuesta de Claude API recibida.');\n} else if (inputData.respuestaDirecta) {\n  respuestaTelegram = inputData.respuestaDirecta;\n  chatId = inputData.chatId;\n  mensaje = inputData.mensaje;\n  listaPedidos = inputData.listaPedidos;\n  console.log('[Bot] Respuesta directa (sin Claude).');\n} else {\n  respuestaTelegram = 'No pude procesar tu consulta. Intenta de nuevo.';\n  const resolverData = $('Resolver Consulta').first().json;\n  chatId = resolverData.chatId;\n  mensaje = resolverData.mensaje || '';\n  listaPedidos = resolverData.listaPedidos || [];\n}\n\n// Fix: convertir \\\\n literales a saltos de línea reales\nrespuestaTelegram = respuestaTelegram.replace(/\\\\n/g, '\\n');\n\n// === Recopilar pedidos sin estado ===\nconst pedidosSinEstado = inputData.pedidosSinEstado || $('Resolver Consulta').first().json.pedidosSinEstado || [];\n\n// Agrupar por proveedor\nconst porProveedor = {};\nfor (const p of pedidosSinEstado) {\n  const prov = (p.proveedor || '').trim();\n  if (!prov) continue;\n  if (!porProveedor[prov]) porProveedor[prov] = [];\n  porProveedor[prov].push(p);\n}\n\nconst proveedores = Object.keys(porProveedor);\nconsole.log(`[Bot] Pedidos sin estado: ${pedidosSinEstado.length}. Proveedores: ${proveedores.length}`);\n\n// === Construir array de emails ===\nconst emailsAEnviar = [];\n\nfor (const prov of proveedores) {\n  const pedidos = porProveedor[prov];\n  const config = CORREOS_PROVEEDORES[prov];\n\n  const listaPedidosHtml = pedidos.map(p => `<li><strong>${p.consecutivo || '-'}</strong> → ${p.destino || '-'}</li>`).join('');\n\n  if (config) {\n    const ccParts = [CC_INTERNO];\n    if (config.cc && config.cc.trim() !== '') ccParts.push(config.cc);\n    emailsAEnviar.push({\n      emailTo: config.to,\n      emailCc: ccParts.join(', '),\n      emailAsunto: `[LogxIA] Pedidos sin actualizar - ${prov}`,\n      emailCuerpo: `<p>Se están consultando los siguientes pedidos sin actualizar:</p><ul>${listaPedidosHtml}</ul><p>Por favor actualice el estado en la app <strong>\\\"Donde Está Mi Pedido\\\"</strong> o comuníquese de inmediato con el coordinador del servicio o con Logxie Connect.</p><p>Gracias,<br/><strong>LogxIA — Agente de Seguimiento Logístico</strong><br/><em>by Logxie Connect</em></p>`,\n      proveedorNotificado: prov,\n      cantidadPedidos: pedidos.length\n    });\n  } else {\n    emailsAEnviar.push({\n      emailTo: 'bernardojaristizabal@gmail.com',\n      emailCc: 'proyectos@avgust.com.co',\n      emailAsunto: `[SIN CORREO CONFIGURADO] Pedidos sin actualizar - ${prov}`,\n      emailCuerpo: `<p>Se están consultando los siguientes pedidos sin actualizar del proveedor <strong>${prov}</strong>:</p><ul>${listaPedidosHtml}</ul><p>No se encontró correo configurado para este proveedor.</p><p>Gracias,<br/><strong>LogxIA — Agente de Seguimiento Logístico</strong><br/><em>by Logxie Connect</em></p>`,\n      proveedorNotificado: prov,\n      cantidadPedidos: pedidos.length\n    });\n  }\n}\n\n// === Agregar resumen de notificación al mensaje de Telegram ===\nif (proveedores.length === 1) {\n  respuestaTelegram += `\\n\\n📧 Le notifiqué a ${proveedores[0]} para que actualice.`;\n} else if (proveedores.length > 1) {\n  const detalles = emailsAEnviar.map(e => `- ${e.proveedorNotificado} (${e.cantidadPedidos} pedidos sin actualizar)`).join('\\n');\n  respuestaTelegram += `\\n\\n📧 Notifiqué a ${proveedores.length} proveedores:\\n${detalles}`;\n}\n\nconsole.log(`[Bot] Respuesta lista. Emails a enviar: ${emailsAEnviar.length}`);\n\nreturn [{ json: {\n  chatId,\n  respuestaTelegram,\n  notificarProveedor: emailsAEnviar.length > 0 ? 'si' : 'no',\n  emailsAEnviar\n}}];"
+      },
+      "id": "c1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Procesar Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond_notif",
+              "leftValue": "={{ $json.notificarProveedor }}",
+              "rightValue": "si",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0009-4000-8000-000000000009",
+      "name": "IF Notificar Proveedor",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expandir emailsAEnviar en items individuales para el nodo Gmail\nconst data = $input.first().json;\nconst emails = data.emailsAEnviar || [];\n\nif (emails.length === 0) {\n  console.log('[Bot] No hay emails que enviar.');\n  return [];\n}\n\nconst items = emails.map(e => ({\n  json: {\n    emailTo: e.emailTo,\n    emailCc: e.emailCc,\n    emailAsunto: e.emailAsunto,\n    emailCuerpo: e.emailCuerpo,\n    proveedorNotificado: e.proveedorNotificado\n  }\n}));\n\nconsole.log(`[Bot] Preparados ${items.length} emails para enviar.`);\nreturn items;"
+      },
+      "id": "c1b2c3d4-0014-4000-8000-000000000014",
+      "name": "Preparar Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2140, 180]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.emailTo }}",
+        "subject": "={{ $json.emailAsunto }}",
+        "message": "={{ $json.emailCuerpo }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "={{ $json.emailCc }}"
+        }
+      },
+      "id": "c1b2c3d4-0010-4000-8000-000000000010",
+      "name": "Enviar Email Urgente",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2380, 180],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Procesar Respuesta').first().json.chatId }}",
+        "text": "={{ $('Procesar Respuesta').first().json.respuestaTelegram }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c1b2c3d4-0011-4000-8000-000000000011",
+      "name": "Responder Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2620, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validar Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Usuario": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Lector de Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Lector de Pedidos": {
+      "main": [
+        [
+          {
+            "node": "Resolver Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver Consulta": {
+      "main": [
+        [
+          {
+            "node": "Necesita Claude?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Necesita Claude?": {
+      "main": [
+        [
+          {
+            "node": "Llamar Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Procesar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar Claude API": {
+      "main": [
+        [
+          {
+            "node": "Procesar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Respuesta": {
+      "main": [
+        [
+          {
+            "node": "IF Notificar Proveedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Notificar Proveedor": {
+      "main": [
+        [
+          {
+            "node": "Preparar Emails",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Responder Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Emails": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email Urgente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "LogxIA"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}

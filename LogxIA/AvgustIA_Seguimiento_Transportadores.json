@@ -1,0 +1,158 @@
+{
+  "name": "AvgustIA - Seguimiento a Transportadores",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,12,18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Schedule Trigger (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 520]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "b1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Ejecutar Lector de Pedidos",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [480, 400],
+      "notes": "IMPORTANTE: Después de importar, abre este nodo y selecciona el workflow 'AvgustIA - Lector de Pedidos' de la lista desplegable."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibir output del sub-workflow (Lector de Pedidos)\nconst input = $input.all();\n\nlet listaPedidos = [];\n\nif (input.length === 1 && input[0].json.listaPedidos) {\n  listaPedidos = input[0].json.listaPedidos;\n} else if (input.length > 1) {\n  listaPedidos = input.map(i => i.json);\n}\n\nconsole.log('[Seguimiento] Total pedidos recibidos del Lector:', listaPedidos.length);\n\n// Filtrar: estado vacío O \"Pendiente\"\nconst pendientes = listaPedidos.filter(p => {\n  const est = (p.estado || '').trim();\n  return est === '' || est === 'Pendiente';\n});\n\nconsole.log('[Seguimiento] Pedidos pendientes/sin estado:', pendientes.length);\n\n// Si no hay pendientes, retornar array vacío — n8n detiene el flujo aquí\nif (pendientes.length === 0) {\n  console.log('[Seguimiento] Sin pedidos pendientes. Workflow se detiene.');\n  return [];\n}\n\n// Agrupar por proveedor\nconst grupos = {};\nfor (const p of pendientes) {\n  const prov = (p.proveedor || 'SIN PROVEEDOR').trim();\n  if (!grupos[prov]) grupos[prov] = [];\n  grupos[prov].push(p);\n}\n\nconsole.log('[Seguimiento] Proveedores con pedidos pendientes:', Object.keys(grupos).length);\n\n// Generar un item por cada proveedor\nconst resultado = [];\nfor (const [proveedor, pedidos] of Object.entries(grupos)) {\n  if (pedidos.length === 0) continue;\n  resultado.push({\n    json: {\n      proveedor,\n      cantidadPedidos: pedidos.length,\n      pedidos\n    }\n  });\n}\n\nreturn resultado;"
+      },
+      "id": "b1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Filtrar y Agrupar por Proveedor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const CORREOS_PROVEEDORES = {\n  'PRACARGO': {\n    to: 'despachos@pracargo.com',\n    cc: ''\n  },\n  'ENTRAPETROL': {\n    to: 'gerencia@stentrapetrol.com',\n    cc: 'trafico@stentrapetrol.com'\n  },\n  'TRASAMER S.A.S': {\n    to: 'trasamergerencia@gmail.com',\n    cc: ''\n  },\n  'LOGISTICA Y SERVICIOS JR S.A.S': {\n    to: 'comercial1jrlogistic@gmail.com',\n    cc: 'comercial1@logisticjr.com'\n  },\n  'TRANSPORTE NUEVA COLOMBIA': {\n    to: 'despachoscali2@transnuevacolombia.com',\n    cc: 'cristian.gomez@transnuevacolombia.com'\n  }\n};\n\nconst CC_INTERNO = 'bernardojaristizabal@gmail.com, proyectos@avgust.com.co';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const proveedor = item.json.proveedor;\n  const pedidos = item.json.pedidos;\n  const config = CORREOS_PROVEEDORES[proveedor];\n\n  // Determinar destinatario y CC\n  let sendTo, ccList, asunto;\n\n  if (config) {\n    sendTo = config.to;\n    const ccParts = [CC_INTERNO];\n    if (config.cc && config.cc.trim() !== '') {\n      ccParts.push(config.cc);\n    }\n    ccList = ccParts.join(', ');\n    asunto = `[LogxIA] Pedidos pendientes de actualización - ${proveedor}`;\n  } else {\n    // Proveedor no configurado: solo a internos\n    sendTo = 'bernardojaristizabal@gmail.com';\n    ccList = 'proyectos@avgust.com.co';\n    asunto = `[SIN CORREO CONFIGURADO - ${proveedor}]`;\n  }\n\n  const filas = pedidos.map(p => {\n    const estado = (p.estado || '').trim() === '' ? 'Sin reporte' : p.estado;\n    return `<tr>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${p.consecutivo || '-'}</td>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${p.cliente || '-'}</td>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${p.origen || '-'}</td>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${p.destino || '-'}</td>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${p.fechaCargue || '-'}</td>\n      <td style=\"border:1px solid #ddd;padding:8px;\">${estado}</td>\n    </tr>`;\n  }).join('\\n');\n\n  const html = `<p>Estimado equipo de <strong>${proveedor}</strong>,</p>\n<p>Le recordamos que los siguientes pedidos requieren actualización de estado:</p>\n<table style=\"border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;\">\n  <thead>\n    <tr style=\"background-color:#f2f2f2;\">\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Consecutivo</th>\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Cliente</th>\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Origen</th>\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Destino</th>\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Fecha Cargue</th>\n      <th style=\"border:1px solid #ddd;padding:8px;text-align:left;\">Estado actual</th>\n    </tr>\n  </thead>\n  <tbody>\n    ${filas}\n  </tbody>\n</table>\n<p>Por favor actualice el estado de cada pedido a través de la aplicación <strong>\"Donde Está Mi Pedido\"</strong> o responda este correo con las novedades.</p>\n<p>Gracias,<br/>\n<strong>LogxIA — Agente de Seguimiento Logístico</strong><br/>\n<em>by Logxie Connect</em></p>`;\n\n  console.log(`[Generar Email] ${proveedor} -> TO: ${sendTo} | CC: ${ccList}`);\n\n  results.push({\n    json: {\n      proveedor,\n      cantidadPedidos: pedidos.length,\n      asunto,\n      cuerpoHtml: html,\n      sendTo,\n      ccList\n    }\n  });\n}\n\nconsole.log('[Generar Email] Emails generados:', results.length);\nreturn results;"
+      },
+      "id": "b1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Generar Email por Proveedor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.sendTo }}",
+        "subject": "={{ $json.asunto }}",
+        "message": "={{ $json.cuerpoHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "={{ $json.ccList }}"
+        }
+      },
+      "id": "b1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1200, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail OAuth2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Lector de Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (6h)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Lector de Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Lector de Pedidos": {
+      "main": [
+        [
+          {
+            "node": "Filtrar y Agrupar por Proveedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar y Agrupar por Proveedor": {
+      "main": [
+        [
+          {
+            "node": "Generar Email por Proveedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Email por Proveedor": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AvgustIA"
+    }
+  ],
+  "triggerCount": 2,
+  "active": false
+}

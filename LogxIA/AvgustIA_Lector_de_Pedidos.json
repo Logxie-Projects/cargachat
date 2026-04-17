@@ -1,0 +1,204 @@
+{
+  "name": "AvgustIA - Lector de Pedidos",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 520]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1hh9suCr1KkGDJekAMul3kYdi74MRD0778kcZ-Vl1tWQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Datos desde Unificada",
+          "mode": "name"
+        },
+        "options": {
+          "returnAll": true
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Leer Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [480, 400],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = new Date();\nconst currentMonth = now.getMonth(); // 0-indexed\nconst currentYear = now.getFullYear();\n\n// === DEBUG: muestreo de datos crudos ===\nconst sample = items.slice(0, 5).map(i => i.json['FECHA_CARGUE_VIAJE']);\nconsole.log('[Filtrar Mes Actual] Total filas recibidas:', items.length);\nconsole.log('[Filtrar Mes Actual] Muestra FECHA_CARGUE_VIAJE (primeras 5):', JSON.stringify(sample));\nconsole.log('[Filtrar Mes Actual] Filtrando para mes:', currentMonth + 1, '/', currentYear);\n\nfunction parseFecha(raw) {\n  if (raw === null || raw === undefined || raw === '') return null;\n  const s = String(raw).trim();\n  if (s === '') return null;\n\n  // Paso 1: separar parte de fecha de la hora (si viene '11/08/2025 10:00:00')\n  const datePart = s.split(' ')[0];\n\n  // Serial date de Google Sheets (número como 45752)\n  if (/^\\d{4,5}(\\.\\d+)?$/.test(datePart)) {\n    const serial = parseFloat(datePart);\n    if (serial > 1 && serial < 200000) {\n      const epoch = new Date(1899, 11, 30);\n      epoch.setDate(epoch.getDate() + Math.floor(serial));\n      return epoch;\n    }\n    return null;\n  }\n\n  let m;\n\n  // DD/MM/YYYY o DD-MM-YYYY (formato Colombia)\n  m = datePart.match(/^(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})$/);\n  if (m) {\n    const day = parseInt(m[1], 10);\n    const mon = parseInt(m[2], 10);\n    const year = parseInt(m[3], 10);\n    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {\n      return new Date(year, mon - 1, day);\n    }\n    return null;\n  }\n\n  // YYYY-MM-DD o YYYY/MM/DD (ISO)\n  m = datePart.match(/^(\\d{4})[\\/-](\\d{1,2})[\\/-](\\d{1,2})$/);\n  if (m) {\n    const year = parseInt(m[1], 10);\n    const mon = parseInt(m[2], 10);\n    const day = parseInt(m[3], 10);\n    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {\n      return new Date(year, mon - 1, day);\n    }\n    return null;\n  }\n\n  // NO hay fallback — si no matchea, se descarta\n  return null;\n}\n\nlet validCount = 0;\nlet skippedEmpty = 0;\nlet skippedUnparseable = 0;\nconst filtered = [];\n\nfor (const item of items) {\n  const raw = item.json['FECHA_CARGUE_VIAJE'];\n  if (!raw || String(raw).trim() === '') { skippedEmpty++; continue; }\n\n  const fecha = parseFecha(raw);\n  if (!fecha || isNaN(fecha.getTime())) { skippedUnparseable++; continue; }\n  validCount++;\n\n  if (fecha.getMonth() === currentMonth && fecha.getFullYear() === currentYear) {\n    filtered.push(item);\n  }\n}\n\nconsole.log('[Filtrar Mes Actual] Filas vacias (sin fecha):', skippedEmpty);\nconsole.log('[Filtrar Mes Actual] Filas con fecha no parseable:', skippedUnparseable);\nconsole.log('[Filtrar Mes Actual] Filas con fecha valida:', validCount);\nconsole.log('[Filtrar Mes Actual] >>> Filas que pasan filtro (mes actual):', filtered.length);\n\nreturn filtered.length > 0 ? filtered : [{ json: { _empty: true } }];"
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Filtrar Mes Actual",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Si vino vacío del filtro, retornar estructura vacía\nif (items.length === 1 && items[0].json._empty) {\n  return [{\n    json: {\n      totalPedidos: 0,\n      pedidosSinEstado: 0,\n      pedidosPendientes: 0,\n      pedidosConNovedad: 0,\n      pedidosRechazados: 0,\n      pedidosEntregadosOK: 0,\n      listaPedidos: []\n    }\n  }];\n}\n\nconst pedidos = items.map(item => {\n  const d = item.json;\n  return {\n    consecutivo: d['CONSECUTIVO IMP / LOG / CRM'] || '',\n    empresa: d['EMPRESA'] || '',\n    fechaCargue: d['FECHA_CARGUE_VIAJE'] || '',\n    fechaEstimada: d['FECHA ESTIMADA CARGUE'] || '',\n    fechaEntrega: d['FECHA REQUERIDA DE ENTREGA'] || '',\n    origen: d['ORIGEN'] || '',\n    destino: d['DESTINO'] || '',\n    proveedor: d['Proveedor'] || '',\n    estado: d['ESTADO'] || '',\n    novedad: d['NOVEDAD'] || '',\n    comentarioNovedad1: d['Comentario Novedad'] || '',\n    comentarioNovedad2: d['Comentario Novedad2'] || '',\n    comentarioNovedad3: d['Comentario Novedad3'] || '',\n    entregaCliente1: d['ENTREGA A CLIENTE'] || '',\n    entregaCliente2: d['ENTREGA A CLIENTE2'] || '',\n    entregaCliente3: d['ENTREGA A CLIENTE3'] || '',\n    valorMercancia: d['VALOR DE LA MERCANCIA'] || '',\n    rtTotal: d['ID_VIAJE_LINK'] || '',\n    coordinador: d['COORDINADOR DEL SERVICIO'] || '',\n    vendedor: d['VENDEDOR QUE SOLICITA'] || '',\n    cliente: d['CLIENTE'] || '',\n    llegadaCargue: d['LLEGADA A CARGUE'] || '',\n    salidaCargue: d['SALIDA DE CARGUE'] || '',\n    llegadaDescargue: d['LLEGADA A DESCARGUE'] || '',\n    salidaDescargue: d['SALIDA DE DESCARGUE'] || '',\n    fotoCumplido: d['FOTO CUMPLIDO'] || ''\n  };\n});\n\nreturn [{\n  json: {\n    totalPedidos: pedidos.length,\n    pedidosSinEstado: pedidos.filter(p => !p.estado || p.estado.trim() === '').length,\n    pedidosPendientes: pedidos.filter(p => p.estado === 'Pendiente').length,\n    pedidosConNovedad: pedidos.filter(p => p.estado === 'Entregado con Novedad').length,\n    pedidosRechazados: pedidos.filter(p => p.estado === 'Rechazado por Cliente').length,\n    pedidosEntregadosOK: pedidos.filter(p => p.estado === 'Entregado OK').length,\n    listaPedidos: pedidos\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Estructurar y Resumir Pedidos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "totalPedidos",
+              "value": "={{ $json.totalPedidos }}",
+              "type": "number"
+            },
+            {
+              "id": "f2",
+              "name": "pedidosSinEstado",
+              "value": "={{ $json.pedidosSinEstado }}",
+              "type": "number"
+            },
+            {
+              "id": "f3",
+              "name": "pedidosPendientes",
+              "value": "={{ $json.pedidosPendientes }}",
+              "type": "number"
+            },
+            {
+              "id": "f4",
+              "name": "pedidosConNovedad",
+              "value": "={{ $json.pedidosConNovedad }}",
+              "type": "number"
+            },
+            {
+              "id": "f5",
+              "name": "pedidosRechazados",
+              "value": "={{ $json.pedidosRechazados }}",
+              "type": "number"
+            },
+            {
+              "id": "f6",
+              "name": "pedidosEntregadosOK",
+              "value": "={{ $json.pedidosEntregadosOK }}",
+              "type": "number"
+            },
+            {
+              "id": "f7",
+              "name": "listaPedidos",
+              "value": "={{ $json.listaPedidos }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Set - Output Final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 400]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Leer Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Leer Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Mes Actual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Mes Actual": {
+      "main": [
+        [
+          {
+            "node": "Estructurar y Resumir Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estructurar y Resumir Pedidos": {
+      "main": [
+        [
+          {
+            "node": "Set - Output Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AvgustIA"
+    }
+  ],
+  "triggerCount": 2,
+  "active": false
+}

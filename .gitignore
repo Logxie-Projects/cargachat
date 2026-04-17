@@ -1,0 +1,14 @@
+ViajesColombia.xlsx
+ruta_debug.html
+test_osrm.html
+*.env
+.env.local
+node_modules/
+
+# Secretos — NO versionar
+LogxIA/CLAVES Y APIS.txt
+*.secrets
+*.credentials.json
+
+# Claude Code local settings
+.claude/settings.local.json

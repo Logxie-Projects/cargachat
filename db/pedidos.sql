@@ -9,7 +9,7 @@ CREATE TABLE pedidos (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Relaciones
-  viaje_id         uuid REFERENCES viajes(id),   -- NULL hasta que Bernardo consolida
+  viaje_id         uuid REFERENCES viajes_consolidados(id),   -- NULL hasta que Bernardo consolida
   cliente_id       uuid REFERENCES clientes(id) NOT NULL,
 
   -- Campos mínimos obligatorios (cualquier fuente puede proveerlos)

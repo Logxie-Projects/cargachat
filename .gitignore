@@ -12,3 +12,6 @@ LogxIA/CLAVES Y APIS.txt
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Migraciones históricas con PII — ejecutar local, NO versionar
+db/migrate_*.sql

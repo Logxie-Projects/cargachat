@@ -5,7 +5,7 @@
 -- Columnas mapeadas desde ASIGNADOS real (export 2025-2026)
 -- ============================================================
 
-CREATE TABLE viajes (
+CREATE TABLE viajes_consolidados (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Identificación
@@ -78,11 +78,11 @@ CREATE TABLE viajes (
 );
 
 -- Índices
-CREATE INDEX idx_viajes_cliente ON viajes(cliente_id);
-CREATE INDEX idx_viajes_estado ON viajes(estado);
-CREATE INDEX idx_viajes_fecha_cargue ON viajes(fecha_cargue);
-CREATE INDEX idx_viajes_zona ON viajes(zona);
-CREATE INDEX idx_viajes_mes_anio ON viajes(anio, mes);
+CREATE INDEX idx_viajes_cliente ON viajes_consolidados(cliente_id);
+CREATE INDEX idx_viajes_estado ON viajes_consolidados(estado);
+CREATE INDEX idx_viajes_fecha_cargue ON viajes_consolidados(fecha_cargue);
+CREATE INDEX idx_viajes_zona ON viajes_consolidados(zona);
+CREATE INDEX idx_viajes_mes_anio ON viajes_consolidados(anio, mes);
 
 -- Trigger updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -91,21 +91,21 @@ BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER viajes_updated_at
-  BEFORE UPDATE ON viajes
+  BEFORE UPDATE ON viajes_consolidados
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- RLS
-ALTER TABLE viajes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE viajes_consolidados ENABLE ROW LEVEL SECURITY;
 
 -- Anon puede SELECT viajes en estado públicos (para netfleet.app mapa)
-CREATE POLICY "anon_select_publicos" ON viajes
+CREATE POLICY "anon_select_publicos" ON viajes_consolidados
   FOR SELECT TO anon
   USING (estado IN ('pendiente', 'confirmado'));
 
 -- Service role acceso total
-CREATE POLICY "service_role_all" ON viajes
+CREATE POLICY "service_role_all" ON viajes_consolidados
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Authenticated (transportadores/admin) acceso total
-CREATE POLICY "authenticated_all" ON viajes
+CREATE POLICY "authenticated_all" ON viajes_consolidados
   FOR ALL TO authenticated USING (true) WITH CHECK (true);

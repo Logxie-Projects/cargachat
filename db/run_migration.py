@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-Ejecuta los SQL del Módulo 2 contra Supabase en orden.
+Ejecuta SQL contra Supabase.
 
 Uso:
-  export DATABASE_URL="postgresql://postgres.pzouapqnvllaaqnmnlbs:[PWD]@aws-X-us-east-1.pooler.supabase.com:5432/postgres"
+  # Migración completa (default)
   python db/run_migration.py
 
-La connection string sale de:
-  Supabase Dashboard → Project Settings → Database
-  → Connection string → "Session pooler" → URI
+  # Un solo archivo
+  python db/run_migration.py --file db/post_migration.sql
 
-Ejecuta en orden:
+Requiere env var DATABASE_URL (ver Supabase Dashboard → Database → Session pooler).
+
+Migración completa ejecuta en orden:
   1. Schemas: clientes.sql, viajes.sql, pedidos.sql
   2. Dumps: migrate_viajes_chunk_{01..03}.sql (1281 viajes)
   3. Dumps: migrate_pedidos_chunk_{01..06}.sql (3764 pedidos)
@@ -20,6 +21,7 @@ Los schemas usan CREATE TABLE (no IF NOT EXISTS) — re-correr falla.
 Los migrates usan INSERT sin ON CONFLICT — re-correr duplica.
 """
 
+import argparse
 import os
 import sys
 import time
@@ -68,6 +70,16 @@ def run_file(conn, path: Path) -> float:
     start = time.time()
     with conn.cursor() as cur:
         cur.execute(sql)
+        # Si el último statement es un SELECT, imprimir resultados
+        if cur.description:
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+            if rows:
+                widths = [max(len(str(c)), max((len(str(r[i])) for r in rows), default=0)) for i, c in enumerate(cols)]
+                print("  " + " | ".join(c.ljust(widths[i]) for i, c in enumerate(cols)))
+                print("  " + "-+-".join("-" * w for w in widths))
+                for r in rows:
+                    print("  " + " | ".join(str(r[i]).ljust(widths[i]) for i in range(len(cols))))
     conn.commit()
     return time.time() - start
 
@@ -84,6 +96,10 @@ def verify(conn):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", help="Ejecutar un solo archivo SQL en vez de la migración completa")
+    args = parser.parse_args()
+
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         print("ERROR: exporta DATABASE_URL antes de correr.")
@@ -102,6 +118,27 @@ def main():
     conn = connect(db_url)
     print(f"  ✓ Conexión OK (psycopg v{PSYCOPG_VERSION})\n")
 
+    # Modo single-file
+    if args.file:
+        path = Path(args.file)
+        if not path.is_absolute():
+            path = REPO_ROOT / args.file
+        if not path.exists():
+            print(f"✗ Archivo no existe: {path}")
+            sys.exit(1)
+        size_kb = path.stat().st_size // 1024
+        print(f"→ {args.file} ({size_kb} KB)")
+        try:
+            elapsed = run_file(conn, path)
+            print(f"  ✓ OK en {elapsed:.1f}s")
+        except Exception as e:
+            conn.rollback()
+            print(f"  ✗ FAIL: {type(e).__name__}: {e}")
+            sys.exit(1)
+        conn.close()
+        return
+
+    # Modo migración completa
     for rel_path in FILES:
         path = REPO_ROOT / rel_path
         if not path.exists():

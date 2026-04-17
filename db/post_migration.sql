@@ -11,6 +11,12 @@
 
 BEGIN;
 
+-- 0. Drop unique index — datos legacy tienen pedido_ref duplicados (re-entradas,
+--    cancelaciones, correcciones). Se reemplaza por índice regular.
+DROP INDEX IF EXISTS idx_pedidos_ref_cliente_unique;
+CREATE INDEX IF NOT EXISTS idx_pedidos_ref_cliente ON pedidos(cliente_id, pedido_ref)
+  WHERE pedido_ref IS NOT NULL;
+
 -- 1. Backfill pedidos.cliente_id
 UPDATE pedidos p
 SET cliente_id = c.id

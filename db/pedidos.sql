@@ -104,9 +104,12 @@ CREATE INDEX idx_pedidos_estado ON pedidos(estado);
 CREATE INDEX idx_pedidos_fecha_cargue ON pedidos(fecha_cargue);
 CREATE INDEX idx_pedidos_zona ON pedidos(zona);
 CREATE INDEX idx_pedidos_ref ON pedidos(pedido_ref) WHERE pedido_ref IS NOT NULL;
--- Unicidad condicional: pedido_ref único por cliente cuando existe
-CREATE UNIQUE INDEX idx_pedidos_ref_cliente_unique
-  ON pedidos(cliente_id, pedido_ref)
+-- Índice de lookup (cliente_id, pedido_ref). NO es unique porque la data legacy
+-- del Sheet Base_inicio-def tiene pedido_refs duplicados (re-entradas legítimas:
+-- pedidos cancelados y recreados, correcciones, reclamaciones).
+-- Si se necesita prevenir duplicados en parsers nuevos, aplicar dedup en la capa
+-- de ingesta (n8n) con reglas de negocio específicas.
+CREATE INDEX idx_pedidos_ref_cliente ON pedidos(cliente_id, pedido_ref)
   WHERE pedido_ref IS NOT NULL;
 
 -- Trigger updated_at

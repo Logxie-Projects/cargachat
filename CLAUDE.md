@@ -259,8 +259,19 @@ id, lead_id (FK), origen, destino, peso_kg, tipo_carga, num_paradas
 valor_mercancia, precio_estimado, zona, estado, notas, created_at
 ```
 
-### Tabla `viajes` (pendiente crear)
-Migración futura desde Google Sheets CSV.
+### Tabla `viajes_consolidados` (Módulo 2 — creada 2026-04-17)
+Unidad de transporte asignada a un proveedor. Migra desde Sheet ASIGNADOS.
+Esquema completo en [db/viajes.sql](db/viajes.sql) — 35 columnas, RLS activado.
+1.281 registros históricos migrados. Ver sección **Módulo 2** abajo.
+
+### Tabla `pedidos` (Módulo 2 — creada 2026-04-17)
+Pedido individual hacia un cliente final. Migra desde Sheet Base_inicio-def.
+FK hacia `viajes_consolidados` (nullable hasta consolidación) y `clientes` (NOT NULL).
+Esquema en [db/pedidos.sql](db/pedidos.sql). 3.764 registros migrados.
+
+### Tabla `clientes` (Módulo 2 — creada 2026-04-17)
+Configuración por cliente generador de carga + canal de ingesta.
+Esquema en [db/clientes.sql](db/clientes.sql). Pobladas: AVGUST, FATECO.
 
 ---
 
@@ -314,7 +325,7 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 ## Decisiones Técnicas Tomadas
 
 - **Landing bifurcada:** `index.html` solo para generador. Transportador tiene su propia URL. Nav tiene link discreto "¿Eres transportador?"
-- **Google Sheets como fuente transitoria:** se mantiene mientras no exista tabla `viajes` en Supabase
+- **Google Sheets como fuente transitoria:** las tablas `viajes_consolidados` y `pedidos` ya existen en Supabase (Módulo 2, migradas 2026-04-17), pero el Sheet sigue siendo la fuente de ingesta hasta que los 4 parsers n8n estén construidos
 - **Mail como unidad de consolidación:** el parser lee el mail (no el Sheet base) porque el mail ya refleja la decisión de agrupamiento operativo
 - **n8n self-hosted:** punto de fragilidad conocido — si cae el VPS, se detienen todos los workflows
 - **Repo nombre:** `cargachat` en GitHub — renombrar a `netfleet` requiere reapuntar Cloudflare Pages primero
@@ -371,7 +382,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 | # | Módulo | Reemplaza | Estado |
 |---|---|---|---|
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
-| 2 | Ingesta multicliente | AppSheet Transport Request | En diseño — arquitectura definida, SQL en /db/ |
+| 2 | Ingesta multicliente | AppSheet Transport Request | SQL ejecutado ✅ 2026-04-17 — tablas pobladas, falta parsers n8n |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
 | 4 | Control y consolidación | Control Transporte + script Sheets | Pendiente — LogxIA decide consolidación a futuro |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
@@ -396,10 +407,10 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 - [ ] **transportador.html:** rediseño — viajes públicos sin login, registro 2 pasos al ofertar
 - [ ] **Reactivar LinkedIn** en workflow LinkedIn+Viajes — cambiar URL Screenshotone a `netfleet.app`
 - [ ] **Renombrar repo** `cargachat` → `netfleet` en GitHub (reapuntar Cloudflare Pages primero)
-- [ ] **Tabla `viajes` Supabase:** migrar de Google Sheets CSV
-- [ ] **empresa.html:** formulario publicación de carga → Supabase tabla `viajes`
+- [x] **Tabla `viajes` Supabase:** ✅ hecho 2026-04-17 — renombrada a `viajes_consolidados`, migrada desde Sheet ASIGNADOS (1.281 registros). Parte del Módulo 2.
+- [ ] **empresa.html:** formulario publicación de carga → Supabase tablas `viajes_consolidados` + `pedidos`
 - [ ] **og-image.png:** 1200×630px para preview WhatsApp/LinkedIn
-- [ ] **Módulo 2 — Ingesta Multicliente:** ejecutar `clientes.sql` + `viajes.sql` + `pedidos.sql` en Supabase, luego construir 4 parsers n8n
+- [ ] **Módulo 2 — Ingesta Multicliente:** ✅ hecho 2026-04-17 (SQL ejecutado: 2 clientes, 1281 viajes consolidados, 3764 pedidos con cliente_id). Falta: construir los 4 parsers n8n (email, sheet pull, webhook, sheet ASIGNADOS legacy)
 - [ ] **LogxIA Módulos 3-5:** Consolidación inteligente, Pricing dinámico, Predicción de demanda
 
 ---
@@ -423,9 +434,9 @@ AppSheet Transport Request
 ### Flujo futuro (Supabase como única fuente)
 ```
 Cualquier fuente → n8n Intake Router → tabla pedidos (Supabase)
-Bernardo consolida en Netfleet → tabla viajes (Supabase)
-n8n genera mail desde tabla viajes (reemplaza script actual)
-analizador-rutas.html lee tabla viajes directo (sin mail, sin Sheet)
+Bernardo consolida en Netfleet → tabla viajes_consolidados (Supabase)
+n8n genera mail desde tabla viajes_consolidados (reemplaza script actual)
+analizador-rutas.html lee tabla viajes_consolidados directo (sin mail, sin Sheet)
 Google Sheets desaparece completamente
 ```
 
@@ -467,9 +478,9 @@ CREATE TABLE clientes (
 );
 ```
 
-**Tabla `viajes`** ← migra desde ASIGNADOS
+**Tabla `viajes_consolidados`** ← migra desde ASIGNADOS
 ```sql
-CREATE TABLE viajes (
+CREATE TABLE viajes_consolidados (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   viaje_ref           text NOT NULL UNIQUE, -- 'RT-TOTAL-...' generado
   cliente_id          uuid REFERENCES clientes(id),
@@ -514,7 +525,7 @@ CREATE TABLE viajes (
 ```sql
 CREATE TABLE pedidos (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  viaje_id         uuid REFERENCES viajes(id), -- NULL hasta consolidación
+  viaje_id         uuid REFERENCES viajes_consolidados(id), -- NULL hasta consolidación
   cliente_id       uuid REFERENCES clientes(id),
   -- Campos mínimos (cualquier fuente)
   origen           text NOT NULL,
@@ -574,7 +585,7 @@ CREATE TABLE pedidos (
 
 **Parser 4 — Sheet ASIGNADOS pull** (Avgust legacy — migración)
 - Trigger: Schedule cada 30 min
-- Nodos: Sheets read ASIGNADOS → Normalizador → UPSERT viajes → vincular pedidos por CONSECUTIVOS_INCLUIDOS
+- Nodos: Sheets read ASIGNADOS → Normalizador → UPSERT viajes_consolidados → vincular pedidos por CONSECUTIVOS_INCLUIDOS
 - Se desactiva cuando Netfleet reemplaza Control Transporte
 
 ### Decisiones técnicas tomadas
@@ -582,7 +593,7 @@ CREATE TABLE pedidos (
 - Campos mínimos obligatorios: `origen, destino, fuente, cliente_id` — resto nullable
 - `raw_payload` siempre — permite re-parsear si el parser falla
 - Mail sigue siendo canal de notificación al proveedor, NO fuente de datos
-- `analizador-rutas.html` migrará a leer tabla `viajes` directo — elimina dependencia del CSV
+- `analizador-rutas.html` migrará a leer tabla `viajes_consolidados` directo — elimina dependencia del CSV
 - Google Sheets desaparece gradualmente: Sheets siguen en paralelo hasta que Supabase esté estable
 - Avgust futuro: CRM → webhook directo → Nivel 4 (sin intervención manual)
 

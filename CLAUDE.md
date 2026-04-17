@@ -384,7 +384,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
 | 2 | Ingesta multicliente | AppSheet Transport Request | SQL ejecutado ✅ 2026-04-17 — tablas pobladas, falta parsers n8n |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
-| 4 | Control y consolidación | Control Transporte + script Sheets | Pendiente — LogxIA decide consolidación a futuro |
+| 4 | Control y consolidación | Control Transporte + script Sheets | En diseño — arquitectura definida 2026-04-17 (ver sección "Módulo 4" abajo) |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
 
 ---
@@ -596,6 +596,140 @@ CREATE TABLE pedidos (
 - `analizador-rutas.html` migrará a leer tabla `viajes_consolidados` directo — elimina dependencia del CSV
 - Google Sheets desaparece gradualmente: Sheets siguen en paralelo hasta que Supabase esté estable
 - Avgust futuro: CRM → webhook directo → Nivel 4 (sin intervención manual)
+
+---
+
+## Módulo 4 — Control y Consolidación (diseño completo)
+
+### Visión
+Reemplaza **AppSheet Control Transporte** + el Apps Script `procesarConsolidadoTotal`. Es la UI + backend donde un operador Logxie convierte pedidos `sin_consolidar` (Módulo 2) en viajes consolidados listos para subasta. Integra: consolidación, sugerencia de precio Ridge, publicación a Netfleet, mail al proveedor, adjudicación de oferta ganadora, gestión de estados.
+
+### Flujo actual (a reemplazar)
+```
+AppSheet Control Transporte (Bernardo consolida manual)
+  → marca filas en Base_inicio-def → Envio_Temporal (staging)
+  → Apps Script procesarConsolidadoTotal
+  → ASIGNADOS (Sheet) + PARA BODEGAS + mail bcc a todos los proveedores
+```
+Problemas: info se pierde al concatenar (observaciones, direcciones, soportes por pedido), no hay audit trail, `RT-TOTAL-{timestamp}` puede colisionar, lógica no-transaccional.
+
+### Flujo futuro (Módulo 4)
+```
+pedidos sin_consolidar (Supabase, viene de Módulo 2)
+  → control.html: operador filtra + selecciona grupo
+  → fn_consolidar_pedidos(ids[], metadata) [Postgres, atómica]
+  → viaje_consolidado creado, pedidos → estado 'consolidado' con viaje_id
+  → Ridge calcula precio sugerido (JS en cliente o fn_estimar_precio)
+  → operador ajusta precio si es necesario
+  → fn_publicar_viaje(viaje_id) → estado 'pendiente' (listo para subasta)
+     ↓                                          ↓
+  mail al proveedor con link transportador.html → subasta abierta
+  (cualquier transportador logueado oferta, no solo el del mail)
+  → ofertas llegan a tabla ofertas (Módulo 1)
+  → operador ve ofertas en control.html → clic "Adjudicar"
+  → fn_adjudicar_oferta(oferta_id) → viaje 'confirmado', oferta ganadora aceptada, resto rechazadas
+  → a partir de acá: estados en_ruta → entregado → finalizado
+```
+
+### Usuarios y roles
+
+| Rol | Puede | Cómo |
+|---|---|---|
+| **Logxie staff** (Bernardo + empleados + LogxIA) | Todo en control.html — ver/consolidar/ajustar precios/adjudicar de cualquier cliente | `perfiles.tipo='logxie_staff'` — RLS acceso total |
+| **Cliente BPO** | Nada directamente. Logxie opera por él | No tiene cuenta Supabase. El cliente `clientes.plan_bpo=true` |
+| **Cliente self-service** | Ver SUS pedidos + viajes, publicar nuevos pedidos vía formulario (Módulo 2 Nivel 3) | `perfiles.tipo='cliente_self_service'` + `perfiles.cliente_id` FK — RLS filtra por `cliente_id` |
+| **Transportador** | Ver viajes publicados, ofertar, ver sus ofertas | Ya existe (Módulo 1) — `perfiles.tipo='transportador'` |
+
+**Nuevas columnas requeridas:**
+- `clientes.plan_bpo BOOLEAN NOT NULL DEFAULT false`
+- `perfiles.cliente_id UUID REFERENCES clientes(id)` — solo populado para `tipo='cliente_self_service'`
+- `perfiles.tipo` check: agregar `'logxie_staff'`, `'cliente_self_service'` (ya existe `'transportador'`, `'empresa'`)
+
+### State machines
+
+**pedidos.estado:**
+```
+sin_consolidar → consolidado → asignado → en_ruta → entregado → finalizado
+               ↘ cancelado            ↘ entregado_novedad | rechazado
+(si el viaje se desconsolida/cancela → pedidos vuelven a sin_consolidar)
+```
+
+**viajes_consolidados.estado:**
+```
+(al crear) pendiente → confirmado → en_ruta → entregado → finalizado
+                    ↘ cancelado (dispara fn_desconsolidar → pedidos a sin_consolidar)
+```
+
+### Postgres functions (capa lógica)
+
+| Function | Input | Output | Qué hace |
+|---|---|---|---|
+| `fn_consolidar_pedidos(ids UUID[], metadata JSONB)` | Array de pedido_ids + {origen, destino, fecha_cargue, observaciones} | `UUID` (viaje_id nuevo) | Valida que todos sean `sin_consolidar`. Crea viaje con sums agregadas. Updatea pedidos. Transaccional. |
+| `fn_desconsolidar_viaje(viaje_id UUID)` | viaje_id | `INT` (# pedidos liberados) | viaje → `cancelado`, pedidos → `sin_consolidar` + `viaje_id=NULL`. Reversa de consolidar. |
+| `fn_ajustar_precio_viaje(viaje_id UUID, nuevo_flete NUMERIC, razon TEXT)` | viaje_id + precio + razón | VOID | Updatea `flete_total`, audit trail. Solo antes de publicar. |
+| `fn_publicar_viaje(viaje_id UUID)` | viaje_id | VOID | Cambia estado `confirmado → pendiente` (publicado para subasta). Dispara email (vía trigger o webhook). |
+| `fn_adjudicar_oferta(oferta_id UUID)` | oferta_id | VOID | Oferta → `aceptada`. Resto de ofertas del mismo viaje → `rechazada`. Viaje → `confirmado`. `proveedor` en viaje queda seteado. |
+| `fn_estimar_precio_viaje(viaje_id UUID)` | viaje_id | `NUMERIC` | Llama al Ridge con km, kg, paradas, zona, origen del viaje. Devuelve sugerencia. Opcional portar desde JS. |
+
+### UI — `control.html` (nuevo)
+
+**Tabs:**
+1. **Pedidos sin consolidar** — listado con filtros (cliente, zona, fecha, origen, destino, peso). Checkboxes. Botón "Consolidar seleccionados" → modal.
+2. **Viajes en subasta** — viajes en estado `pendiente` con contador de ofertas. Clic → ver detalle + ofertas. Botón "Adjudicar" por oferta.
+3. **Viajes activos** — estados `confirmado`, `en_ruta`, `entregado`. Tracking + cumplidos.
+4. **Historial** — viajes `finalizado` y `cancelado`. Auditoría.
+
+**Modal "Consolidar seleccionados":**
+- Preview de lo que se va a agregar (sums, ruta consolidada)
+- Campos editables: origen_consolidado, destino_consolidado, fecha_cargue, observaciones
+- Muestra precio Ridge sugerido → editable (razón requerida si se cambia)
+- Botón "Crear y publicar" (ejecuta `fn_consolidar` + `fn_ajustar_precio` + `fn_publicar` en secuencia)
+- Botón "Crear sin publicar" (solo consolidar, publicar después)
+
+### Audit trail — tabla `acciones_operador`
+```sql
+CREATE TABLE acciones_operador (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid REFERENCES auth.users(id),
+  accion       text NOT NULL,  -- 'consolidar' | 'desconsolidar' | 'ajustar_precio' | 'adjudicar' | 'cancelar'
+  entidad_tipo text NOT NULL,  -- 'viaje' | 'pedido' | 'oferta'
+  entidad_id   uuid NOT NULL,
+  metadata     jsonb,          -- snapshot de la acción (antes/después, razón)
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
+Las Postgres functions escriben esta tabla como parte de su transacción. Sirve para: "¿quién cambió el precio del viaje X?", "¿cuándo se desconsolidó?".
+
+### Integración email con link Netfleet
+
+- Supabase Edge Function `send_viaje_mail(viaje_id)` o webhook n8n
+- Template HTML similar al Apps Script actual (misma estructura que los proveedores conocen)
+- Link al final: `https://netfleet.app/transportador.html?viaje_ref=RT-TOTAL-xxx` → scroll/highlight de ese viaje
+- Requiere proveedor SMTP (Resend, SendGrid, Gmail API con OAuth) — decisión pendiente
+
+**Deep-linking en transportador.html**: requiere leer `?viaje_ref=` de la URL, hacer scroll al viaje y resaltarlo. Cambio chico.
+
+### Decisiones técnicas tomadas
+
+- **Consolidación transaccional**: todo en Postgres function única, rollback automático si falla.
+- **Precio Ridge sugerido no vinculante**: operador puede ajustar antes de publicar (razón queda en audit).
+- **Subasta abierta**: cualquier transportador logueado oferta. El mail es notificación, no restricción.
+- **Desconsolidar = cancelar**: misma función (`fn_desconsolidar_viaje`). Semánticamente: cancelar es desconsolidar con intención de no rehacer; desconsolidar es sacar pedidos para reagrupar.
+- **Cancelar pedidos individuales** (no el viaje entero): NO soportado en primera versión. Hay que desconsolidar el viaje completo.
+- **RLS por rol**: Logxie staff acceso total; cliente_self_service filter por `cliente_id`; transportador ve ofertas + viajes publicados.
+- **Viajes multi-empresa**: si el operador agrupa pedidos de AVGUST + FATECO en un viaje, el viaje queda con `cliente_id=NULL` y `empresa='AVGUST, FATECO'`. Los pedidos conservan su `cliente_id` individual.
+- **Orden de construcción**: (1) schemas + functions → (2) UI control.html → (3) email → (4) test E2E con 50 pedidos.
+
+### Pendientes del Módulo 4
+
+- [ ] **Schema updates**: `clientes.plan_bpo`, `perfiles.cliente_id`, `perfiles.tipo` extender
+- [ ] **Tabla `acciones_operador`** + RLS
+- [ ] **Postgres functions**: `fn_consolidar_pedidos`, `fn_desconsolidar_viaje`, `fn_ajustar_precio_viaje`, `fn_publicar_viaje`, `fn_adjudicar_oferta`
+- [ ] **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial)
+- [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)
+- [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook
+- [ ] **Test E2E** con 50 pedidos reales (antes de reemplazar el Apps Script)
+- [ ] **Migración de operadores**: dar cuenta Supabase a empleados Logxie con `perfiles.tipo='logxie_staff'`
 
 ---
 

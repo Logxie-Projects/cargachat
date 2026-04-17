@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 """
-Ejecuta SQL contra Supabase.
+Ejecuta SQL contra Supabase — 3 modos.
 
 Uso:
-  # Migración completa (default)
+  # 1. Inicial (primera vez): crea schemas + carga dumps + backfill + link
   python db/run_migration.py
 
-  # Un solo archivo
-  python db/run_migration.py --file db/post_migration.sql
+  # 2. Refresh (re-migraciones semanales): preserva clientes,
+  #    TRUNCATE viajes + pedidos, recarga dumps frescos, backfill + link
+  python db/run_migration.py --refresh
 
-Requiere env var DATABASE_URL (ver Supabase Dashboard → Database → Session pooler).
+  # 3. Archivo suelto (debug, queries ad-hoc)
+  python db/run_migration.py --file db/verify.sql
 
-Migración completa ejecuta en orden:
-  1. Schemas: clientes.sql, viajes.sql, pedidos.sql
-  2. Dumps: migrate_viajes_chunk_{01..03}.sql (1281 viajes)
-  3. Dumps: migrate_pedidos_chunk_{01..06}.sql (3764 pedidos)
+Requiere env var DATABASE_URL (Supabase Dashboard → Database → Session pooler).
 
-Cada archivo en su propia transacción. Si uno falla, stop.
-Los schemas usan CREATE TABLE (no IF NOT EXISTS) — re-correr falla.
-Los migrates usan INSERT sin ON CONFLICT — re-correr duplica.
+Flujo de datos:
+  Google Sheet Base_inicio-def    → db/migrate_pedidos.sql  → tabla pedidos
+  Google Sheet ASIGNADOS          → db/migrate_viajes.sql   → tabla viajes_consolidados
+  (después) post_migration.sql    → backfill pedidos.cliente_id desde empresa
+  (después) link_pedidos_viajes   → backfill pedidos.viaje_id desde consecutivos
+
+Modo --refresh asume que los dumps (db/migrate_*.sql) se regeneraron desde
+el Sheet actual antes de correr. Diseñado para ejecutarse varias veces por
+semana mientras la base crece y Netfleet reemplaza el Apps Script.
 """
 
 import argparse
@@ -43,20 +48,26 @@ except ImportError:
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-FILES = [
+SCHEMAS = [
     "db/clientes.sql",
     "db/viajes.sql",
     "db/pedidos.sql",
-    "db/migrate_viajes_chunk_01.sql",
-    "db/migrate_viajes_chunk_02.sql",
-    "db/migrate_viajes_chunk_03.sql",
-    "db/migrate_pedidos_chunk_01.sql",
-    "db/migrate_pedidos_chunk_02.sql",
-    "db/migrate_pedidos_chunk_03.sql",
-    "db/migrate_pedidos_chunk_04.sql",
-    "db/migrate_pedidos_chunk_05.sql",
-    "db/migrate_pedidos_chunk_06.sql",
 ]
+
+DUMPS = [
+    "db/migrate_viajes.sql",
+    "db/migrate_pedidos.sql",
+]
+
+POST = [
+    "db/post_migration.sql",
+    "db/link_pedidos_viajes.sql",
+]
+
+# Orden para migración inicial: schemas → dumps → post
+FILES = SCHEMAS + DUMPS + POST
+
+TRUNCATE_SQL = "TRUNCATE TABLE pedidos, viajes_consolidados RESTART IDENTITY CASCADE;"
 
 
 def connect(db_url: str):
@@ -95,9 +106,24 @@ def verify(conn):
     return clientes, viajes, pedidos
 
 
+def truncate_volatile(conn):
+    """TRUNCATE viajes_consolidados + pedidos. Preserva clientes.
+    También quita temporalmente NOT NULL en pedidos.cliente_id para permitir
+    que los dumps re-inserten (no setean cliente_id). post_migration.sql
+    lo restaura al final."""
+    print(f"→ TRUNCATE pedidos + viajes_consolidados (preserva clientes)")
+    with conn.cursor() as cur:
+        cur.execute(TRUNCATE_SQL)
+        cur.execute("ALTER TABLE pedidos ALTER COLUMN cliente_id DROP NOT NULL;")
+    conn.commit()
+    print("  ✓ OK\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file", help="Ejecutar un solo archivo SQL en vez de la migración completa")
+    parser.add_argument("--file", help="Ejecutar un solo archivo SQL")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Re-migración: TRUNCATE pedidos+viajes, recarga dumps, backfill, link. No toca clientes ni schemas.")
     args = parser.parse_args()
 
     db_url = os.environ.get("DATABASE_URL")
@@ -138,8 +164,22 @@ def main():
         conn.close()
         return
 
-    # Modo migración completa
-    for rel_path in FILES:
+    # Decidir lista de archivos según modo
+    if args.refresh:
+        print("→ Modo REFRESH: TRUNCATE + recarga dumps + backfill + link\n")
+        try:
+            truncate_volatile(conn)
+        except Exception as e:
+            conn.rollback()
+            print(f"  ✗ TRUNCATE falló: {type(e).__name__}: {e}")
+            print("  ¿Ya corriste los schemas? Si no, corré sin --refresh primero.")
+            sys.exit(1)
+        files_to_run = DUMPS + POST
+    else:
+        print("→ Modo INICIAL: schemas + dumps + backfill + link\n")
+        files_to_run = FILES
+
+    for rel_path in files_to_run:
         path = REPO_ROOT / rel_path
         if not path.exists():
             print(f"  ⚠  SKIP (no existe): {rel_path}")

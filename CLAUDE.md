@@ -63,6 +63,7 @@ Cloudflare despliega automáticamente en ~1-2 minutos.
 ```
 D:\NETFLEET\
 ├── index.html                  → Landing generador (HTML+CSS+JS todo en uno)
+├── landing.html                → Landing nueva optimizada (en desarrollo)
 ├── transportador.html          → Portal transportadores (login + viajes + ofertas)
 ├── empresa.html                → Portal registro/login empresas generadoras
 ├── admin.html                  → Panel admin Logxie
@@ -70,34 +71,24 @@ D:\NETFLEET\
 ├── viaje.html                  → Tarjeta individual (screenshots LinkedIn)
 ├── checkderuta.html            → Módulo seguimiento de ruta en tiempo real
 ├── analizador-rutas.html       → Planificación de entregas por viaje consolidado
-├── q.html                      → Quote (propuesta) standalone para compartir
-├── netfleet-core.js            → Funciones compartidas (inactivo — no lo carga ningún HTML todavía)
+├── analizador-rutas.html       → Planificación de entregas por viaje consolidado
+├── netfleet-core.js            → Funciones compartidas (inactivo)
 ├── supabase.min.js             → SDK Supabase v2.39.8 (NO cambiar versión)
 ├── _headers                    → Cache-Control: no-cache para Cloudflare
-├── .gitignore                  → Excluye secretos (LogxIA/CLAVES Y APIS.txt), xlsx, .claude/settings.local.json
 ├── CLAUDE.md                   → Este archivo
-├── README.md                   → Inventario LogxIA (a nivel raíz)
 ├── /docs/                      → Documentación técnica
-│   ├── ARQUITECTURA.md         → Stack, estructura, módulos pendientes, decisiones, convenciones
-│   ├── CONTEXTO_OPERATIVO.md   → Estado actual: producción, pendientes, próximos pasos
-│   ├── CONTEXTO_SESION.md      → Bitácora de sesiones
-│   ├── PROYECTO_NETFLEET.md    → Ficha del proyecto
-│   ├── modelo-precios-n8n.md   → Código Ridge v2 del nodo de precio en n8n
-│   └── /legacy/
-│       └── modelo-precios-n8n-v1.md  → Fórmula lineal antigua (histórico)
-├── /db/                        → Schemas SQL Supabase
+├── /db/                        → Schemas SQL
 │   └── ofertas.sql
-└── /LogxIA/                    → Agente IA LogxIA — workflows n8n + docs
-    ├── LogxIA — Parser Detalle Pedidos.json
-    ├── LogxIA_Bot_Telegram.json
-    ├── AvgustIA_Lector_de_Pedidos.json
-    ├── AvgustIA_Seguimiento_Transportadores.json
-    ├── CLAVES Y APIS.txt       → ⚠️ GITIGNORED — no versionar
+└── /logxia/                    → Agente IA LogxIA — workflows n8n + docs
+    ├── README.md               → Inventario, estado y guía de importación
+    ├── /workflows/             → Exports JSON de n8n (backup versionado)
+    │   ├── LogxIA_Parser_Detalle_Pedidos.json
+    │   ├── LogxIA_Bot_Telegram.json
+    │   ├── AvgustIA_Lector_de_Pedidos.json
+    │   └── AvgustIA_Seguimiento_Transportadores.json
     └── /docs/
         └── checkderuta.md
 ```
-
-**Archivos eliminados (sesión 2026-04-17):** `landing.html`, `landing_new.html`, `index_backup_20260413.html`, `transportador_backup_20260413.html`. El landing definitivo es `index.html`.
 
 ---
 
@@ -303,8 +294,6 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 - **Mail como unidad de consolidación:** el parser lee el mail (no el Sheet base) porque el mail ya refleja la decisión de agrupamiento operativo
 - **n8n self-hosted:** punto de fragilidad conocido — si cae el VPS, se detienen todos los workflows
 - **Repo nombre:** `cargachat` en GitHub — renombrar a `netfleet` requiere reapuntar Cloudflare Pages primero
-- **Deuda técnica — 5 copias de CIUDADES/estimarPrecio:** `index.html`, `transportador.html`, `analizador-rutas.html`, `viaje.html` y `netfleet-core.js` tienen cada uno su propio diccionario `CIUDADES` + `getCoordenadas()` + `variantes()` + `normalizarNombre()`. Cualquier cambio debe replicarse en los 5. Centralizar en `netfleet-core.js` está pendiente (Paso 2).
-- **Ciudades ambiguas hardcodeadas:** ante homónimos (Santa Rosa: Cabal/del Sur/de Osos · Miraflores: Boyacá/Guaviare), se elige la variante consistente con el patrón operativo Avgust/Fateco (centro del país). La alternativa estructural — un heurístico de centroide que elige la variante más cercana al resto del viaje — queda para cuando se haga la centralización.
 
 ---
 
@@ -333,7 +322,6 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 - Pins duplicados en el mapa: offset de `n * 0.06°` lat para viajes del mismo origen
 - `tipo_mercancia`: `(v.tipo_mercancia || '').trim() || 'General'`
 - Parser n8n: usar `$json.html` primero → fallback `$json.text` con `.replace(/\*/g, '')`
-- `getCoordenadas()` usa 2 pasadas: exact match primero, luego substring solo para candidatos ≥5 chars. Esto previene que "santa" (variante corta de "Santa Rosa") matchee "santa marta" por substring y devuelva coordenadas del norte. Cualquier cambio en esta función debe replicarse en los 5 archivos (ver deuda técnica arriba).
 
 ---
 
@@ -342,7 +330,7 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 | # | Módulo | Reemplaza | Estado |
 |---|---|---|---|
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
-| 2 | Ingesta multicliente | AppSheet Transport Request | En diseño — modelo canónico `pedidos` en Supabase |
+| 2 | Ingesta multicliente | AppSheet Transport Request | En diseño — arquitectura definida, SQL en /db/ |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
 | 4 | Control y consolidación | Control Transporte + script Sheets | Pendiente — LogxIA decide consolidación a futuro |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
@@ -351,15 +339,6 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 
 ## Pendientes Prioritarios
 
-### Seguridad
-- [ ] **🔥 Rotar Anthropic API key** (`sk-ant-api03-...`) y **Telegram bot token** (`8317513875:AAH...`) — quedaron en disco en texto plano en `LogxIA/CLAVES Y APIS.txt` antes de gitignorarlo. Asumir comprometidas.
-- [ ] **Migrar secretos** a gestor (variables de entorno de n8n o `.env` fuera del repo)
-
-### Refactor — Paso 2 (centralización)
-- [ ] **Unificar 5 copias de CIUDADES/getCoordenadas/estimarPrecio** en `netfleet-core.js` + `<script src="netfleet-core.js">` en cada HTML. Borrar las copias locales.
-- [ ] **Heurístico de centroide** para destinos ambiguos: si un viaje tiene N destinos y uno es homónimo en otra zona (ej: Miraflores), elegir la variante más cercana al centroide de los otros N-1.
-
-### Producto
 - [ ] **Renombrar** `LogxIA — PRODUCCIÓN v2 (Mails Avgust)` → `LogxIA — Parser Detalle Pedidos` en n8n
 - [ ] **LogxIA:** agregar Vigía y Global Logística al diccionario `CORREOS_PROVEEDORES` en Seguimiento Transportadores
 - [ ] **LogxIA:** poblar `ADMIN_IDS` y arrays de Telegram IDs por proveedor en Bot Telegram
@@ -369,8 +348,192 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 - [ ] **Tabla `viajes` Supabase:** migrar de Google Sheets CSV
 - [ ] **empresa.html:** formulario publicación de carga → Supabase tabla `viajes`
 - [ ] **og-image.png:** 1200×630px para preview WhatsApp/LinkedIn
-- [ ] **Módulo Ingesta Multicliente:** tabla `pedidos` + parsers email/sheet/webhook
+- [ ] **Módulo 2 — Ingesta Multicliente:** ejecutar `clientes.sql` + `viajes.sql` + `pedidos.sql` en Supabase, luego construir 4 parsers n8n
 - [ ] **LogxIA Módulos 3-5:** Consolidación inteligente, Pricing dinámico, Predicción de demanda
+
+---
+
+## Módulo 2 — Ingesta Multicliente (diseño completo)
+
+### Visión
+Plataforma multicliente que recibe pedidos de cualquier fuente y produce un pedido canónico idéntico. El resto del sistema nunca sabe de dónde vino el pedido. Objetivo: escalar Logxie más allá de Avgust.
+
+### Flujo actual (Avgust hoy)
+```
+AppSheet Transport Request
+    → Base_inicio-def (Google Sheet) — pedidos raw, 1 fila = 1 remisión
+    → Bernardo consolida en Control Transporte
+    → ASIGNADOS (Google Sheet) — viajes consolidados con proveedor asignado
+    → Script genera mail "SOLICITUD DE SERVICIOS"
+    → n8n → DETALLE_PEDIDOS + VIAJES_PUBLICOS (Sheets legacy)
+    → analizador-rutas.html (lee DETALLE_PEDIDOS via CSV)
+```
+
+### Flujo futuro (Supabase como única fuente)
+```
+Cualquier fuente → n8n Intake Router → tabla pedidos (Supabase)
+Bernardo consolida en Netfleet → tabla viajes (Supabase)
+n8n genera mail desde tabla viajes (reemplaza script actual)
+analizador-rutas.html lee tabla viajes directo (sin mail, sin Sheet)
+Google Sheets desaparece completamente
+```
+
+### 4 niveles de cliente
+```
+NIVEL 1 — Email texto libre
+  Ejemplo: "necesito mover 500 kg de Bogotá a Cali el viernes"
+  Parser: Gmail Trigger → Claude API extrae campos → INSERT pedidos
+
+NIVEL 2 — Google Sheet del cliente
+  Ejemplo: cliente con su propio Sheet de pedidos
+  Parser: n8n Schedule pull → mapeo columnas → INSERT pedidos
+
+NIVEL 3 — Formulario Netfleet (app web)
+  Ejemplo: cliente usa empresa.html o portal dedicado
+  Parser: INSERT directo Supabase desde frontend
+
+NIVEL 4 — CRM/API del cliente (Avgust futuro)
+  Ejemplo: CRM Avgust dispara webhook con JSON
+  Parser: n8n Webhook → validación → INSERT pedidos
+```
+
+### Modelo de tablas Supabase
+
+**Tabla `clientes`** — configuración por cliente
+```sql
+CREATE TABLE clientes (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre          text NOT NULL,           -- 'AVGUST' | 'FATECO' | 'Cliente Nuevo'
+  nit             text,
+  email_contacto  text,
+  nivel_ingesta   text,                    -- 'email'|'sheet'|'formulario'|'webhook'
+  sheet_id        text,                    -- si nivel=sheet: ID del Google Sheet
+  sheet_tab       text,                    -- pestaña a leer
+  webhook_secret  text,                    -- si nivel=webhook
+  email_origen    text,                    -- si nivel=email: filtro remitente
+  activo          boolean DEFAULT true,
+  created_at      timestamptz DEFAULT now()
+);
+```
+
+**Tabla `viajes`** ← migra desde ASIGNADOS
+```sql
+CREATE TABLE viajes (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  viaje_ref           text NOT NULL UNIQUE, -- 'RT-TOTAL-...' generado
+  cliente_id          uuid REFERENCES clientes(id),
+  fecha_consolidacion timestamptz,
+  fecha_cargue        timestamptz,
+  empresa             text,
+  zona                text,
+  origen              text,
+  destino             text,
+  km_total            numeric,
+  flete_total         numeric,
+  proveedor           text,
+  estado              text DEFAULT 'pendiente',
+  -- 'pendiente'|'confirmado'|'en_ruta'|'entregado'|'finalizado'
+  cantidad_pedidos    int,
+  peso_kg             numeric,
+  contenedores        int DEFAULT 0,
+  cajas               int DEFAULT 0,
+  bidones             int DEFAULT 0,
+  canecas             int DEFAULT 0,
+  unidades_sueltas    int DEFAULT 0,
+  valor_mercancia     numeric,
+  tipo_vehiculo       text,
+  placa               text,
+  conductor_nombre    text,
+  conductor_id        text,
+  candado             numeric DEFAULT 0,
+  cargue_descargue    numeric DEFAULT 0,
+  escolta             numeric DEFAULT 0,
+  standby             numeric DEFAULT 0,
+  itr                 numeric DEFAULT 0,
+  observaciones       text,
+  fuente              text,               -- 'sheet_asignados'|'netfleet'|'webhook'
+  raw_payload         text,
+  mes                 int,
+  anio                int,
+  created_at          timestamptz DEFAULT now()
+);
+```
+
+**Tabla `pedidos`** ← migra desde Base_inicio-def
+```sql
+CREATE TABLE pedidos (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  viaje_id         uuid REFERENCES viajes(id), -- NULL hasta consolidación
+  cliente_id       uuid REFERENCES clientes(id),
+  -- Campos mínimos (cualquier fuente)
+  origen           text NOT NULL,
+  destino          text NOT NULL,
+  fecha_cargue     timestamptz,
+  fuente           text NOT NULL,  -- 'email'|'sheet'|'formulario'|'webhook'
+  estado           text DEFAULT 'sin_consolidar',
+  -- 'sin_consolidar'|'consolidado'|'asignado'|'en_ruta'|'entregado'
+  -- Campos enriquecidos (fuentes estructuradas)
+  pedido_ref       text,           -- 'RM-00004430' | NULL si email libre
+  id_consecutivo   text,           -- 'RT-0002' (ID AppSheet legacy)
+  empresa          text,
+  zona             text,
+  peso_kg          numeric,
+  tipo_mercancia   text,
+  contenedores     int DEFAULT 0,
+  cajas            int DEFAULT 0,
+  bidones          int DEFAULT 0,
+  canecas          int DEFAULT 0,
+  unidades_sueltas int DEFAULT 0,
+  valor_mercancia  numeric,
+  valor_factura    numeric,
+  -- Campos operativos
+  cliente_nombre   text,           -- nombre del cliente final (receptor)
+  contacto_nombre  text,
+  contacto_tel     text,
+  direccion        text,
+  horario          text,
+  llamar_antes     boolean DEFAULT false,
+  observaciones    text,
+  -- Campos Avgust específicos (nullable para otros clientes)
+  vendedor         text,
+  jefe_zona        text,
+  coordinador      text,
+  prioridad        text,
+  motivo_viaje     text,
+  -- Auditoría
+  raw_payload      text,           -- texto/JSON original tal como llegó
+  created_at       timestamptz DEFAULT now()
+);
+```
+
+### 4 parsers n8n a construir
+
+**Parser 1 — Email texto libre** (clientes Nivel 1)
+- Trigger: Gmail — filtro por `cliente.email_origen`
+- Nodos: Gmail Trigger → Code (detecta cliente) → Claude API (extrae campos) → INSERT pedidos
+- Claude prompt: extrae origen, destino, fecha, peso, tipo_mercancia del texto libre
+
+**Parser 2 — Google Sheet pull** (clientes Nivel 2)
+- Trigger: Schedule cada hora
+- Nodos: Code (itera tabla clientes nivel=sheet) → Google Sheets read → Normalizador → INSERT pedidos (upsert por pedido_ref)
+
+**Parser 3 — Webhook** (clientes Nivel 4 — Avgust futuro CRM)
+- Trigger: HTTP Webhook
+- Nodos: Webhook → Validar secret → Normalizador → INSERT pedidos
+
+**Parser 4 — Sheet ASIGNADOS pull** (Avgust legacy — migración)
+- Trigger: Schedule cada 30 min
+- Nodos: Sheets read ASIGNADOS → Normalizador → UPSERT viajes → vincular pedidos por CONSECUTIVOS_INCLUIDOS
+- Se desactiva cuando Netfleet reemplaza Control Transporte
+
+### Decisiones técnicas tomadas
+- `cliente_id` como FK desde el inicio — no texto libre — para escalar limpio
+- Campos mínimos obligatorios: `origen, destino, fuente, cliente_id` — resto nullable
+- `raw_payload` siempre — permite re-parsear si el parser falla
+- Mail sigue siendo canal de notificación al proveedor, NO fuente de datos
+- `analizador-rutas.html` migrará a leer tabla `viajes` directo — elimina dependencia del CSV
+- Google Sheets desaparece gradualmente: Sheets siguen en paralelo hasta que Supabase esté estable
+- Avgust futuro: CRM → webhook directo → Nivel 4 (sin intervención manual)
 
 ---
 

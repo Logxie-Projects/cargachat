@@ -7,7 +7,22 @@
 
 - **Claude Code:** este archivo se carga automáticamente al abrir el repo en `D:\NETFLEET`
 - **Claude chat:** adjuntar este archivo o escribir "lee CLAUDE.md y continuemos"
-- **Al terminar cada sesión:** actualizar sección Pendientes con decisiones tomadas
+- **Primer pase obligatorio:** después de este archivo, leer `docs/CONTEXTO_OPERATIVO.md` para el estado vivo del día (qué está en producción, qué está a medias, próximos pasos). Complementa — no reemplaza — CLAUDE.md.
+- **Al terminar cada sesión:**
+  - Actualizar sección Pendientes: marcar ítems completados con `✅ hecho YYYY-MM-DD` (no borrarlos, son trazabilidad)
+  - Actualizar `docs/CONTEXTO_OPERATIVO.md` si cambió el estado operativo
+  - Si se tomó una decisión estructural, agregarla a "Decisiones Técnicas Tomadas"
+
+### Fuentes de verdad — qué vive dónde
+
+| Archivo | Contenido | Cambia |
+|---|---|---|
+| `CLAUDE.md` (este) | Reglas, decisiones duras, accesos, arquitectura estable, funciones protegidas | Raramente |
+| `docs/CONTEXTO_OPERATIVO.md` | Estado operativo vivo (qué está en prod, pendientes por prioridad) | Cada sesión |
+| `docs/ARQUITECTURA.md` | Profundización técnica del stack, módulos pendientes, convenciones | Cuando cambia la arquitectura |
+| `docs/CONTEXTO_SESION.md` | Bitácora histórica de sesiones (append-only) | Al cierre de cada sesión |
+
+Si dos fuentes divergen, **CLAUDE.md gana para reglas y decisiones**, `CONTEXTO_OPERATIVO.md` gana para estado actual.
 
 ---
 
@@ -324,6 +339,20 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 
 ---
 
+## Dev local
+
+Hay un servidor estático PowerShell en `.claude/serve.ps1` configurado en `.claude/launch.json` bajo el nombre `static-server` (puerto 8080).
+
+**Desde Claude Code:** arrancar con `preview_start` → `static-server`. Abrir `http://localhost:8080/<pagina>.html`. Verificar cambios en browser con `preview_eval`, `preview_console_logs`, `preview_screenshot`, etc.
+
+**Desde terminal manual:** `powershell -ExecutionPolicy Bypass -File .claude/serve.ps1`
+
+La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualquier archivo del repo tal cual (sin build step).
+
+**Uso típico:** cualquier cambio a HTML/JS que afecta el mapa, geocoding, UI o `cargarViajes()` debe verificarse en browser antes de pushear a `main` (Cloudflare despliega directo a prod).
+
+---
+
 ## Notas Técnicas Importantes
 
 - `window.open()` debe llamarse sincrónicamente en el gesture del usuario — nunca después de `await`
@@ -350,6 +379,8 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 ---
 
 ## Pendientes Prioritarios
+
+> **Convención:** al completar un ítem, **no borrarlo** — marcarlo con `✅ hecho YYYY-MM-DD` al inicio. Mantiene trazabilidad y permite que sesiones futuras vean qué se cerró cuándo. Solo se borra cuando el ítem pierde relevancia (ej: decisión de producto que cambió).
 
 ### 🔥 Seguridad
 - [ ] **Rotar Anthropic API key** en [console.anthropic.com](https://console.anthropic.com/settings/keys) — quedó en texto plano en `LogxIA/CLAVES Y APIS.txt` antes de gitignorarla. Asumir comprometida.

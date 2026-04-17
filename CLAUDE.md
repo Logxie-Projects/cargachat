@@ -63,7 +63,6 @@ Cloudflare despliega automáticamente en ~1-2 minutos.
 ```
 D:\NETFLEET\
 ├── index.html                  → Landing generador (HTML+CSS+JS todo en uno)
-├── landing.html                → Landing nueva optimizada (en desarrollo)
 ├── transportador.html          → Portal transportadores (login + viajes + ofertas)
 ├── empresa.html                → Portal registro/login empresas generadoras
 ├── admin.html                  → Panel admin Logxie
@@ -71,24 +70,34 @@ D:\NETFLEET\
 ├── viaje.html                  → Tarjeta individual (screenshots LinkedIn)
 ├── checkderuta.html            → Módulo seguimiento de ruta en tiempo real
 ├── analizador-rutas.html       → Planificación de entregas por viaje consolidado
-├── analizador-rutas.html       → Planificación de entregas por viaje consolidado
-├── netfleet-core.js            → Funciones compartidas (inactivo)
+├── q.html                      → Quote (propuesta) standalone para compartir
+├── netfleet-core.js            → Funciones compartidas (inactivo — no lo carga ningún HTML todavía)
 ├── supabase.min.js             → SDK Supabase v2.39.8 (NO cambiar versión)
 ├── _headers                    → Cache-Control: no-cache para Cloudflare
+├── .gitignore                  → Excluye secretos (LogxIA/CLAVES Y APIS.txt), xlsx, .claude/settings.local.json
 ├── CLAUDE.md                   → Este archivo
+├── README.md                   → Inventario LogxIA (a nivel raíz)
 ├── /docs/                      → Documentación técnica
-├── /db/                        → Schemas SQL
+│   ├── ARQUITECTURA.md         → Stack, estructura, módulos pendientes, decisiones, convenciones
+│   ├── CONTEXTO_OPERATIVO.md   → Estado actual: producción, pendientes, próximos pasos
+│   ├── CONTEXTO_SESION.md      → Bitácora de sesiones
+│   ├── PROYECTO_NETFLEET.md    → Ficha del proyecto
+│   ├── modelo-precios-n8n.md   → Código Ridge v2 del nodo de precio en n8n
+│   └── /legacy/
+│       └── modelo-precios-n8n-v1.md  → Fórmula lineal antigua (histórico)
+├── /db/                        → Schemas SQL Supabase
 │   └── ofertas.sql
-└── /logxia/                    → Agente IA LogxIA — workflows n8n + docs
-    ├── README.md               → Inventario, estado y guía de importación
-    ├── /workflows/             → Exports JSON de n8n (backup versionado)
-    │   ├── LogxIA_Parser_Detalle_Pedidos.json
-    │   ├── LogxIA_Bot_Telegram.json
-    │   ├── AvgustIA_Lector_de_Pedidos.json
-    │   └── AvgustIA_Seguimiento_Transportadores.json
+└── /LogxIA/                    → Agente IA LogxIA — workflows n8n + docs
+    ├── LogxIA — Parser Detalle Pedidos.json
+    ├── LogxIA_Bot_Telegram.json
+    ├── AvgustIA_Lector_de_Pedidos.json
+    ├── AvgustIA_Seguimiento_Transportadores.json
+    ├── CLAVES Y APIS.txt       → ⚠️ GITIGNORED — no versionar
     └── /docs/
         └── checkderuta.md
 ```
+
+**Archivos eliminados (sesión 2026-04-17):** `landing.html`, `landing_new.html`, `index_backup_20260413.html`, `transportador_backup_20260413.html`. El landing definitivo es `index.html`.
 
 ---
 
@@ -294,6 +303,8 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 - **Mail como unidad de consolidación:** el parser lee el mail (no el Sheet base) porque el mail ya refleja la decisión de agrupamiento operativo
 - **n8n self-hosted:** punto de fragilidad conocido — si cae el VPS, se detienen todos los workflows
 - **Repo nombre:** `cargachat` en GitHub — renombrar a `netfleet` requiere reapuntar Cloudflare Pages primero
+- **Deuda técnica — 5 copias de CIUDADES/estimarPrecio:** `index.html`, `transportador.html`, `analizador-rutas.html`, `viaje.html` y `netfleet-core.js` tienen cada uno su propio diccionario `CIUDADES` + `getCoordenadas()` + `variantes()` + `normalizarNombre()`. Cualquier cambio debe replicarse en los 5. Centralizar en `netfleet-core.js` está pendiente (Paso 2).
+- **Ciudades ambiguas hardcodeadas:** ante homónimos (Santa Rosa: Cabal/del Sur/de Osos · Miraflores: Boyacá/Guaviare), se elige la variante consistente con el patrón operativo Avgust/Fateco (centro del país). La alternativa estructural — un heurístico de centroide que elige la variante más cercana al resto del viaje — queda para cuando se haga la centralización.
 
 ---
 
@@ -322,6 +333,7 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 - Pins duplicados en el mapa: offset de `n * 0.06°` lat para viajes del mismo origen
 - `tipo_mercancia`: `(v.tipo_mercancia || '').trim() || 'General'`
 - Parser n8n: usar `$json.html` primero → fallback `$json.text` con `.replace(/\*/g, '')`
+- `getCoordenadas()` usa 2 pasadas: exact match primero, luego substring solo para candidatos ≥5 chars. Esto previene que "santa" (variante corta de "Santa Rosa") matchee "santa marta" por substring y devuelva coordenadas del norte. Cualquier cambio en esta función debe replicarse en los 5 archivos (ver deuda técnica arriba).
 
 ---
 
@@ -339,6 +351,15 @@ Entrapetrol (Jeimmy Socha) · Trans Nueva Colombia (Cristhian Gomez) · JR Logí
 
 ## Pendientes Prioritarios
 
+### Seguridad
+- [ ] **🔥 Rotar Anthropic API key** (`sk-ant-api03-...`) y **Telegram bot token** (`8317513875:AAH...`) — quedaron en disco en texto plano en `LogxIA/CLAVES Y APIS.txt` antes de gitignorarlo. Asumir comprometidas.
+- [ ] **Migrar secretos** a gestor (variables de entorno de n8n o `.env` fuera del repo)
+
+### Refactor — Paso 2 (centralización)
+- [ ] **Unificar 5 copias de CIUDADES/getCoordenadas/estimarPrecio** en `netfleet-core.js` + `<script src="netfleet-core.js">` en cada HTML. Borrar las copias locales.
+- [ ] **Heurístico de centroide** para destinos ambiguos: si un viaje tiene N destinos y uno es homónimo en otra zona (ej: Miraflores), elegir la variante más cercana al centroide de los otros N-1.
+
+### Producto
 - [ ] **Renombrar** `LogxIA — PRODUCCIÓN v2 (Mails Avgust)` → `LogxIA — Parser Detalle Pedidos` en n8n
 - [ ] **LogxIA:** agregar Vigía y Global Logística al diccionario `CORREOS_PROVEEDORES` en Seguimiento Transportadores
 - [ ] **LogxIA:** poblar `ADMIN_IDS` y arrays de Telegram IDs por proveedor en Bot Telegram

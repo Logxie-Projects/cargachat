@@ -10,7 +10,8 @@ CREATE TABLE pedidos (
 
   -- Relaciones
   viaje_id         uuid REFERENCES viajes_consolidados(id),   -- NULL hasta que Bernardo consolida
-  cliente_id       uuid REFERENCES clientes(id) NOT NULL,
+  cliente_id       uuid REFERENCES clientes(id),               -- Nullable temporalmente para migración histórica
+                                                                -- Backfill post-migración desde empresa, luego ALTER TABLE ... SET NOT NULL
 
   -- Campos mínimos obligatorios (cualquier fuente puede proveerlos)
   origen           text NOT NULL,
@@ -80,6 +81,7 @@ CREATE TABLE pedidos (
                      'rechazado',                 -- rechazado por cliente
                      'cancelado'
                    )),
+  estado_original  text,                          -- estado crudo del Sheet Base_inicio-def antes de normalizar ('EN PROCESO', 'EJECUTADO', etc.)
 
   -- Soportes
   soporte_1        text,

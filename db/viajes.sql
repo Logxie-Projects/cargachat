@@ -60,6 +60,7 @@ CREATE TABLE viajes_consolidados (
                         'finalizado',             -- cumplidos recibidos, cerrado
                         'cancelado'
                       )),
+  estado_original     text,                       -- estado crudo del Sheet ASIGNADOS antes de normalizar ('FINALIZADO', 'EN RUTA', etc.)
 
   -- Soportes y documentos
   foto_cargue         text,                       -- URL

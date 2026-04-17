@@ -1423,12 +1423,22 @@ footer { background: var(--navy); padding: 3rem; }
       'aguachica':     [8.3081, -73.6189],
 
       // ── Eje Cafetero ──
-      'manizales':    [5.0703, -75.5138],
-      'pereira':      [4.8087, -75.6906],
-      'armenia':      [4.5339, -75.6811],
-      'cartago':      [4.7454, -75.9120],
-      'la virginia':  [4.9000, -75.8833],
-      'dosquebradas': [4.8378, -75.6742],
+      'manizales':          [5.0703, -75.5138],
+      'pereira':            [4.8087, -75.6906],
+      'armenia':            [4.5339, -75.6811],
+      'cartago':            [4.7454, -75.9120],
+      'la virginia':        [4.9000, -75.8833],
+      'dosquebradas':       [4.8378, -75.6742],
+      'santa rosa de cabal':[4.8680, -75.6256],
+      'santa rosa':         [4.8680, -75.6256],
+      'chinchina':          [4.9815, -75.6091],
+      'chinchiná':          [4.9815, -75.6091],
+      'calarca':            [4.5225, -75.6437],
+      'calarcá':            [4.5225, -75.6437],
+      'montenegro':         [4.5662, -75.7497],
+      'quimbaya':           [4.6227, -75.7636],
+      'belalcazar':         [4.9936, -75.8131],
+      'belalcázar':         [4.9936, -75.8131],
 
       // ── Boyacá (zona frecuente de Avgust) ──
       'tunja':        [5.5353, -73.3678],
@@ -1578,13 +1588,19 @@ footer { background: var(--navy); padding: 3rem; }
     function getCoordenadas(ciudad) {
       if (!ciudad) return null;
       const candidatos = variantes(ciudad);
-
-      for (const [nombre, coords] of Object.entries(CIUDADES)) {
-        const nombreNorm = normalizarNombre(nombre);
-        for (const cand of candidatos) {
-          if (nombreNorm === cand || cand.includes(nombreNorm) || nombreNorm.includes(cand)) {
-            return coords;
-          }
+      // Pass 1: exact match. Evita que "santa" (variante corta de "Santa Rosa")
+      // matchee "santa marta" por substring y devuelva coords del norte.
+      for (const cand of candidatos) {
+        for (const [nombre, coords] of Object.entries(CIUDADES)) {
+          if (normalizarNombre(nombre) === cand) return coords;
+        }
+      }
+      // Pass 2: substring match solo para candidatos específicos (>=5 chars)
+      for (const cand of candidatos) {
+        if (cand.length < 5) continue;
+        for (const [nombre, coords] of Object.entries(CIUDADES)) {
+          const n = normalizarNombre(nombre);
+          if (n.includes(cand) || cand.includes(n)) return coords;
         }
       }
       return null;

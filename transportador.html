@@ -1499,6 +1499,11 @@
     'manizales':[5.0703,-75.5138],'pereira':[4.8087,-75.6906],
     'armenia':[4.5339,-75.6811],'cartago':[4.7454,-75.912],
     'la virginia':[4.9,-75.8833],'dosquebradas':[4.8378,-75.6742],
+    'santa rosa de cabal':[4.868,-75.6256],'santa rosa':[4.868,-75.6256],
+    'chinchina':[4.9815,-75.6091],'chinchin\u00e1':[4.9815,-75.6091],
+    'calarca':[4.5225,-75.6437],'calarc\u00e1':[4.5225,-75.6437],
+    'montenegro':[4.5662,-75.7497],'quimbaya':[4.6227,-75.7636],
+    'belalcazar':[4.9936,-75.8131],'belalc\u00e1zar':[4.9936,-75.8131],
     'tunja':[5.5353,-73.3678],'duitama':[5.8281,-73.0297],
     'sogamoso':[5.715,-72.9267],'paipa':[5.7833,-73.1167],
     'ramiriqui':[5.4,-73.3333],'ramiriqu\u00ed':[5.4,-73.3333],
@@ -1565,10 +1570,18 @@
   function getCoordenadas(ciudad) {
     if (!ciudad) return null;
     const candidatos = variantes(ciudad);
-    for (const [nombre, coords] of Object.entries(CIUDADES)) {
-      const nombreNorm = normalizarNombre(nombre);
-      for (const cand of candidatos) {
-        if (nombreNorm === cand || cand.includes(nombreNorm) || nombreNorm.includes(cand)) return coords;
+    // Pass 1: exact match (evita que "santa" matchee "santa marta" por substring)
+    for (const cand of candidatos) {
+      for (const [nombre, coords] of Object.entries(CIUDADES)) {
+        if (normalizarNombre(nombre) === cand) return coords;
+      }
+    }
+    // Pass 2: substring match solo para candidatos específicos (>=5 chars)
+    for (const cand of candidatos) {
+      if (cand.length < 5) continue;
+      for (const [nombre, coords] of Object.entries(CIUDADES)) {
+        const n = normalizarNombre(nombre);
+        if (n.includes(cand) || cand.includes(n)) return coords;
       }
     }
     return null;

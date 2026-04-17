@@ -722,14 +722,15 @@ Las Postgres functions escriben esta tabla como parte de su transacción. Sirve 
 
 ### Pendientes del Módulo 4
 
-- [ ] **Schema updates**: `clientes.plan_bpo`, `perfiles.cliente_id`, `perfiles.tipo` extender
-- [ ] **Tabla `acciones_operador`** + RLS
+- [x] ✅ hecho 2026-04-17 — **Schema updates**: `clientes.plan_bpo` (AVGUST+FATECO = true), tabla `perfiles` creada desde cero con `cliente_id` FK y CHECK `tipo IN (transportador|empresa|logxie_staff|cliente_self_service)`, trigger `handle_new_user` + helper `is_logxie_staff()`. Ver [db/perfiles.sql](db/perfiles.sql) + [db/modulo4_schema.sql](db/modulo4_schema.sql). **Nota:** la tabla `perfiles` no existía en Supabase a pesar de estar documentada — 3 usuarios en `auth.users` sin fila correspondiente. Los frontends venían tirando 404 silencioso contra `/rest/v1/perfiles` desde siempre.
+- [x] ✅ hecho 2026-04-17 — **Tabla `acciones_operador`** + 4 índices + RLS (staff lee via `is_logxie_staff()`, service_role full). Ver [db/modulo4_schema.sql](db/modulo4_schema.sql).
 - [ ] **Postgres functions**: `fn_consolidar_pedidos`, `fn_desconsolidar_viaje`, `fn_ajustar_precio_viaje`, `fn_publicar_viaje`, `fn_adjudicar_oferta`
 - [ ] **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial)
 - [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)
 - [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook
 - [ ] **Test E2E** con 50 pedidos reales (antes de reemplazar el Apps Script)
-- [ ] **Migración de operadores**: dar cuenta Supabase a empleados Logxie con `perfiles.tipo='logxie_staff'`
+- [ ] **Migración de operadores**: promover Bernardo a `tipo='logxie_staff', estado='aprobado'` en cuanto se registre en `netfleet.app`. Pendiente crear cuentas para empleados Logxie.
+- [ ] **Tabla `ofertas` y `leads`/`cargas`**: no existen en Supabase (son Módulo 1, fuera de alcance M4 pero hay que crearlas para que los frontends existentes funcionen). Diferido.
 
 ---
 

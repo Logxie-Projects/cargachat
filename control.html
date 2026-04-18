@@ -129,6 +129,49 @@
     .pedido-prioridad.prio-normal   { background: #eff6ff; color: var(--blue); }
     .pedido-prioridad.prio-baja     { background: var(--gray-100); color: var(--gray-600); }
 
+    .btn-info {
+      width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--gray-100);
+      background: white; color: var(--navy); cursor: pointer;
+      font-weight: 800; font-size: 13px; font-family: inherit;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .btn-info:hover { background: var(--navy); color: white; border-color: var(--navy); }
+
+    /* Detalle de pedido (modal + sección dentro de viaje) */
+    .ped-detalle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; margin-bottom: 0.75rem; }
+    .ped-detalle-cell { }
+    .ped-detalle-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
+    .ped-detalle-val { font-size: 13px; color: var(--gray-800); margin-top: 1px; }
+    .ped-detalle-val.importante { color: var(--navy); font-weight: 600; }
+    .ped-detalle-section { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
+    .ped-detalle-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; margin-bottom: 6px; }
+    .ped-units-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ped-units-badge {
+      background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 8px;
+      padding: 6px 12px; font-size: 11px;
+    }
+    .ped-units-badge strong { font-size: 15px; color: var(--navy); font-weight: 800; display: block; }
+    .ped-units-badge span   { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
+    .llamar-antes-flag {
+      display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 700;
+      background: var(--orange); color: white; padding: 2px 9px; border-radius: 100px;
+    }
+
+    /* Pedidos incluidos en viaje card */
+    .pedidos-sub { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-100); }
+    .pedidos-sub-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 8px; }
+    .ped-card { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 10px; margin-bottom: 6px; overflow: hidden; }
+    .ped-card-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; }
+    .ped-card-head:hover { background: #eef1f5; }
+    .ped-card-head .ref { font-weight: 700; color: var(--navy); font-size: 12px; min-width: 90px; }
+    .ped-card-head .cliente { font-size: 12px; color: var(--gray-800); flex: 1; }
+    .ped-card-head .ruta { font-size: 11px; color: var(--gray-400); }
+    .ped-card-head .chev { font-size: 11px; color: var(--gray-400); transition: transform .2s; }
+    .ped-card.open .ped-card-head .chev { transform: rotate(180deg); }
+    .ped-card-body { display: none; padding: 10px 14px; background: white; border-top: 1px solid var(--gray-100); }
+    .ped-card.open .ped-card-body { display: block; }
+
     .badge { display: inline-block; padding: 2px 9px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .badge.pendiente  { background: #fff7ed; color: var(--orange); }
     .badge.confirmado { background: #eff6ff; color: var(--blue); }
@@ -274,7 +317,7 @@
         Sin consolidar <span class="tab-count" id="count-pedidos">0</span>
       </button>
       <button class="tab-btn" data-tab="subasta" onclick="cambiarTab('subasta', this)">
-        En subasta <span class="tab-count" id="count-subasta">0</span>
+        Consolidados <span class="tab-count" id="count-subasta">0</span>
       </button>
       <button class="tab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
         Activos <span class="tab-count" id="count-activos">0</span>
@@ -338,10 +381,11 @@
                 <th>peso</th>
                 <th>fecha cargue</th>
                 <th>valor</th>
+                <th style="width:40px"></th>
               </tr>
             </thead>
             <tbody id="pedidos-tbody">
-              <tr><td colspan="8" class="loading-msg">Cargando…</td></tr>
+              <tr><td colspan="9" class="loading-msg">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -351,7 +395,7 @@
     <!-- ═══ TAB: SUBASTA ═══ -->
     <div class="tab-section" id="tab-subasta">
       <div class="stats-bar">
-        <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">viajes publicados</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">total consolidados</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
@@ -483,6 +527,16 @@
   </div>
 </div>
 
+<!-- ══════════════════════ MODAL: DETALLE PEDIDO ══════════════════════ -->
+<div class="modal-overlay" id="modal-pedido-detalle">
+  <div class="modal-box" style="max-width:700px">
+    <div id="mod-ped-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-pedido-detalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════ TOAST ══════════════════════ -->
 <div class="toast" id="toast"></div>
 
@@ -606,7 +660,7 @@
       const [clientes, transp, pedidos, viajes, ofertas] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
-        getJson('pedidos?select=id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,cliente_id,empresa,contacto_tel,prioridad,observaciones,created_at&estado=eq.sin_consolidar&order=fecha_cargue.asc.nullslast&limit=500'),
+        getJson('pedidos?select=id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,created_at&order=fecha_cargue.desc.nullslast&limit=5000'),
         getJson('viajes_consolidados?select=*&order=created_at.desc&limit=500'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=500'),
       ]);
@@ -632,11 +686,18 @@
     }
   }
 
+  // Viajes "relevantes para subasta": borradores nuevos (fuente=netfleet) o ya publicados.
+  // Excluye los miles de viajes migrados del Sheet ASIGNADOS que quedaron en estado='pendiente'
+  // pero nunca se publicarán (son historia pre-Netfleet).
+  function esViajeSubasta(v) {
+    return v.estado === 'pendiente' && (v.fuente === 'netfleet' || v.publicado_at);
+  }
+
   function updateCounts() {
-    const pend = state.viajes.filter(v => v.estado === 'pendiente');
+    const pend = state.viajes.filter(esViajeSubasta);
     const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
     const hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
-    document.getElementById('count-pedidos').textContent = state.pedidos.length;
+    document.getElementById('count-pedidos').textContent = pedidosSinConsolidar().length;
     document.getElementById('count-subasta').textContent = pend.length;
     document.getElementById('count-activos').textContent = activos.length;
     document.getElementById('count-historial').textContent = hist.length;
@@ -666,6 +727,18 @@
   }
 
   // ═════════════ TAB PEDIDOS ═════════════
+  function pedidosSinConsolidar() {
+    return state.pedidos.filter(p => p.estado === 'sin_consolidar');
+  }
+
+  function pedidosDelViaje(viajeId) {
+    return state.pedidos.filter(p => p.viaje_id === viajeId);
+  }
+
+  function getPedido(id) {
+    return state.pedidos.find(p => p.id === id);
+  }
+
   function pedidosFiltrados() {
     const fCliente = document.getElementById('flt-cliente').value.toLowerCase();
     const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
@@ -673,8 +746,8 @@
     const fZona    = document.getElementById('flt-zona').value.toLowerCase();
     const fDesde   = document.getElementById('flt-fecha-desde').value;
     const fHasta   = document.getElementById('flt-fecha-hasta').value;
-    return state.pedidos.filter(p => {
-      if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
+    return pedidosSinConsolidar().filter(p => {
+      if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente) || (p.cliente_nombre||'').toLowerCase().includes(fCliente))) return false;
       if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
       if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
       if (fZona && !(p.zona||'').toLowerCase().includes(fZona)) return false;
@@ -699,15 +772,16 @@
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
 
-    // Stats
-    document.getElementById('st-ped-total').textContent = state.pedidos.length;
-    document.getElementById('st-ped-kg').textContent = fmtNum(state.pedidos.reduce((s,p) => s + (+p.peso_kg||0), 0));
-    document.getElementById('st-ped-clientes').textContent = new Set(state.pedidos.map(p => p.cliente_id).filter(Boolean)).size;
-    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${state.pedidos.length}`;
+    // Stats (sobre los sin_consolidar, no todos)
+    const sc = pedidosSinConsolidar();
+    document.getElementById('st-ped-total').textContent = sc.length;
+    document.getElementById('st-ped-kg').textContent = fmtNum(sc.reduce((s,p) => s + (+p.peso_kg||0), 0));
+    document.getElementById('st-ped-clientes').textContent = new Set(sc.map(p => p.cliente_id).filter(Boolean)).size;
+    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${sc.length}`;
 
     if (!filtrados.length) {
       document.getElementById('pedidos-tbody').innerHTML =
-        '<tr><td colspan="8" class="empty-msg">No hay pedidos que coincidan.</td></tr>';
+        '<tr><td colspan="9" class="empty-msg">No hay pedidos que coincidan.</td></tr>';
       return;
     }
 
@@ -734,7 +808,7 @@
 
       html.push(`
         <tr class="group-row">
-          <td colspan="8">
+          <td colspan="9">
             <div class="group-row-inner">
               <input type="checkbox" class="g-chk"
                 ${checkState==='checked'?'checked':''}
@@ -752,7 +826,7 @@
           <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
           <td>
             <div class="pedido-ref">${p.pedido_ref || '—'}</div>
-            <div class="pedido-cliente">${clienteNombre(p.cliente_id)}</div>
+            <div class="pedido-cliente">${p.cliente_nombre || '—'}</div>
           </td>
           <td>${p.empresa || '—'}</td>
           <td>
@@ -763,6 +837,7 @@
           <td>${fmtNum(p.peso_kg)} kg</td>
           <td>${fmtFecha(p.fecha_cargue)}</td>
           <td>${fmtCOP(p.valor_mercancia)}</td>
+          <td><button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle completo">ℹ</button></td>
         </tr>`));
     }
     document.getElementById('pedidos-tbody').innerHTML = html.join('');
@@ -913,8 +988,8 @@
 
   // ═════════════ TAB SUBASTA ═════════════
   function renderSubasta() {
-    // Incluye publicados Y borradores (pendiente sin publicado_at)
-    const pendientes = state.viajes.filter(v => v.estado === 'pendiente');
+    // Solo viajes de Netfleet o ya publicados (filtra históricos migrados del Sheet)
+    const pendientes = state.viajes.filter(esViajeSubasta);
     // Ordenar: borradores primero (sin publicar → acción requerida), luego publicados por fecha
     pendientes.sort((a, b) => {
       const aBorrador = !a.publicado_at, bBorrador = !b.publicado_at;
@@ -966,6 +1041,8 @@
         <div>
           ${esSubasta && !v.publicado_at ? '<span class="badge cancelado" style="background:#fef3c7;color:#b45309">borrador</span>' : `<span class="badge ${v.estado}">${v.estado}</span>`}
           ${v.publicado_at && v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
+          ${v.adjudicacion_tipo === 'subasta' ? '<span class="badge" style="background:#fef9c3;color:#b45309;margin-left:4px">🏆 subasta</span>' : ''}
+          ${v.adjudicacion_tipo === 'directa' ? '<span class="badge" style="background:#ede9fe;color:#7c3aed;margin-left:4px">📌 directa</span>' : ''}
           ${transp ? `<div class="viaje-sub" style="margin-top:4px">${transp.nombre}</div>` : ''}
         </div>
         <div>
@@ -1010,6 +1087,31 @@
             <div class="viaje-info-val" style="font-size:11px">${(v.consecutivos || '—').substring(0, 80)}${(v.consecutivos||'').length > 80 ? '…' : ''}</div>
           </div>
         </div>
+
+        ${(() => {
+          const peds = pedidosDelViaje(v.id);
+          if (!peds.length) return '';
+          return `
+          <div class="pedidos-sub">
+            <div class="pedidos-sub-title">Pedidos incluidos (${peds.length})</div>
+            ${peds.map(p => `
+              <div class="ped-card" id="pcard-${v.id}-${p.id}">
+                <div class="ped-card-head" onclick="togglePedidoCard('${v.id}','${p.id}')">
+                  <div class="ref">${p.pedido_ref || '—'}</div>
+                  <div class="cliente">${p.cliente_nombre || '—'}
+                    ${p.prioridad ? `<span class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}" style="margin-left:6px">${p.prioridad}</span>` : ''}
+                    ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
+                  </div>
+                  <div class="ruta">${p.origen || '—'} → ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
+                  <div class="chev">▼</div>
+                </div>
+                <div class="ped-card-body">
+                  ${renderDetallePedidoHTML(p).replace(/<div class="modal-title">[^]*?<div class="modal-sub">[^<]*<\/div>/, '')}
+                </div>
+              </div>
+            `).join('')}
+          </div>`;
+        })()}
 
         ${ofertas.length > 0 ? `
           <div class="ofertas-sub">
@@ -1205,6 +1307,90 @@
       return;
     }
     lista.innerHTML = hist.map(v => renderViajeCard(v, 'historial')).join('');
+  }
+
+  // ═════════════ DETALLE PEDIDO ═════════════
+  function renderDetallePedidoHTML(p) {
+    if (!p) return '<div class="empty-msg">Pedido no encontrado</div>';
+    const cell = (lbl, val, imp=false) =>
+      `<div class="ped-detalle-cell">
+         <div class="ped-detalle-lbl">${lbl}</div>
+         <div class="ped-detalle-val ${imp ? 'importante' : ''}">${val || '—'}</div>
+       </div>`;
+    const units = [
+      { n: p.contenedores,     lbl: 'contenedores' },
+      { n: p.cajas,            lbl: 'cajas'        },
+      { n: p.bidones,          lbl: 'bidones'      },
+      { n: p.canecas,          lbl: 'canecas'      },
+      { n: p.unidades_sueltas, lbl: 'unidades'     },
+    ].filter(u => +u.n > 0);
+
+    return `
+      <div class="modal-title">${p.pedido_ref || '—'}
+        ${p.prioridad ? `<span class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}" style="margin-left:8px;font-size:11px">${p.prioridad}</span>` : ''}
+        ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
+      </div>
+      <div class="modal-sub">${p.empresa || '—'} · ${p.cliente_nombre || 'sin cliente final'}</div>
+
+      <div class="ped-detalle-grid">
+        ${cell('Origen',  p.origen,  true)}
+        ${cell('Destino', p.destino, true)}
+        ${cell('Fecha cargue', fmtFecha(p.fecha_cargue))}
+        ${cell('Zona', p.zona)}
+        ${cell('Peso', fmtNum(p.peso_kg) + ' kg', true)}
+        ${cell('Valor mercancía', fmtCOP(p.valor_mercancia))}
+      </div>
+
+      ${units.length ? `
+      <div class="ped-detalle-section">
+        <div class="ped-detalle-section-title">Embalaje</div>
+        <div class="ped-units-badges">
+          ${units.map(u => `<div class="ped-units-badge"><strong>${fmtNum(u.n)}</strong><span>${u.lbl}</span></div>`).join('')}
+        </div>
+        ${p.tipo_mercancia ? `<div style="margin-top:8px;font-size:12px;color:var(--gray-600)">Tipo: <strong>${p.tipo_mercancia}</strong></div>` : ''}
+      </div>
+      ` : ''}
+
+      <div class="ped-detalle-section">
+        <div class="ped-detalle-section-title">Destino / Contacto</div>
+        <div class="ped-detalle-grid">
+          ${cell('Dirección', p.direccion, true)}
+          ${cell('Horario', p.horario)}
+          ${cell('Contacto', p.contacto_nombre)}
+          ${cell('Teléfono', p.contacto_tel)}
+        </div>
+      </div>
+
+      ${(p.vendedor || p.jefe_zona || p.coordinador || p.motivo_viaje) ? `
+      <div class="ped-detalle-section">
+        <div class="ped-detalle-section-title">Comercial / Operativo</div>
+        <div class="ped-detalle-grid">
+          ${cell('Vendedor', p.vendedor)}
+          ${cell('Jefe de zona', p.jefe_zona)}
+          ${cell('Coordinador', p.coordinador)}
+          ${cell('Motivo viaje', p.motivo_viaje)}
+        </div>
+      </div>
+      ` : ''}
+
+      ${p.observaciones ? `
+      <div class="ped-detalle-section">
+        <div class="ped-detalle-section-title">Observaciones / Instrucciones</div>
+        <div class="ped-detalle-val importante" style="white-space:pre-wrap">${p.observaciones}</div>
+      </div>
+      ` : ''}
+    `;
+  }
+
+  function verDetallePedido(id) {
+    const p = getPedido(id);
+    document.getElementById('mod-ped-content').innerHTML = renderDetallePedidoHTML(p);
+    abrirModal('modal-pedido-detalle');
+  }
+
+  function togglePedidoCard(viajeId, pedidoId) {
+    const card = document.getElementById(`pcard-${viajeId}-${pedidoId}`);
+    if (card) card.classList.toggle('open');
   }
 
   // ═════════════ MODAL UTILS ═════════════

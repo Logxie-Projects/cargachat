@@ -199,7 +199,7 @@
     .viaje-card-body { display: none; border-top: 1px solid var(--gray-100); padding: 1rem 1.25rem; }
     .viaje-card.open .viaje-card-body { display: block; }
 
-    .viaje-info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .viaje-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
     .viaje-info-cell { }
     .viaje-info-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
     .viaje-info-val { font-size: 13px; color: var(--gray-800); font-weight: 500; margin-top: 2px; }
@@ -622,6 +622,11 @@
     document.getElementById('tab-' + nombre).classList.add('active');
   }
 
+  function irATab(nombre) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${nombre}"]`);
+    if (btn) cambiarTab(nombre, btn);
+  }
+
   // ───────── TOAST ─────────
   let toastTimer = null;
   function toast(msg, variant='') {
@@ -657,16 +662,23 @@
   // ───────── CARGAR TODO ─────────
   async function recargarTodo() {
     try {
-      const [clientes, transp, pedidos, viajes, ofertas] = await Promise.all([
+      const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,created_at';
+      const [clientes, transp, pedSinCons, pedDeViajes, viajes, ofertas] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
-        getJson('pedidos?select=id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,created_at&order=fecha_cargue.desc.nullslast&limit=5000'),
-        getJson('viajes_consolidados?select=*&order=created_at.desc&limit=500'),
-        getJson('ofertas?select=*&order=precio_oferta.asc&limit=500'),
+        // Sin consolidar: se fetchean todos sin importar el límite
+        getJson(`pedidos?select=${pedidosCols}&estado=eq.sin_consolidar&order=fecha_cargue.desc.nullslast&limit=2000`),
+        // Pedidos de viajes (consolidado/asignado/en_ruta/etc): para el detalle dentro de las cards
+        getJson(`pedidos?select=${pedidosCols}&viaje_id=not.is.null&order=created_at.desc&limit=3000`),
+        getJson('viajes_consolidados?select=*&order=created_at.desc&limit=2000'),
+        getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
       ]);
+      // Merge (dedupe por id en caso de solape)
+      const pedidosMap = new Map();
+      [...pedSinCons, ...pedDeViajes].forEach(p => pedidosMap.set(p.id, p));
+      state.pedidos = Array.from(pedidosMap.values());
       state.clientes = clientes;
       state.transportadoras = transp;
-      state.pedidos = pedidos;
       state.viajes = viajes;
       state.ofertas = ofertas;
 
@@ -973,12 +985,13 @@
       });
       if (publicar) {
         await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipoSubasta });
-        toast(`Viaje consolidado y publicado (${tipoSubasta})`, 'success');
+        toast(`Consolidado y publicado (${tipoSubasta}) → ver en Consolidados`, 'success');
       } else {
-        toast('Viaje consolidado (no publicado aún)', 'success');
+        toast('Consolidado como borrador → ver en Consolidados', 'success');
       }
       state.seleccionados.clear();
       cerrarModal('modal-consolidar');
+      irATab('subasta');
       recargarTodo();
     } catch (e) {
       console.error(e);
@@ -1082,10 +1095,6 @@
             <div class="viaje-info-lbl">Valor mercancía</div>
             <div class="viaje-info-val">${fmtCOP(v.valor_mercancia)}</div>
           </div>
-          <div class="viaje-info-cell">
-            <div class="viaje-info-lbl">Consecutivos</div>
-            <div class="viaje-info-val" style="font-size:11px">${(v.consecutivos || '—').substring(0, 80)}${(v.consecutivos||'').length > 80 ? '…' : ''}</div>
-          </div>
         </div>
 
         ${(() => {
@@ -1158,6 +1167,7 @@
           ` : ''}
           ${esActivo && v.estado === 'confirmado' ? `
             <div class="hint">Adjudicado a ${transp ? transp.nombre : 'proveedor'} ${v.adjudicado_at ? '· ' + fmtFechaHora(v.adjudicado_at) : ''}</div>
+            <button class="btn btn-warning" onclick="reabrirViaje('${v.id}')">↩ Reabrir</button>
           ` : ''}
         </div>
       </div>
@@ -1176,7 +1186,30 @@
                           : 'Solo los transportadores invitados lo verán.'))) return;
     try {
       await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipo });
-      toast(`Viaje publicado (${tipo})`, 'success');
+      toast(`Publicado (${tipo}) — esperando ofertas`, 'success');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── REABRIR VIAJE (desde Activos, revertir confirmación) ─────────
+  async function reabrirViaje(viajeId) {
+    const v = state.viajes.find(x => x.id === viajeId);
+    const transp = v && v.transportadora_id
+      ? (state.transportadoras.find(t => t.id === v.transportadora_id) || {}).nombre
+      : null;
+    const razon = prompt(
+      `Reabrir ${v ? v.viaje_ref : 'viaje'}${transp ? ' (actualmente asignado a ' + transp + ')' : ''}.\n\n` +
+      'El proveedor será liberado y los pedidos vuelven a "consolidado" para que puedas corregir.\n\n' +
+      'Razón (obligatoria):'
+    );
+    if (razon === null) return; // cancel
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_reabrir_viaje', { p_viaje_id: viajeId, p_razon: razon });
+      toast('Viaje reabierto → ver en Consolidados', 'success');
+      irATab('subasta');
       recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');
@@ -1185,10 +1218,15 @@
 
   // ───────── ADJUDICAR ─────────
   async function adjudicarOferta(ofertaId) {
+    const oferta = state.ofertas.find(o => o.id === ofertaId);
+    const transp = oferta && oferta.transportadora_id
+      ? (state.transportadoras.find(t => t.id === oferta.transportadora_id) || {}).nombre
+      : null;
     if (!confirm('¿Adjudicar esta oferta? Las demás del viaje quedarán rechazadas.')) return;
     try {
       await rpc('fn_adjudicar_oferta', { p_oferta_id: ofertaId });
-      toast('Oferta adjudicada', 'success');
+      toast(`Adjudicado${transp ? ' a ' + transp : ''}${oferta ? ' por ' + fmtCOP(oferta.precio_oferta) : ''} → ver en Activos`, 'success');
+      irATab('activos');
       recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');
@@ -1219,6 +1257,7 @@
       toast('Precio ajustado', 'success');
       cerrarModal('modal-ajustar');
       recargarTodo();
+      // no cambio de tab — queda en Consolidados
     } catch (e) {
       toast('Error: ' + e.message, 'error');
     }
@@ -1241,6 +1280,7 @@
     if (!transpId) { toast('Selecciona transportadora', 'error'); return; }
     if (!precio || precio <= 0) { toast('Precio inválido', 'error'); return; }
     if (!razon) { toast('Razón requerida', 'error'); return; }
+    const transpNombre = (state.transportadoras.find(t => t.id === transpId) || {}).nombre || 'proveedor';
     try {
       await rpc('fn_asignar_transportadora_directo', {
         p_viaje_id: state.modalViajeId,
@@ -1248,8 +1288,9 @@
         p_precio: precio,
         p_razon: razon,
       });
-      toast('Asignado directo', 'success');
+      toast(`Asignado directo a ${transpNombre} → ver en Activos`, 'success');
       cerrarModal('modal-asignar');
+      irATab('activos');
       recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');
@@ -1261,7 +1302,7 @@
     if (!confirm('¿Desconsolidar? El viaje se cancelará y los pedidos vuelven a sin_consolidar.')) return;
     try {
       const liberados = await rpc('fn_desconsolidar_viaje', { p_viaje_id: viajeId });
-      toast(`Desconsolidado (${liberados} pedidos liberados)`, 'success');
+      toast(`Desconsolidado · ${liberados} pedido${liberados!==1?'s':''} de vuelta a Sin consolidar`, 'success');
       recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');

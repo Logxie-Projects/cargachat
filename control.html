@@ -117,6 +117,17 @@
     .pedido-cliente { font-size: 11px; color: var(--gray-400); }
     .pedido-ruta { font-size: 12px; color: var(--gray-800); }
     .pedido-meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .pedido-prioridad {
+      display: inline-block; margin-top: 3px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 100px;
+      background: var(--gray-100); color: var(--gray-600);
+    }
+    .pedido-prioridad.prio-urgente  { background: #fef2f2; color: var(--red); }
+    .pedido-prioridad.prio-alta     { background: #fff7ed; color: var(--orange); }
+    .pedido-prioridad.prio-media    { background: #eff6ff; color: var(--blue); }
+    .pedido-prioridad.prio-normal   { background: #eff6ff; color: var(--blue); }
+    .pedido-prioridad.prio-baja     { background: var(--gray-100); color: var(--gray-600); }
 
     .badge { display: inline-block; padding: 2px 9px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .badge.pendiente  { background: #fff7ed; color: var(--orange); }
@@ -342,7 +353,7 @@
       <div class="stats-bar">
         <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">viajes publicados</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">sin ofertas aún</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
       </div>
 
@@ -595,7 +606,7 @@
       const [clientes, transp, pedidos, viajes, ofertas] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
-        getJson('pedidos?select=id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,cliente_id,empresa,contacto_tel,observaciones,created_at&estado=eq.sin_consolidar&order=fecha_cargue.asc.nullslast&limit=500'),
+        getJson('pedidos?select=id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,cliente_id,empresa,contacto_tel,prioridad,observaciones,created_at&estado=eq.sin_consolidar&order=fecha_cargue.asc.nullslast&limit=500'),
         getJson('viajes_consolidados?select=*&order=created_at.desc&limit=500'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=500'),
       ]);
@@ -622,7 +633,7 @@
   }
 
   function updateCounts() {
-    const pend = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at);
+    const pend = state.viajes.filter(v => v.estado === 'pendiente');
     const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
     const hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
     document.getElementById('count-pedidos').textContent = state.pedidos.length;
@@ -746,7 +757,7 @@
           <td>${p.empresa || '—'}</td>
           <td>
             <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
-            ${p.observaciones ? `<div class="pedido-meta">${p.observaciones.substring(0,60)}${p.observaciones.length>60?'…':''}</div>` : ''}
+            ${p.prioridad ? `<div class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}">${p.prioridad}</div>` : ''}
           </td>
           <td>${p.zona || '—'}</td>
           <td>${fmtNum(p.peso_kg)} kg</td>
@@ -902,25 +913,34 @@
 
   // ═════════════ TAB SUBASTA ═════════════
   function renderSubasta() {
-    const publicados = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at);
+    // Incluye publicados Y borradores (pendiente sin publicado_at)
+    const pendientes = state.viajes.filter(v => v.estado === 'pendiente');
+    // Ordenar: borradores primero (sin publicar → acción requerida), luego publicados por fecha
+    pendientes.sort((a, b) => {
+      const aBorrador = !a.publicado_at, bBorrador = !b.publicado_at;
+      if (aBorrador !== bBorrador) return aBorrador ? -1 : 1;
+      return (b.publicado_at || b.created_at || '').localeCompare(a.publicado_at || a.created_at || '');
+    });
 
-    // Stats
+    const publicados = pendientes.filter(v => v.publicado_at);
+    const borradores = pendientes.filter(v => !v.publicado_at);
     const ofertasActivas = state.ofertas.filter(o => o.estado === 'activa' && publicados.some(v => v.id === o.viaje_id));
     const sinOfertas = publicados.filter(v => !state.ofertas.some(o => o.viaje_id === v.id && o.estado === 'activa')).length;
-    const fleteTotal = publicados.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000;
+    const fleteTotal = pendientes.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000;
 
-    document.getElementById('st-sub-total').textContent = publicados.length;
+    // Stats labels: cambio "viajes publicados" → "en pendiente" (incluye borradores)
+    document.getElementById('st-sub-total').textContent = pendientes.length;
     document.getElementById('st-sub-ofertas').textContent = ofertasActivas.length;
-    document.getElementById('st-sub-sin-ofertas').textContent = sinOfertas;
+    document.getElementById('st-sub-sin-ofertas').textContent = borradores.length;
     document.getElementById('st-sub-flete').textContent = fleteTotal.toFixed(1);
 
     const lista = document.getElementById('subasta-lista');
-    if (!publicados.length) {
-      lista.innerHTML = '<div class="empty-msg">No hay viajes publicados.</div>';
+    if (!pendientes.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay viajes pendientes.</div>';
       return;
     }
 
-    lista.innerHTML = publicados.map(v => renderViajeCard(v, 'subasta')).join('');
+    lista.innerHTML = pendientes.map(v => renderViajeCard(v, 'subasta')).join('');
   }
 
   // Render genérico viaje-card (reusable para subasta/activos/historial)
@@ -944,8 +964,8 @@
           <div class="viaje-sub">${clienteNombre(v.cliente_id)} · ${fmtNum(v.peso_kg)} kg · ${v.cantidad_pedidos || 0} pedidos</div>
         </div>
         <div>
-          <span class="badge ${v.estado}">${v.estado}</span>
-          ${v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
+          ${esSubasta && !v.publicado_at ? '<span class="badge cancelado" style="background:#fef3c7;color:#b45309">borrador</span>' : `<span class="badge ${v.estado}">${v.estado}</span>`}
+          ${v.publicado_at && v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
           ${transp ? `<div class="viaje-sub" style="margin-top:4px">${transp.nombre}</div>` : ''}
         </div>
         <div>
@@ -1020,7 +1040,15 @@
         ` : ''}
 
         <div class="viaje-actions-row">
-          ${esSubasta ? `
+          ${esSubasta && !v.publicado_at ? `
+            <div class="hint">Borrador — todavía no publicado. Los transportadores no lo ven.</div>
+            <button class="btn btn-ghost" onclick="abrirAjustarPrecio('${v.id}', ${v.flete_total || 0})">Ajustar precio</button>
+            <button class="btn btn-primary" onclick="publicarDesdeCard('${v.id}', 'abierta')">Publicar (abierta)</button>
+            <button class="btn btn-ghost" onclick="publicarDesdeCard('${v.id}', 'cerrada')">Publicar (cerrada)</button>
+            <button class="btn btn-warning" onclick="abrirAsignarDirecto('${v.id}', ${v.flete_total || 0})">Asignar directo</button>
+            <button class="btn btn-danger" onclick="desconsolidar('${v.id}')">Desconsolidar</button>
+          ` : ''}
+          ${esSubasta && v.publicado_at ? `
             <div class="hint">Adjudicar cierra la subasta; asignar directo skippea las ofertas.</div>
             <button class="btn btn-ghost" onclick="abrirAjustarPrecio('${v.id}', ${v.flete_total || 0})">Ajustar precio</button>
             <button class="btn btn-warning" onclick="abrirAsignarDirecto('${v.id}', ${v.flete_total || 0})">Asignar directo</button>
@@ -1037,6 +1065,20 @@
   function toggleViaje(id) {
     const card = document.getElementById('vcard-' + id);
     if (card) card.classList.toggle('open');
+  }
+
+  // ───────── PUBLICAR (desde card de borrador) ─────────
+  async function publicarDesdeCard(viajeId, tipo) {
+    if (!confirm(`¿Publicar este viaje como subasta ${tipo}?\n\n` +
+      (tipo === 'abierta' ? 'Todos los transportadores aprobados lo verán y podrán ofertar.'
+                          : 'Solo los transportadores invitados lo verán.'))) return;
+    try {
+      await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipo });
+      toast(`Viaje publicado (${tipo})`, 'success');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
   }
 
   // ───────── ADJUDICAR ─────────

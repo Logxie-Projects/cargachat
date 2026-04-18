@@ -277,6 +277,13 @@
         <input class="filtro-input" id="flt-destino" placeholder="Destino…" oninput="renderPedidos()">
         <input class="filtro-input" id="flt-zona" placeholder="Zona…" oninput="renderPedidos()">
         <div class="filtros-sep"></div>
+        <label style="font-size:11px;color:var(--gray-400);font-weight:600">fecha cargue:</label>
+        <input class="filtro-input" id="flt-fecha-desde" type="date" style="min-width:140px" oninput="renderPedidos()">
+        <input class="filtro-input" id="flt-fecha-hasta" type="date" style="min-width:140px" oninput="renderPedidos()">
+        <button class="filtro-btn" onclick="presetFechas(7)">7d</button>
+        <button class="filtro-btn" onclick="presetFechas(30)">30d</button>
+        <button class="filtro-btn" onclick="presetFechas(90)">90d</button>
+        <div class="filtros-sep"></div>
         <button class="filtro-btn" onclick="limpiarFiltrosPedidos()">Limpiar</button>
       </div>
 
@@ -635,19 +642,38 @@
   }
 
   // ═════════════ TAB PEDIDOS ═════════════
-  function renderPedidos() {
+  function pedidosFiltrados() {
     const fCliente = document.getElementById('flt-cliente').value.toLowerCase();
     const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
     const fDestino = document.getElementById('flt-destino').value.toLowerCase();
     const fZona    = document.getElementById('flt-zona').value.toLowerCase();
-
-    const filtrados = state.pedidos.filter(p => {
+    const fDesde   = document.getElementById('flt-fecha-desde').value;
+    const fHasta   = document.getElementById('flt-fecha-hasta').value;
+    return state.pedidos.filter(p => {
       if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
       if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
       if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
       if (fZona && !(p.zona||'').toLowerCase().includes(fZona)) return false;
+      if (fDesde || fHasta) {
+        const fc = (p.fecha_cargue || '').substring(0, 10);
+        if (!fc) return false;
+        if (fDesde && fc < fDesde) return false;
+        if (fHasta && fc > fHasta) return false;
+      }
       return true;
     });
+  }
+
+  function presetFechas(dias) {
+    const hoy = new Date();
+    const desde = new Date(hoy); desde.setDate(hoy.getDate() - dias);
+    document.getElementById('flt-fecha-desde').value = desde.toISOString().substring(0,10);
+    document.getElementById('flt-fecha-hasta').value = hoy.toISOString().substring(0,10);
+    renderPedidos();
+  }
+
+  function renderPedidos() {
+    const filtrados = pedidosFiltrados();
 
     // Stats
     document.getElementById('st-ped-total').textContent = state.pedidos.length;
@@ -687,17 +713,7 @@
   }
 
   function toggleTodos(on) {
-    const fCliente = document.getElementById('flt-cliente').value.toLowerCase();
-    const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
-    const fDestino = document.getElementById('flt-destino').value.toLowerCase();
-    const fZona    = document.getElementById('flt-zona').value.toLowerCase();
-    state.pedidos.filter(p => {
-      if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
-      if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
-      if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
-      if (fZona && !(p.zona||'').toLowerCase().includes(fZona)) return false;
-      return true;
-    }).forEach(p => {
+    pedidosFiltrados().forEach(p => {
       if (on) state.seleccionados.add(p.id);
       else state.seleccionados.delete(p.id);
     });
@@ -713,7 +729,8 @@
   }
 
   function limpiarFiltrosPedidos() {
-    ['flt-cliente','flt-origen','flt-destino','flt-zona'].forEach(id => document.getElementById(id).value = '');
+    ['flt-cliente','flt-origen','flt-destino','flt-zona','flt-fecha-desde','flt-fecha-hasta']
+      .forEach(id => document.getElementById(id).value = '');
     renderPedidos();
   }
 

@@ -101,6 +101,18 @@
     .pedidos-table tr.selected td { background: #eff6ff; }
     .pedidos-table input[type=checkbox] { cursor: pointer; width: 16px; height: 16px; accent-color: var(--navy); }
 
+    .pedidos-table tr.group-row td {
+      background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%);
+      padding: 9px 14px; font-size: 11px;
+      border-top: 2px solid var(--blue); border-bottom: 1px solid #bfdbfe;
+    }
+    .group-row-inner { display: flex; align-items: center; gap: 14px; }
+    .group-row-inner .g-chk { cursor: pointer; width: 15px; height: 15px; accent-color: var(--blue); }
+    .group-row-inner .g-name { font-size: 13px; font-weight: 800; color: var(--navy); letter-spacing: 0.2px; text-transform: uppercase; }
+    .group-row-inner .g-stats { font-size: 11px; color: var(--gray-600); }
+    .group-row-inner .g-stats strong { color: var(--navy); }
+    .group-row-inner .g-action { margin-left: auto; font-size: 10px; color: var(--blue); font-weight: 700; cursor: pointer; background: transparent; border: none; font-family: inherit; text-transform: uppercase; letter-spacing: 0.5px; }
+    .group-row-inner .g-action:hover { text-decoration: underline; }
     .pedido-ref { font-weight: 700; color: var(--navy); font-size: 12px; }
     .pedido-cliente { font-size: 11px; color: var(--gray-400); }
     .pedido-ruta { font-size: 12px; color: var(--gray-800); }
@@ -629,7 +641,8 @@
     if (!s) return '—';
     const d = new Date(s);
     if (isNaN(d)) return s;
-    return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
+    // UTC evita el shift cuando fecha_cargue es YYYY-MM-DD (medianoche UTC → día -1 en COT)
+    return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short', timeZone: 'UTC' });
   }
   function fmtFechaHora(s) {
     if (!s) return '—';
@@ -687,23 +700,76 @@
       return;
     }
 
-    document.getElementById('pedidos-tbody').innerHTML = filtrados.map(p => `
-      <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
-        <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
-        <td>
-          <div class="pedido-ref">${p.pedido_ref || '—'}</div>
-          <div class="pedido-cliente">${clienteNombre(p.cliente_id)}</div>
-        </td>
-        <td>${p.empresa || '—'}</td>
-        <td>
-          <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
-          ${p.observaciones ? `<div class="pedido-meta">${p.observaciones.substring(0,60)}${p.observaciones.length>60?'…':''}</div>` : ''}
-        </td>
-        <td>${p.zona || '—'}</td>
-        <td>${fmtNum(p.peso_kg)} kg</td>
-        <td>${fmtFecha(p.fecha_cargue)}</td>
-        <td>${fmtCOP(p.valor_mercancia)}</td>
-      </tr>`).join('');
+    // Agrupar por origen normalizado
+    const grupos = new Map();
+    filtrados.forEach(p => {
+      const key = (p.origen || '(sin origen)').trim().toUpperCase();
+      if (!grupos.has(key)) grupos.set(key, { label: (p.origen || '(sin origen)').trim(), pedidos: [] });
+      grupos.get(key).pedidos.push(p);
+    });
+    // Orden: más pedidos primero
+    const gruposOrdenados = [...grupos.entries()].sort((a,b) => b[1].pedidos.length - a[1].pedidos.length);
+
+    const html = [];
+    for (const [key, grupo] of gruposOrdenados) {
+      const { label, pedidos } = grupo;
+      const kg = pedidos.reduce((s,p) => s + (+p.peso_kg||0), 0);
+      const val = pedidos.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
+      const fechas = pedidos.map(p => p.fecha_cargue).filter(Boolean).sort();
+      const rango = fechas.length ? `${fmtFecha(fechas[0])}${fechas[0]!==fechas[fechas.length-1] ? ' → ' + fmtFecha(fechas[fechas.length-1]) : ''}` : '';
+      const ids = pedidos.map(p => p.id);
+      const selectedCount = ids.filter(id => state.seleccionados.has(id)).length;
+      const checkState = selectedCount === 0 ? 'unchecked' : selectedCount === pedidos.length ? 'checked' : 'indeterminate';
+
+      html.push(`
+        <tr class="group-row">
+          <td colspan="8">
+            <div class="group-row-inner">
+              <input type="checkbox" class="g-chk"
+                ${checkState==='checked'?'checked':''}
+                data-state="${checkState}"
+                onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">
+              <div class="g-name">${label}</div>
+              <div class="g-stats"><strong>${pedidos.length}</strong> pedido${pedidos.length!==1?'s':''} · <strong>${fmtNum(kg)} kg</strong> · ${fmtCOP(val)}${rango ? ' · '+rango : ''}</div>
+              <button class="g-action" onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">Seleccionar grupo</button>
+            </div>
+          </td>
+        </tr>`);
+
+      pedidos.forEach(p => html.push(`
+        <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
+          <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
+          <td>
+            <div class="pedido-ref">${p.pedido_ref || '—'}</div>
+            <div class="pedido-cliente">${clienteNombre(p.cliente_id)}</div>
+          </td>
+          <td>${p.empresa || '—'}</td>
+          <td>
+            <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
+            ${p.observaciones ? `<div class="pedido-meta">${p.observaciones.substring(0,60)}${p.observaciones.length>60?'…':''}</div>` : ''}
+          </td>
+          <td>${p.zona || '—'}</td>
+          <td>${fmtNum(p.peso_kg)} kg</td>
+          <td>${fmtFecha(p.fecha_cargue)}</td>
+          <td>${fmtCOP(p.valor_mercancia)}</td>
+        </tr>`));
+    }
+    document.getElementById('pedidos-tbody').innerHTML = html.join('');
+
+    // Aplicar indeterminate a los checkboxes del grupo (no se puede via HTML)
+    document.querySelectorAll('.g-chk[data-state="indeterminate"]').forEach(chk => chk.indeterminate = true);
+  }
+
+  function toggleGrupo(origenKey) {
+    // Encontrar pedidos del grupo dentro de los filtrados (para respetar filtros activos)
+    const del = pedidosFiltrados().filter(p => (p.origen || '(sin origen)').trim().toUpperCase() === origenKey);
+    const todosSeleccionados = del.every(p => state.seleccionados.has(p.id));
+    del.forEach(p => {
+      if (todosSeleccionados) state.seleccionados.delete(p.id);
+      else state.seleccionados.add(p.id);
+    });
+    actualizarSeleccion();
+    renderPedidos();
   }
 
   function togglePedido(id) {

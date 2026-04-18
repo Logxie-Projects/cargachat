@@ -1,4 +1,88 @@
 # Contexto de sesión — NETFLEET
+
+---
+
+## Fecha: 2026-04-17 (sesión tarde/noche)
+
+### Qué se hizo
+
+**1. Paso 1 del Módulo 4 — Schema foundational**
+- Hallazgo crítico: tabla `perfiles` NUNCA existió en Supabase a pesar de estar documentada en CLAUDE.md. Sólo 3 users en `auth.users` sin fila correspondiente. El frontend (transportador/admin/empresa) venía tirando 404 silencioso contra `/rest/v1/perfiles` desde siempre.
+- Creé `db/perfiles.sql` desde cero con diseño M4-compatible: 4 tipos (`transportador`, `empresa`, `logxie_staff`, `cliente_self_service`), FK `cliente_id`, CHECK de coherencia, trigger `handle_new_user` (lee `raw_user_meta_data`), helper `is_logxie_staff()` con SECURITY DEFINER (evita recursión en RLS), políticas RLS (usuario lee/edita propio, staff todo).
+- Creé `db/modulo4_schema.sql`: `clientes.plan_bpo` (AVGUST+FATECO=true), tabla `acciones_operador` (audit trail con 4 índices + RLS).
+- Commit: `e7bf564`.
+
+**2. Fix de linker pedidos→viajes (bug Apps Script descubierto)**
+- Usuario reportó que un consolidado en el Sheet tenía 3 pedidos (`TIT-00000182, TIT-199, TI-53482`) pero en Supabase solo aparecían 2.
+- Diagnosticamos: el `raw_payload` del viaje tiene TODOS los 3 en `PEDIDOS_INCLUIDOS`, pero solo 2 en `CONSECUTIVOS_INCLUIDOS` (el Apps Script del Control Transporte los filtra mal — probablemente solo acepta prefijo `TIT-`). El migrador usó `CONSECUTIVOS_INCLUIDOS` como fuente, por eso faltaba uno.
+- Creé `db/link_pedidos_viajes_v2.sql`: lee `raw_payload::jsonb->>'PEDIDOS_INCLUIDOS'` como fuente primaria, normaliza espacios internos (`TI -001966` → `TI-001966`), acepta `/` como separador además de `,`, compara por forma canónica (leading zeros ignorados: `TIT-00000182` ≡ `TIT-182`). Optimización crítica: CTE `viaje_refs` materializa pares `(viaje_id, canon_ref)` una sola vez antes del JOIN (evita parsear JSON 5M veces, baja de varios minutos a 0.9s).
+- Resultado: **3463/3764 pedidos linkeados (92%)**, +X% vs v1. 301 huérfanos remanentes (pedidos nunca consolidados, o consolidaciones en el Sheet más nuevas que la última migración).
+- Hallazgo de dominio: un pedido puede aparecer en múltiples viajes (reconsolidación cuando primer intento no se cargó). Linker prioriza `created_at DESC` correctamente. Guardado como memoria: `memory/project_reconsolidacion.md`.
+
+**3. Paso 2-3 del Módulo 4 — Backend completo**
+- Discusión de diseño: definimos el modelo multi-cliente/multi-transportadora end-to-end. Confirmamos que agregar columnas en Postgres es barato (por nombre, no posición — 0 breakage del frontend). Decidimos arquitectura `public.*` (operacional) + `tracking.*` (eventos, append-only, futuro M3).
+- Discusión de scope M4: 9 operaciones en lugar de 5 originales. Agregado: `fn_agregar_pedido_a_viaje`, `fn_quitar_pedido_de_viaje`, `fn_invitar_transportadora`, `fn_asignar_transportadora_directo`. Subastas `abierta` vs `cerrada` (invite-only).
+- Creé `db/modulo4_schema_extra.sql`: tabla `transportadoras` (7 seed: ENTRAPETROL, TRASAMER, JR, Trans Nueva Colombia, PRACARGO, Global, Vigía), tabla `ofertas` (Módulo 1, con RLS `read_own_or_staff`), tabla `invitaciones_subasta`. ALTERs a `viajes_consolidados`: +6 cols (`subasta_tipo`, `publicado_at`, `adjudicado_at`, `oferta_ganadora_id`, `adjudicacion_tipo`, `transportadora_id`). CHECK de `acciones_operador.accion` extendido.
+- Bug encontrado + fix en vivo: mi DO block para dropear CHECK usaba `ILIKE '%accion%IN%'` pero Postgres normaliza `IN (...)` a `= ANY(ARRAY[...])`. Cambié a `ILIKE '%accion%'` y pasó.
+- Creé `db/modulo4_functions.sql`: **9 functions + helper `_recalc_viaje_agregados`**. Todas `SECURITY DEFINER` con gate `is_logxie_staff()` al inicio, audit a `acciones_operador`, transaccionales. Formato nuevo de `viaje_ref`: `NF-YYMMDD-HHMMSS-XXXX`.
+- Commit: `3f23453`.
+
+### Estado final de la sesión
+
+**Base de datos Supabase (al cierre):**
+- Tablas `public`: `clientes` (2), `perfiles` (0), `viajes_consolidados` (1281 legacy), `pedidos` (3764, 92% linkeados), `acciones_operador` (0), `transportadoras` (7 seed), `ofertas` (0), `invitaciones_subasta` (0).
+- 9 functions M4 listas (`fn_*`) + helpers.
+- Falta: `leads`, `cargas`, y tablas futuras de `tracking.*` (M3).
+
+**Frontend Supabase-dependiente (al cierre):**
+- `transportador.html`, `admin.html`, `empresa.html`, `mis-ofertas.html` están hitting tablas que ahora SÍ existen (`perfiles`, `ofertas`). Potencialmente empiezan a funcionar sin cambios, o muestran nuevos bugs reales (antes todo fallaba silencioso). **Validar en próxima sesión.**
+
+### Lo que quedó pendiente (para próxima sesión)
+
+**Prioridad alta (M4 para cerrar):**
+1. **`control.html`** — UI nueva con 4 tabs (sin_consolidar / subasta / activos / historial) que invoca las 9 functions vía Supabase RPC. 4-6h de trabajo.
+2. **Smoke test backend** (opcional antes de UI): consolidar 3 pedidos huérfanos existentes vía SQL → publicar → adjudicar manual → verificar que el pipeline cierra sin error.
+3. **Promover Bernardo a `logxie_staff`**: después de registrarse en netfleet.app correr:
+   ```sql
+   UPDATE perfiles SET tipo='logxie_staff', estado='aprobado'
+    WHERE email='bernardoaristizabal@logxie.com';
+   ```
+
+**Prioridad media:**
+4. **Deep-linking en `transportador.html`** — `?viaje_ref=...` hace scroll y highlight.
+5. **Integración email** para `fn_publicar_viaje` / `fn_invitar_transportadora` / `fn_adjudicar_oferta` — decidir: n8n webhook vs Supabase Edge Function con Resend/SendGrid.
+6. **RLS endurecer en `viajes_consolidados`** — hoy `authenticated_all` deja todo abierto. Cambiar para que transportador solo vea `subasta_tipo='abierta' OR existe invitación`.
+
+**Prioridad baja:**
+7. **Crear tablas `leads` y `cargas`** (Módulo 1 residual).
+8. **M3 completo**: schema `tracking.*` con `entregas` (N intentos por pedido), `eventos_viaje` (cargue/descargue timestamps), `checkins`. Reemplaza AppSheet "Donde Está Mi Pedido" + "NAVEGADOR".
+9. **Snapshot drift del Sheet**: los 301 pedidos huérfanos y el caso del usuario (viaje 2026-01-30 recién agregado al Sheet pero no a Supabase) son síntomas de que la migración es un snapshot puntual. Solución: Parser 4 de M2 (pull Sheet ASIGNADOS cada 30 min).
+
+### Notas operativas de la sesión
+
+- **DATABASE_URL pooler correcto:** `postgresql://postgres.pzouapqnvllaaqnmnlbs:Bjar1978%2AABC@aws-1-us-east-1.pooler.supabase.com:5432/postgres` (región `aws-1-us-east-1`, NO `aws-0-us-east-1`; user `postgres.pzouapqnvllaaqnmnlbs` CON el punto). Direct connection (`db.pzouapqnvllaaqnmnlbs.supabase.co`) NO resuelve DNS — proyecto solo acepta pooler. `*` en password debe ir URL-encoded como `%2A`.
+- **Password comprometida:** `Bjar1978*ABC` quedó en el chat en texto plano (3x). Rotar desde Supabase Dashboard → Database → Reset password ANTES de seguir.
+- **PowerShell no persiste `$env:`** entre sesiones. Hay que resetearlo cada vez.
+- **Perfiles previos que nunca existieron:** si algún frontend empieza a fallar en prod porque ahora sí existen las tablas pero con schema distinto al que esperaba, revisar cada fetch contra `/rest/v1/perfiles` y `/rest/v1/ofertas`.
+
+### Prompt sugerido para abrir la próxima sesión
+
+```
+Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md del repo D:\NETFLEET
+(github.com/Logxie-Projects/cargachat branch main).
+
+Último commit: 3f23453 — Módulo 4 backend completo.
+
+Estado: 9 Postgres functions del M4 listas + tablas transportadoras/ofertas/invitaciones.
+Arquitectura de subasta (abierta/cerrada/directa) funcional a nivel DB.
+
+Quiero seguir con Módulo 4: construir control.html (UI staff logxie) con
+4 tabs que invoca las functions fn_* vía Supabase RPC. Antes, hacer smoke
+test SQL para validar que las functions cierran el ciclo sin errores.
+```
+
+---
+
 ## Fecha: 2026-04-08
 
 ## Qué es NETFLEET

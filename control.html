@@ -200,6 +200,15 @@
     .viaje-card.open .viaje-card-body { display: block; }
 
     .viaje-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .stats-mini {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      background: var(--gray-50); border-radius: 10px; padding: 10px 12px;
+      margin-top: 0.5rem;
+    }
+    .stats-mini-cell { text-align: center; }
+    .stats-mini-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
+    .stats-mini-val { font-size: 14px; font-weight: 800; color: var(--navy); margin-top: 2px; }
+    .stats-mini-val.alerta { color: var(--red); }
     .viaje-info-cell { }
     .viaje-info-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
     .viaje-info-val { font-size: 13px; color: var(--gray-800); font-weight: 500; margin-top: 2px; }
@@ -396,9 +405,15 @@
     <div class="tab-section" id="tab-subasta">
       <div class="stats-bar">
         <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">total consolidados</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
         <div class="stat-card"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
+      </div>
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-num" id="st-sub-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-peds">—</div><div class="stat-lbl"># pedidos</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-avgkg">—</div><div class="stat-lbl">prom $/kg</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-pct">—</div><div class="stat-lbl">prom flete/valor</div></div>
       </div>
 
       <div id="subasta-lista">
@@ -1016,11 +1031,27 @@
     const sinOfertas = publicados.filter(v => !state.ofertas.some(o => o.viaje_id === v.id && o.estado === 'activa')).length;
     const fleteTotal = pendientes.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000;
 
-    // Stats labels: cambio "viajes publicados" → "en pendiente" (incluye borradores)
+    // Agregados útiles
+    const kgTotal  = pendientes.reduce((s,v) => s + (+v.peso_kg||0), 0);
+    const valTotal = pendientes.reduce((s,v) => s + (+v.valor_mercancia||0), 0);
+    const pedTotal = pendientes.reduce((s,v) => s + (+v.cantidad_pedidos||0), 0);
+    const fleteRaw = pendientes.reduce((s,v) => s + (+v.flete_total||0), 0);
+    const avgCostKg = kgTotal ? Math.round(fleteRaw / kgTotal) : 0;
+    const avgPctFlete = valTotal ? (fleteRaw / valTotal) * 100 : 0;
+
     document.getElementById('st-sub-total').textContent = pendientes.length;
     document.getElementById('st-sub-ofertas').textContent = ofertasActivas.length;
     document.getElementById('st-sub-sin-ofertas').textContent = borradores.length;
     document.getElementById('st-sub-flete').textContent = fleteTotal.toFixed(1);
+    // Extras opcionales si existen los elementos
+    const elAvgKg = document.getElementById('st-sub-avgkg');
+    if (elAvgKg) elAvgKg.textContent = avgCostKg ? fmtCOP(avgCostKg) : '—';
+    const elAvgPct = document.getElementById('st-sub-pct');
+    if (elAvgPct) elAvgPct.textContent = avgPctFlete ? avgPctFlete.toFixed(2) + '%' : '—';
+    const elKg = document.getElementById('st-sub-kg');
+    if (elKg) elKg.textContent = fmtNum(Math.round(kgTotal));
+    const elPed = document.getElementById('st-sub-peds');
+    if (elPed) elPed.textContent = fmtNum(pedTotal);
 
     const lista = document.getElementById('subasta-lista');
     if (!pendientes.length) {
@@ -1096,6 +1127,40 @@
             <div class="viaje-info-val">${fmtCOP(v.valor_mercancia)}</div>
           </div>
         </div>
+
+        ${(() => {
+          const flete = +v.flete_total || 0;
+          const kg = +v.peso_kg || 0;
+          const km = +v.km_total || 0;
+          const peds = +v.cantidad_pedidos || 0;
+          const val = +v.valor_mercancia || 0;
+          if (!flete) return '';
+          const costXKg  = kg   ? flete / kg   : null;
+          const costXKm  = km   ? flete / km   : null;
+          const costXPed = peds ? flete / peds : null;
+          const pctFlete = val  ? (flete / val) * 100 : null;
+          return `
+          <div class="stats-mini">
+            <div class="stats-mini-cell">
+              <div class="stats-mini-lbl">$/kg</div>
+              <div class="stats-mini-val">${costXKg  !== null ? fmtCOP(Math.round(costXKg))  : '—'}</div>
+            </div>
+            <div class="stats-mini-cell">
+              <div class="stats-mini-lbl">$/km</div>
+              <div class="stats-mini-val">${costXKm  !== null ? fmtCOP(Math.round(costXKm))  : '—'}</div>
+            </div>
+            <div class="stats-mini-cell">
+              <div class="stats-mini-lbl">$/pedido</div>
+              <div class="stats-mini-val">${costXPed !== null ? fmtCOP(Math.round(costXPed)) : '—'}</div>
+            </div>
+            <div class="stats-mini-cell">
+              <div class="stats-mini-lbl">flete/valor</div>
+              <div class="stats-mini-val ${pctFlete !== null && pctFlete > 3 ? 'alerta' : ''}">
+                ${pctFlete !== null ? pctFlete.toFixed(2) + '%' : '—'}
+              </div>
+            </div>
+          </div>`;
+        })()}
 
         ${(() => {
           const peds = pedidosDelViaje(v.id);

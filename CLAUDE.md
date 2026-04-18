@@ -724,13 +724,17 @@ Las Postgres functions escriben esta tabla como parte de su transacción. Sirve 
 
 - [x] ✅ hecho 2026-04-17 — **Schema updates**: `clientes.plan_bpo` (AVGUST+FATECO = true), tabla `perfiles` creada desde cero con `cliente_id` FK y CHECK `tipo IN (transportador|empresa|logxie_staff|cliente_self_service)`, trigger `handle_new_user` + helper `is_logxie_staff()`. Ver [db/perfiles.sql](db/perfiles.sql) + [db/modulo4_schema.sql](db/modulo4_schema.sql). **Nota:** la tabla `perfiles` no existía en Supabase a pesar de estar documentada — 3 usuarios en `auth.users` sin fila correspondiente. Los frontends venían tirando 404 silencioso contra `/rest/v1/perfiles` desde siempre.
 - [x] ✅ hecho 2026-04-17 — **Tabla `acciones_operador`** + 4 índices + RLS (staff lee via `is_logxie_staff()`, service_role full). Ver [db/modulo4_schema.sql](db/modulo4_schema.sql).
-- [ ] **Postgres functions**: `fn_consolidar_pedidos`, `fn_desconsolidar_viaje`, `fn_ajustar_precio_viaje`, `fn_publicar_viaje`, `fn_adjudicar_oferta`
-- [ ] **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial)
+- [x] ✅ hecho 2026-04-17 — **Tablas `transportadoras` + `ofertas` + `invitaciones_subasta`**: 7 transportadoras seed (ENTRAPETROL, TRASAMER, JR, Nueva Colombia, PRACARGO, Global, Vigía), `ofertas` con RLS (usuario ve las suyas + staff ve todo), `invitaciones_subasta` para subastas cerradas. Ver [db/modulo4_schema_extra.sql](db/modulo4_schema_extra.sql).
+- [x] ✅ hecho 2026-04-17 — **ALTER `viajes_consolidados`**: +6 columnas (`subasta_tipo`, `publicado_at`, `adjudicado_at`, `oferta_ganadora_id`, `adjudicacion_tipo`, `transportadora_id`). CHECK de `acciones_operador.accion` extendido con `agregar_pedido`, `quitar_pedido`, `invitar`, `asignar_directo`.
+- [x] ✅ hecho 2026-04-17 — **9 Postgres functions** + helper `_recalc_viaje_agregados`: `fn_consolidar_pedidos`, `fn_agregar_pedido_a_viaje`, `fn_quitar_pedido_de_viaje`, `fn_desconsolidar_viaje`, `fn_ajustar_precio_viaje`, `fn_publicar_viaje`, `fn_invitar_transportadora`, `fn_asignar_transportadora_directo`, `fn_adjudicar_oferta`. Todas `SECURITY DEFINER` + gate `is_logxie_staff()` + audit a `acciones_operador`. Ver [db/modulo4_functions.sql](db/modulo4_functions.sql). `viaje_ref` ahora genera formato `NF-YYMMDD-HHMMSS-XXXX`.
+- [ ] **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial) — UI que invoca las 9 functions
 - [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)
-- [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook
+- [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook para publicar/invitar/adjudicar
 - [ ] **Test E2E** con 50 pedidos reales (antes de reemplazar el Apps Script)
 - [ ] **Migración de operadores**: promover Bernardo a `tipo='logxie_staff', estado='aprobado'` en cuanto se registre en `netfleet.app`. Pendiente crear cuentas para empleados Logxie.
-- [ ] **Tabla `ofertas` y `leads`/`cargas`**: no existen en Supabase (son Módulo 1, fuera de alcance M4 pero hay que crearlas para que los frontends existentes funcionen). Diferido.
+- [ ] **Linker v2 pedidos→viajes**: mejorado para leer `raw_payload->>'PEDIDOS_INCLUIDOS'` (Apps Script a veces trunca `CONSECUTIVOS_INCLUIDOS`) + canonicalización (sin leading zeros, `/` como separador, colapso de espacios). Ver [db/link_pedidos_viajes_v2.sql](db/link_pedidos_viajes_v2.sql). Resultado actual: 3463/3764 pedidos linkeados (92%).
+- [ ] **RLS en `viajes_consolidados`**: hoy `authenticated_all` es muy permisivo. Endurecer para que transportadoras solo vean viajes con `subasta_tipo='abierta'` o invitaciones vigentes en `invitaciones_subasta`. Deferido hasta que control.html + auth de transportadoras estén validados.
+- [ ] **Tabla `leads`/`cargas`**: no existen en Supabase (son Módulo 1, fuera de alcance M4). Diferido.
 
 ---
 

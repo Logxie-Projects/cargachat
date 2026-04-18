@@ -1,6 +1,6 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-17** (tarde/noche). Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
+> Foto del proyecto al **2026-04-17** (sesión siguiente al handoff). Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
 
 ---
 
@@ -14,6 +14,7 @@
 - **Mis ofertas** (`mis-ofertas.html`) tabs activas/historial.
 - **Check-in ruta** (`checkderuta.html`) con webhook n8n.
 - **Analizador rutas** (`analizador-rutas.html`) multi-parada.
+- **Control staff** (`control.html`) — Módulo 4 UI: consolidar pedidos, subasta, activos, historial. Auth gate por `perfiles.tipo='logxie_staff'`. Aún no accesible (Bernardo pendiente de registrarse + promoverse).
 
 ### Supabase — tablas vivas (al 2026-04-17)
 
@@ -57,8 +58,8 @@ Más helper `_recalc_viaje_agregados(viaje_id)` (uso interno, recomputa peso/val
 
 ### Módulo 4 — Para cerrar (prioridad alta)
 
-- [ ] **`control.html`** — UI nueva con 4 tabs (sin_consolidar / subasta / activos / historial). Invoca las 9 functions vía Supabase RPC. **Siguiente paso natural.** 4-6h.
-- [ ] **Smoke test SQL** antes de construir UI: consolidar 3 pedidos huérfanos → publicar → adjudicar manual. Validar que el pipeline cierra sin errores.
+- [x] ✅ hecho 2026-04-17 — **Smoke test SQL** end-to-end validado. Ciclo consolidar→ajustar_precio→publicar→adjudicar pasó todas las invariantes (3 pedidos asignados, viaje confirmado, oferta aceptada, 4 audit rows). Wrap en `BEGIN;...ROLLBACK;` — no persiste nada. Ver [db/smoke_test_modulo4.sql](../db/smoke_test_modulo4.sql).
+- [x] ✅ hecho 2026-04-17 — **`control.html`** construido. 4 tabs invocando las 9 RPC functions + modales (consolidar con Ridge sugerido, ajustar_precio, asignar_directo). Auth gate por `perfiles.tipo='logxie_staff'`. Ver [control.html](../control.html).
 - [ ] **Promover Bernardo a `logxie_staff`** después de que se registre en netfleet.app:
   ```sql
   UPDATE perfiles SET tipo='logxie_staff', estado='aprobado'
@@ -119,10 +120,12 @@ Más helper `_recalc_viaje_agregados(viaje_id)` (uso interno, recomputa peso/val
 
 ## Próximos pasos inmediatos
 
-1. **`control.html`** ← próximo ítem del roadmap. Backend M4 listo, solo falta UI.
-2. **Smoke test SQL** opcional antes, para validar las 9 functions end-to-end.
-3. **Decidir email backend** (n8n vs Edge Function) — bloqueante para `fn_publicar_viaje`.
-4. **Rotar password Supabase** — no bloqueante pero urgente.
+1. **Registrar Bernardo en netfleet.app + promoverlo a `logxie_staff`** — requisito para entrar a `control.html`. Un solo `UPDATE perfiles` (snippet abajo).
+2. **Test E2E con pedidos reales** — usando `control.html`, consolidar un grupo real de sin_consolidar, publicar, esperar (o simular) oferta, adjudicar. Validar paralelamente contra el Apps Script del Sheet ASIGNADOS.
+3. **Decidir email backend** (n8n vs Edge Function) — bloqueante para el mail de "SOLICITUD DE SERVICIOS" cuando se publique un viaje / se invite transportadora / se adjudique.
+4. **Deep-linking `transportador.html`** — `?viaje_ref=NF-...` → scroll + highlight. Cambio chico, habilita el link del email.
+5. **Rotar password Supabase** — no bloqueante pero urgente.
+6. **Endurecer RLS `viajes_consolidados`** — hoy `authenticated_all` es muy permisivo; restringir a `subasta_tipo='abierta' OR existe invitación`.
 
 ---
 

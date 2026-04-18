@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NETFLEET — Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1B2A6B; --cyan: #00BFD8;
+      --gray-50: #f8f9fa; --gray-100: #e9ecef; --gray-200: #dee2e6;
+      --gray-400: #868e96; --gray-600: #495057; --gray-800: #212529;
+      --green: #16a34a; --red: #dc2626; --orange: #ea580c; --gold: #b45309;
+      --blue: #1d4ed8; --purple: #7c3aed;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy); }
+    .login-box  { background: white; border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .login-logo { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -1px; margin-bottom: 0.25rem; }
+    .login-logo span { color: var(--cyan); }
+    .login-sub  { font-size: 12px; color: var(--gray-400); margin-bottom: 2rem; letter-spacing: 0.5px; }
+    .login-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-600); margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; border: 1.5px solid var(--gray-100); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; outline: none; margin-bottom: 1rem; }
+    .login-input:focus { border-color: var(--cyan); }
+    .login-btn  { width: 100%; background: var(--navy); color: white; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .login-btn:hover { background: var(--cyan); color: var(--navy); }
+    .login-error { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; min-height: 18px; }
+
+    /* ── APP LAYOUT ── */
+    .app-wrap { display: none; min-height: 100vh; }
+    .app-nav  { background: var(--navy); padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .app-nav-logo { font-size: 16px; font-weight: 800; color: white; letter-spacing: -0.5px; }
+    .app-nav-logo span { color: var(--cyan); }
+    .app-nav-right { display: flex; align-items: center; gap: 12px; }
+    .app-nav-user { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .app-nav-btn  { font-size: 12px; color: var(--cyan); cursor: pointer; background: none; border: none; font-family: inherit; font-weight: 600; }
+
+    .app-body { max-width: 1400px; margin: 0 auto; padding: 1.75rem 2rem; }
+
+    /* ── TABS ── */
+    .tabs-nav { display: flex; gap: 4px; margin-bottom: 1.5rem; background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 4px; width: fit-content; }
+    .tab-btn  { padding: 9px 18px; border-radius: 9px; border: none; background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--gray-400); transition: all .2s; display: flex; align-items: center; gap: 7px; }
+    .tab-btn.active { background: var(--navy); color: white; }
+    .tab-btn .tab-count { font-size: 11px; background: rgba(255,255,255,0.2); border-radius: 100px; padding: 1px 8px; font-weight: 700; }
+    .tab-btn:not(.active) .tab-count { background: var(--gray-100); color: var(--gray-600); }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    /* ── STATS ── */
+    .stats-bar  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat-card  { background: white; border-radius: 14px; padding: 1rem 1.25rem; border: 1px solid var(--gray-100); }
+    .stat-num   { font-size: 1.75rem; font-weight: 800; color: var(--navy); letter-spacing: -1px; }
+    .stat-lbl   { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin-top: 2px; }
+
+    /* ── FILTROS ── */
+    .filtros { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .filtro-input { padding: 7px 12px; border-radius: 8px; border: 1.5px solid var(--gray-100); background: white; font-size: 12px; font-family: inherit; color: var(--gray-800); min-width: 140px; outline: none; }
+    .filtro-input:focus { border-color: var(--cyan); }
+    .filtro-btn { padding: 7px 14px; border-radius: 100px; border: 1.5px solid var(--gray-100); background: white; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--gray-600); transition: all .2s; }
+    .filtro-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .filtros-sep { width: 1px; height: 22px; background: var(--gray-100); margin: 0 4px; }
+
+    /* ── ACCIÓN BAR ── */
+    .accion-bar {
+      background: var(--navy); color: white; border-radius: 12px;
+      padding: 0.75rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; gap: 12px;
+    }
+    .accion-bar .count { font-size: 13px; font-weight: 700; }
+    .accion-bar .hint  { font-size: 11px; color: rgba(255,255,255,0.65); }
+    .accion-bar button {
+      background: var(--cyan); color: var(--navy); border: none; border-radius: 8px;
+      padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .accion-bar button:hover { background: white; }
+    .accion-bar button.ghost {
+      background: transparent; color: white; border: 1.5px solid rgba(255,255,255,0.4);
+    }
+    .accion-bar button.ghost:hover { background: white; color: var(--navy); border-color: white; }
+
+    /* ── TABLA ── */
+    .tabla-wrap { background: white; border-radius: 14px; border: 1px solid var(--gray-100); overflow: hidden; }
+    .tabla-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }
+    .tabla-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+    .tabla-count { font-size: 11px; color: var(--gray-400); }
+
+    .pedidos-table, .viajes-table { width: 100%; border-collapse: collapse; }
+    .pedidos-table th, .viajes-table th {
+      background: var(--gray-50); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400);
+      padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--gray-100);
+      position: sticky; top: 0;
+    }
+    .pedidos-table td, .viajes-table td { padding: 11px 14px; font-size: 12px; border-bottom: 1px solid var(--gray-100); }
+    .pedidos-table tr:last-child td, .viajes-table tr:last-child td { border-bottom: none; }
+    .pedidos-table tr:hover td, .viajes-table tr:hover td { background: var(--gray-50); }
+    .pedidos-table tr.selected td { background: #eff6ff; }
+    .pedidos-table input[type=checkbox] { cursor: pointer; width: 16px; height: 16px; accent-color: var(--navy); }
+
+    .pedido-ref { font-weight: 700; color: var(--navy); font-size: 12px; }
+    .pedido-cliente { font-size: 11px; color: var(--gray-400); }
+    .pedido-ruta { font-size: 12px; color: var(--gray-800); }
+    .pedido-meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+    .badge.pendiente  { background: #fff7ed; color: var(--orange); }
+    .badge.confirmado { background: #eff6ff; color: var(--blue); }
+    .badge.en_ruta    { background: #f5f3ff; color: var(--purple); }
+    .badge.entregado  { background: #f0fdf4; color: var(--green); }
+    .badge.finalizado { background: #f0fdf4; color: var(--green); }
+    .badge.cancelado  { background: #fef2f2; color: var(--red); }
+    .badge.abierta    { background: #eff6ff; color: var(--blue); }
+    .badge.cerrada    { background: #f5f3ff; color: var(--purple); }
+
+    .empty-msg  { padding: 3rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+    .loading-msg { padding: 2rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+    /* ── VIAJE CARD (tab subasta/activos/historial) ── */
+    .viaje-card { background: white; border-radius: 14px; border: 1px solid var(--gray-100); margin-bottom: 10px; overflow: hidden; }
+    .viaje-card-head { display: grid; grid-template-columns: 1.2fr 1fr 120px 120px 140px 40px; gap: 12px; padding: 1rem 1.25rem; cursor: pointer; align-items: center; }
+    .viaje-card-head:hover { background: var(--gray-50); }
+    .viaje-ref { font-weight: 800; color: var(--navy); font-size: 13px; letter-spacing: 0.3px; }
+    .viaje-ruta { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
+    .viaje-sub { font-size: 11px; color: var(--gray-400); }
+    .viaje-precio { font-size: 15px; font-weight: 800; color: var(--navy); white-space: nowrap; }
+    .viaje-precio-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); }
+    .viaje-chevron { font-size: 14px; color: var(--gray-400); transition: transform .25s; text-align: right; }
+    .viaje-card.open .viaje-chevron { transform: rotate(180deg); }
+    .viaje-card-body { display: none; border-top: 1px solid var(--gray-100); padding: 1rem 1.25rem; }
+    .viaje-card.open .viaje-card-body { display: block; }
+
+    .viaje-info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .viaje-info-cell { }
+    .viaje-info-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; }
+    .viaje-info-val { font-size: 13px; color: var(--gray-800); font-weight: 500; margin-top: 2px; }
+
+    .ofertas-sub { margin-top: 0.75rem; }
+    .ofertas-sub-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 8px; }
+    .ofertas-sub-table { width: 100%; border-collapse: collapse; }
+    .ofertas-sub-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); text-align: left; padding: 6px 10px; font-weight: 700; }
+    .ofertas-sub-table td { padding: 8px 10px; font-size: 12px; border-top: 1px solid var(--gray-100); }
+    .ofertas-sub-table tr.winner td { background: #f0fdf4; font-weight: 600; }
+
+    .viaje-actions-row { display: flex; gap: 8px; margin-top: 0.75rem; flex-wrap: wrap; }
+    .viaje-actions-row .hint { font-size: 11px; color: var(--gray-400); align-self: center; margin-right: auto; }
+
+    .btn { padding: 7px 14px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; }
+    .btn-primary   { background: var(--navy); color: white; }
+    .btn-primary:hover { background: var(--cyan); color: var(--navy); }
+    .btn-success   { background: var(--green); color: white; }
+    .btn-danger    { background: white; color: var(--red); border: 1.5px solid var(--red); }
+    .btn-danger:hover { background: var(--red); color: white; }
+    .btn-ghost     { background: white; color: var(--gray-600); border: 1.5px solid var(--gray-100); }
+    .btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
+    .btn-warning   { background: var(--orange); color: white; }
+    .btn:disabled  { background: var(--gray-100); color: var(--gray-400); cursor: default; }
+
+    /* ── MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(27, 42, 107, 0.65); z-index: 200; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: white; border-radius: 18px; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; padding: 1.75rem 2rem; }
+    .modal-title { font-size: 17px; font-weight: 800; color: var(--navy); margin-bottom: 0.25rem; }
+    .modal-sub   { font-size: 12px; color: var(--gray-400); margin-bottom: 1.25rem; }
+    .modal-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); font-weight: 700; display: block; margin: 0.75rem 0 4px; }
+    .modal-input, .modal-select, .modal-textarea {
+      width: 100%; border: 1.5px solid var(--gray-100); border-radius: 9px;
+      padding: 10px 13px; font-size: 13px; font-family: inherit; outline: none; color: var(--gray-800);
+    }
+    .modal-input:focus, .modal-select:focus, .modal-textarea:focus { border-color: var(--cyan); }
+    .modal-textarea { resize: vertical; min-height: 64px; }
+    .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .modal-resumen {
+      background: var(--gray-50); border-radius: 10px; padding: 0.75rem 1rem;
+      font-size: 12px; margin-bottom: 1rem;
+    }
+    .modal-resumen-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .modal-resumen-row:last-child { margin-bottom: 0; }
+    .modal-resumen-row .k { color: var(--gray-400); }
+    .modal-resumen-row .v { color: var(--navy); font-weight: 600; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--gray-100); }
+
+    .precio-ridge-box {
+      background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px;
+      padding: 0.65rem 0.9rem; font-size: 12px; margin: 8px 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .precio-ridge-lbl { color: var(--purple); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .precio-ridge-val { font-weight: 800; color: var(--purple); font-size: 15px; }
+    .precio-ridge-btn { font-size: 11px; color: var(--purple); background: white; border: 1px solid var(--purple); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-family: inherit; font-weight: 600; }
+
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--navy); color: white; border-radius: 10px;
+      padding: 12px 18px; font-size: 13px; font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 300;
+      transform: translateY(20px); opacity: 0; transition: all .3s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: var(--red); }
+    .toast.success { background: var(--green); }
+
+    @media (max-width: 900px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .viaje-card-head { grid-template-columns: 1fr; gap: 6px; }
+      .viaje-info-grid { grid-template-columns: 1fr 1fr; }
+      .pedidos-table th:nth-child(5),
+      .pedidos-table td:nth-child(5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ LOGIN ══════════════════════ -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">NET<span>FLEET</span></div>
+    <div class="login-sub">panel de control · staff logxie</div>
+    <label class="login-label">email</label>
+    <input class="login-input" id="login-email" type="email" placeholder="tu@logxie.com">
+    <label class="login-label">contraseña</label>
+    <input class="login-input" id="login-pass" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') iniciarSesion()">
+    <button class="login-btn" onclick="iniciarSesion()">Entrar →</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ APP ══════════════════════ -->
+<div class="app-wrap" id="app-wrap">
+  <nav class="app-nav">
+    <div class="app-nav-logo">NET<span>FLEET</span>
+      <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:8px">control</span>
+    </div>
+    <div class="app-nav-right">
+      <span class="app-nav-user" id="app-user-email"></span>
+      <button class="app-nav-btn" onclick="recargarTodo()">↻ Recargar</button>
+      <button class="app-nav-btn" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="app-body">
+
+    <!-- Tabs nav -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="pedidos" onclick="cambiarTab('pedidos', this)">
+        Sin consolidar <span class="tab-count" id="count-pedidos">0</span>
+      </button>
+      <button class="tab-btn" data-tab="subasta" onclick="cambiarTab('subasta', this)">
+        En subasta <span class="tab-count" id="count-subasta">0</span>
+      </button>
+      <button class="tab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
+        Activos <span class="tab-count" id="count-activos">0</span>
+      </button>
+      <button class="tab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
+        Historial <span class="tab-count" id="count-historial">0</span>
+      </button>
+    </div>
+
+    <!-- ═══ TAB: PEDIDOS SIN CONSOLIDAR ═══ -->
+    <div class="tab-section active" id="tab-pedidos">
+
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-num" id="st-ped-total">—</div><div class="stat-lbl">pedidos huérfanos</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-ped-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-ped-clientes">—</div><div class="stat-lbl">clientes activos</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-ped-seleccionados">0</div><div class="stat-lbl">seleccionados</div></div>
+      </div>
+
+      <div class="filtros">
+        <input class="filtro-input" id="flt-cliente" placeholder="Cliente…" oninput="renderPedidos()">
+        <input class="filtro-input" id="flt-origen" placeholder="Origen…" oninput="renderPedidos()">
+        <input class="filtro-input" id="flt-destino" placeholder="Destino…" oninput="renderPedidos()">
+        <input class="filtro-input" id="flt-zona" placeholder="Zona…" oninput="renderPedidos()">
+        <div class="filtros-sep"></div>
+        <button class="filtro-btn" onclick="limpiarFiltrosPedidos()">Limpiar</button>
+      </div>
+
+      <div class="accion-bar" id="accion-bar-pedidos" style="display:none">
+        <div>
+          <div class="count" id="sel-count-text">0 pedidos seleccionados</div>
+          <div class="hint" id="sel-resumen-text"></div>
+        </div>
+        <div style="display:flex; gap:8px">
+          <button class="ghost" onclick="limpiarSeleccion()">Limpiar</button>
+          <button onclick="abrirModalConsolidar()">Consolidar →</button>
+        </div>
+      </div>
+
+      <div class="tabla-wrap">
+        <div class="tabla-header">
+          <div class="tabla-title">Pedidos sin consolidar</div>
+          <div class="tabla-count" id="tabla-ped-count"></div>
+        </div>
+        <div style="overflow-x:auto; max-height: 70vh; overflow-y: auto">
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" id="chk-all" onchange="toggleTodos(this.checked)"></th>
+                <th>pedido</th>
+                <th>cliente</th>
+                <th>ruta</th>
+                <th>zona</th>
+                <th>peso</th>
+                <th>fecha cargue</th>
+                <th>valor</th>
+              </tr>
+            </thead>
+            <tbody id="pedidos-tbody">
+              <tr><td colspan="8" class="loading-msg">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: SUBASTA ═══ -->
+    <div class="tab-section" id="tab-subasta">
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">viajes publicados</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">sin ofertas aún</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
+      </div>
+
+      <div id="subasta-lista">
+        <div class="loading-msg">Cargando subastas…</div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: ACTIVOS ═══ -->
+    <div class="tab-section" id="tab-activos">
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-num" id="st-act-conf">—</div><div class="stat-lbl">confirmados</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-act-ruta">—</div><div class="stat-lbl">en ruta</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-act-entr">—</div><div class="stat-lbl">entregados</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-act-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
+      </div>
+      <div id="activos-lista">
+        <div class="loading-msg">Cargando activos…</div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: HISTORIAL ═══ -->
+    <div class="tab-section" id="tab-historial">
+      <div class="filtros">
+        <input class="filtro-input" id="flt-hist-ref" placeholder="Ref viaje…" oninput="renderHistorial()">
+        <input class="filtro-input" id="flt-hist-prov" placeholder="Proveedor…" oninput="renderHistorial()">
+        <button class="filtro-btn active" data-hist="todos" onclick="setFiltroHistorial('todos',this)">Todos</button>
+        <button class="filtro-btn" data-hist="finalizado" onclick="setFiltroHistorial('finalizado',this)">Finalizados</button>
+        <button class="filtro-btn" data-hist="cancelado" onclick="setFiltroHistorial('cancelado',this)">Cancelados</button>
+      </div>
+      <div id="historial-lista">
+        <div class="loading-msg">Cargando historial…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: CONSOLIDAR ══════════════════════ -->
+<div class="modal-overlay" id="modal-consolidar">
+  <div class="modal-box">
+    <div class="modal-title">Consolidar pedidos en un viaje</div>
+    <div class="modal-sub" id="mod-cons-sub">—</div>
+
+    <div class="modal-resumen" id="mod-cons-resumen"></div>
+
+    <label class="modal-label">Origen consolidado</label>
+    <input class="modal-input" id="mod-cons-origen" placeholder="Yumbo">
+
+    <label class="modal-label">Destino(s)</label>
+    <input class="modal-input" id="mod-cons-destino" placeholder="Tuluá, Buga">
+
+    <div class="modal-grid-2">
+      <div>
+        <label class="modal-label">Fecha de cargue</label>
+        <input class="modal-input" id="mod-cons-fecha" type="date">
+      </div>
+      <div>
+        <label class="modal-label">Tipo de subasta (al publicar)</label>
+        <select class="modal-select" id="mod-cons-subasta">
+          <option value="abierta">Abierta — todos los transportadores</option>
+          <option value="cerrada">Cerrada — solo invitados</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="precio-ridge-box" id="mod-cons-ridge" style="display:none">
+      <div>
+        <div class="precio-ridge-lbl">Ridge sugiere</div>
+        <div class="precio-ridge-val" id="mod-cons-ridge-val">—</div>
+      </div>
+      <button class="precio-ridge-btn" onclick="usarPrecioRidge()">Usar este precio</button>
+    </div>
+
+    <label class="modal-label">Flete total (COP)</label>
+    <input class="modal-input" id="mod-cons-flete" type="number" placeholder="2500000">
+
+    <label class="modal-label">Observaciones</label>
+    <textarea class="modal-textarea" id="mod-cons-obs" placeholder="Carga frágil, llamar antes…"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-consolidar')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="consolidarYPublicar(false)">Solo consolidar</button>
+      <button class="btn btn-primary" onclick="consolidarYPublicar(true)">Consolidar y publicar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: AJUSTAR PRECIO ══════════════════════ -->
+<div class="modal-overlay" id="modal-ajustar">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-title">Ajustar precio del viaje</div>
+    <div class="modal-sub" id="mod-ajustar-sub">—</div>
+
+    <label class="modal-label">Nuevo flete (COP)</label>
+    <input class="modal-input" id="mod-ajustar-flete" type="number">
+
+    <label class="modal-label">Razón del ajuste (obligatoria)</label>
+    <textarea class="modal-textarea" id="mod-ajustar-razon" placeholder="Ridge sugirió X, el cliente acepta Y…"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-ajustar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="ejecutarAjustarPrecio()">Ajustar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: ASIGNAR DIRECTO ══════════════════════ -->
+<div class="modal-overlay" id="modal-asignar">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">Asignar directo (sin subasta)</div>
+    <div class="modal-sub" id="mod-asig-sub">—</div>
+
+    <label class="modal-label">Transportadora</label>
+    <select class="modal-select" id="mod-asig-transp"></select>
+
+    <label class="modal-label">Precio acordado (COP)</label>
+    <input class="modal-input" id="mod-asig-precio" type="number">
+
+    <label class="modal-label">Razón (obligatoria)</label>
+    <textarea class="modal-textarea" id="mod-asig-razon" placeholder="Cliente preferente, único disponible para la ruta…"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-asignar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="ejecutarAsignarDirecto()">Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ TOAST ══════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ───────── CONFIG ─────────
+  const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ───────── STATE ─────────
+  const state = {
+    pedidos: [],         // sin_consolidar
+    viajes: [],          // todos los viajes (pendiente + confirmado + en_ruta + entregado + finalizado + cancelado)
+    ofertas: [],         // todas las ofertas
+    clientes: [],
+    transportadoras: [],
+    seleccionados: new Set(),
+    filtroHist: 'todos',
+    modalViajeId: null,  // para modales ajustar/asignar
+    ridgePrecio: null,
+  };
+
+  // ───────── AUTH ─────────
+  async function authHeaders() {
+    const s = (await sb.auth.getSession()).data.session;
+    return {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${s?.access_token || SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  async function iniciarSesion() {
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const pass  = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = 'Email o contraseña incorrectos.'; return; }
+
+    // Verificar que sea logxie_staff
+    const h = await authHeaders();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?select=tipo,estado,nombre&id=eq.${(await sb.auth.getUser()).data.user.id}`, { headers: h });
+    const [p] = await r.json() || [];
+    if (!p || p.tipo !== 'logxie_staff' || p.estado !== 'aprobado') {
+      await sb.auth.signOut();
+      errEl.innerHTML = 'No eres staff Logxie.<br><small>Pide al admin: UPDATE perfiles SET tipo=\'logxie_staff\' WHERE email=\''+email+'\';</small>';
+      return;
+    }
+    mostrarApp(email, p.nombre);
+  }
+
+  async function cerrarSesion() {
+    await sb.auth.signOut();
+    location.reload();
+  }
+
+  function mostrarApp(email, nombre) {
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('app-wrap').style.display   = 'block';
+    document.getElementById('app-user-email').textContent = nombre ? `${nombre} (${email})` : email;
+    recargarTodo();
+  }
+
+  // Al cargar, chequear si ya hay sesión válida
+  (async () => {
+    const s = (await sb.auth.getSession()).data.session;
+    if (!s) return;
+    const h = await authHeaders();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?select=tipo,estado,nombre,email&id=eq.${s.user.id}`, { headers: h });
+    const [p] = await r.json() || [];
+    if (p && p.tipo === 'logxie_staff' && p.estado === 'aprobado') {
+      mostrarApp(p.email || s.user.email, p.nombre);
+    }
+  })();
+
+  // ───────── TABS ─────────
+  function cambiarTab(nombre, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + nombre).classList.add('active');
+  }
+
+  // ───────── TOAST ─────────
+  let toastTimer = null;
+  function toast(msg, variant='') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + variant;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.className = 'toast ' + variant, 3500);
+  }
+
+  // ───────── FETCH HELPERS ─────────
+  async function getJson(path) {
+    const h = await authHeaders();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h });
+    if (!r.ok) throw new Error(`GET ${path} → ${r.status}: ${await r.text()}`);
+    return r.json();
+  }
+
+  async function rpc(fn, body) {
+    const h = await authHeaders();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST', headers: h, body: JSON.stringify(body || {})
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = text;
+      try { msg = JSON.parse(text).message || msg; } catch {}
+      throw new Error(msg);
+    }
+    try { return JSON.parse(text); } catch { return text; }
+  }
+
+  // ───────── CARGAR TODO ─────────
+  async function recargarTodo() {
+    try {
+      const [clientes, transp, pedidos, viajes, ofertas] = await Promise.all([
+        getJson('clientes?select=id,nombre&order=nombre.asc'),
+        getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
+        getJson('pedidos?select=id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,cliente_id,empresa,contacto_tel,observaciones,created_at&estado=eq.sin_consolidar&order=fecha_cargue.asc.nullslast&limit=500'),
+        getJson('viajes_consolidados?select=*&order=created_at.desc&limit=500'),
+        getJson('ofertas?select=*&order=precio_oferta.asc&limit=500'),
+      ]);
+      state.clientes = clientes;
+      state.transportadoras = transp;
+      state.pedidos = pedidos;
+      state.viajes = viajes;
+      state.ofertas = ofertas;
+
+      // Poblar selector transp
+      const sel = document.getElementById('mod-asig-transp');
+      sel.innerHTML = transp.filter(t => t.activo).map(t =>
+        `<option value="${t.id}">${t.nombre}</option>`).join('');
+
+      updateCounts();
+      renderPedidos();
+      renderSubasta();
+      renderActivos();
+      renderHistorial();
+    } catch (e) {
+      console.error(e);
+      toast('Error cargando: ' + e.message, 'error');
+    }
+  }
+
+  function updateCounts() {
+    const pend = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at);
+    const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
+    const hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
+    document.getElementById('count-pedidos').textContent = state.pedidos.length;
+    document.getElementById('count-subasta').textContent = pend.length;
+    document.getElementById('count-activos').textContent = activos.length;
+    document.getElementById('count-historial').textContent = hist.length;
+  }
+
+  // ───────── FORMATTERS ─────────
+  function fmtCOP(n) {
+    if (n === null || n === undefined || n === '') return '—';
+    return '$' + Number(n).toLocaleString('es-CO', { maximumFractionDigits: 0 });
+  }
+  function fmtNum(n) { return Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 }); }
+  function fmtFecha(s) {
+    if (!s) return '—';
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
+  }
+  function fmtFechaHora(s) {
+    if (!s) return '—';
+    const d = new Date(s);
+    return d.toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  }
+  function clienteNombre(id) {
+    const c = state.clientes.find(x => x.id === id);
+    return c ? c.nombre : (id ? id.substring(0,6) : '—');
+  }
+
+  // ═════════════ TAB PEDIDOS ═════════════
+  function renderPedidos() {
+    const fCliente = document.getElementById('flt-cliente').value.toLowerCase();
+    const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
+    const fDestino = document.getElementById('flt-destino').value.toLowerCase();
+    const fZona    = document.getElementById('flt-zona').value.toLowerCase();
+
+    const filtrados = state.pedidos.filter(p => {
+      if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
+      if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
+      if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
+      if (fZona && !(p.zona||'').toLowerCase().includes(fZona)) return false;
+      return true;
+    });
+
+    // Stats
+    document.getElementById('st-ped-total').textContent = state.pedidos.length;
+    document.getElementById('st-ped-kg').textContent = fmtNum(state.pedidos.reduce((s,p) => s + (+p.peso_kg||0), 0));
+    document.getElementById('st-ped-clientes').textContent = new Set(state.pedidos.map(p => p.cliente_id).filter(Boolean)).size;
+    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${state.pedidos.length}`;
+
+    if (!filtrados.length) {
+      document.getElementById('pedidos-tbody').innerHTML =
+        '<tr><td colspan="8" class="empty-msg">No hay pedidos que coincidan.</td></tr>';
+      return;
+    }
+
+    document.getElementById('pedidos-tbody').innerHTML = filtrados.map(p => `
+      <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
+        <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
+        <td>
+          <div class="pedido-ref">${p.pedido_ref || '—'}</div>
+          <div class="pedido-cliente">${clienteNombre(p.cliente_id)}</div>
+        </td>
+        <td>${p.empresa || '—'}</td>
+        <td>
+          <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
+          ${p.observaciones ? `<div class="pedido-meta">${p.observaciones.substring(0,60)}${p.observaciones.length>60?'…':''}</div>` : ''}
+        </td>
+        <td>${p.zona || '—'}</td>
+        <td>${fmtNum(p.peso_kg)} kg</td>
+        <td>${fmtFecha(p.fecha_cargue)}</td>
+        <td>${fmtCOP(p.valor_mercancia)}</td>
+      </tr>`).join('');
+  }
+
+  function togglePedido(id) {
+    if (state.seleccionados.has(id)) state.seleccionados.delete(id);
+    else state.seleccionados.add(id);
+    actualizarSeleccion();
+  }
+
+  function toggleTodos(on) {
+    const fCliente = document.getElementById('flt-cliente').value.toLowerCase();
+    const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
+    const fDestino = document.getElementById('flt-destino').value.toLowerCase();
+    const fZona    = document.getElementById('flt-zona').value.toLowerCase();
+    state.pedidos.filter(p => {
+      if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
+      if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
+      if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
+      if (fZona && !(p.zona||'').toLowerCase().includes(fZona)) return false;
+      return true;
+    }).forEach(p => {
+      if (on) state.seleccionados.add(p.id);
+      else state.seleccionados.delete(p.id);
+    });
+    actualizarSeleccion();
+    renderPedidos();
+  }
+
+  function limpiarSeleccion() {
+    state.seleccionados.clear();
+    actualizarSeleccion();
+    renderPedidos();
+    document.getElementById('chk-all').checked = false;
+  }
+
+  function limpiarFiltrosPedidos() {
+    ['flt-cliente','flt-origen','flt-destino','flt-zona'].forEach(id => document.getElementById(id).value = '');
+    renderPedidos();
+  }
+
+  function actualizarSeleccion() {
+    const n = state.seleccionados.size;
+    document.getElementById('st-ped-seleccionados').textContent = n;
+    document.getElementById('accion-bar-pedidos').style.display = n > 0 ? 'flex' : 'none';
+    if (n > 0) {
+      const ids = Array.from(state.seleccionados);
+      const seleccionados = state.pedidos.filter(p => ids.includes(p.id));
+      const kg = seleccionados.reduce((s,p) => s + (+p.peso_kg||0), 0);
+      const val = seleccionados.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
+      const clientes = new Set(seleccionados.map(p => clienteNombre(p.cliente_id)));
+      document.getElementById('sel-count-text').textContent = `${n} pedido${n!==1?'s':''} seleccionado${n!==1?'s':''}`;
+      document.getElementById('sel-resumen-text').textContent =
+        `${fmtNum(kg)} kg · ${fmtCOP(val)} · ${[...clientes].join(', ')}`;
+    }
+  }
+
+  // ───────── MODAL CONSOLIDAR ─────────
+  function abrirModalConsolidar() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) { toast('Selecciona al menos 1 pedido', 'error'); return; }
+
+    const ped = state.pedidos.filter(p => ids.includes(p.id));
+    const clientesSet = new Set(ped.map(p => p.cliente_id).filter(Boolean));
+    const origenes = [...new Set(ped.map(p => p.origen).filter(Boolean))];
+    const destinos = [...new Set(ped.map(p => p.destino).filter(Boolean))];
+    const kg = ped.reduce((s,p) => s + (+p.peso_kg||0), 0);
+    const val = ped.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
+    const minFecha = ped.map(p => p.fecha_cargue).filter(Boolean).sort()[0];
+
+    document.getElementById('mod-cons-sub').textContent =
+      `${ids.length} pedidos · ${clientesSet.size > 1 ? 'multi-cliente' : clienteNombre([...clientesSet][0])}`;
+
+    document.getElementById('mod-cons-resumen').innerHTML = `
+      <div class="modal-resumen-row"><span class="k">Pedidos</span><span class="v">${ids.length}</span></div>
+      <div class="modal-resumen-row"><span class="k">Peso total</span><span class="v">${fmtNum(kg)} kg</span></div>
+      <div class="modal-resumen-row"><span class="k">Valor mercancía</span><span class="v">${fmtCOP(val)}</span></div>
+      <div class="modal-resumen-row"><span class="k">Clientes</span><span class="v">${[...clientesSet].map(clienteNombre).join(', ')}</span></div>
+    `;
+
+    document.getElementById('mod-cons-origen').value = origenes.join(', ');
+    document.getElementById('mod-cons-destino').value = destinos.join(', ');
+    document.getElementById('mod-cons-fecha').value = minFecha ? minFecha.substring(0,10) : '';
+    document.getElementById('mod-cons-flete').value = '';
+    document.getElementById('mod-cons-obs').value = '';
+
+    // Ridge sugerencia (cálculo local — km=0 porque no tenemos distancia)
+    // Para una sugerencia útil, usamos fallback del mínimo 950K + kg*28 para cortos
+    const paradas = destinos.length;
+    const sugRidge = Math.max(950000, 260000 + kg*28 + 63186*(paradas-1));
+    state.ridgePrecio = Math.round(sugRidge);
+    document.getElementById('mod-cons-ridge-val').textContent = fmtCOP(state.ridgePrecio);
+    document.getElementById('mod-cons-ridge').style.display = 'flex';
+
+    abrirModal('modal-consolidar');
+  }
+
+  function usarPrecioRidge() {
+    if (state.ridgePrecio) document.getElementById('mod-cons-flete').value = state.ridgePrecio;
+  }
+
+  async function consolidarYPublicar(publicar) {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+
+    const origen = document.getElementById('mod-cons-origen').value.trim();
+    const destino = document.getElementById('mod-cons-destino').value.trim();
+    const fecha = document.getElementById('mod-cons-fecha').value;
+    const flete = +document.getElementById('mod-cons-flete').value;
+    const obs = document.getElementById('mod-cons-obs').value.trim();
+    const tipoSubasta = document.getElementById('mod-cons-subasta').value;
+
+    if (!flete || flete <= 0) { toast('Ingresa un flete válido', 'error'); return; }
+
+    const metadata = {
+      origen, destino,
+      fecha_cargue: fecha ? new Date(fecha).toISOString() : null,
+      flete_total: flete,
+      observaciones: obs || null,
+    };
+
+    try {
+      const viajeId = await rpc('fn_consolidar_pedidos', {
+        p_pedido_ids: ids,
+        p_metadata: metadata,
+      });
+      if (publicar) {
+        await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipoSubasta });
+        toast(`Viaje consolidado y publicado (${tipoSubasta})`, 'success');
+      } else {
+        toast('Viaje consolidado (no publicado aún)', 'success');
+      }
+      state.seleccionados.clear();
+      cerrarModal('modal-consolidar');
+      recargarTodo();
+    } catch (e) {
+      console.error(e);
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ═════════════ TAB SUBASTA ═════════════
+  function renderSubasta() {
+    const publicados = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at);
+
+    // Stats
+    const ofertasActivas = state.ofertas.filter(o => o.estado === 'activa' && publicados.some(v => v.id === o.viaje_id));
+    const sinOfertas = publicados.filter(v => !state.ofertas.some(o => o.viaje_id === v.id && o.estado === 'activa')).length;
+    const fleteTotal = publicados.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000;
+
+    document.getElementById('st-sub-total').textContent = publicados.length;
+    document.getElementById('st-sub-ofertas').textContent = ofertasActivas.length;
+    document.getElementById('st-sub-sin-ofertas').textContent = sinOfertas;
+    document.getElementById('st-sub-flete').textContent = fleteTotal.toFixed(1);
+
+    const lista = document.getElementById('subasta-lista');
+    if (!publicados.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay viajes publicados.</div>';
+      return;
+    }
+
+    lista.innerHTML = publicados.map(v => renderViajeCard(v, 'subasta')).join('');
+  }
+
+  // Render genérico viaje-card (reusable para subasta/activos/historial)
+  function renderViajeCard(v, contexto) {
+    const ofertas = state.ofertas.filter(o => o.viaje_id === v.id);
+    const activas = ofertas.filter(o => o.estado === 'activa').sort((a,b) => a.precio_oferta - b.precio_oferta);
+    const minPrecio = activas.length ? activas[0].precio_oferta : null;
+    const ganadora = ofertas.find(o => o.estado === 'aceptada');
+    const transp = v.transportadora_id ? state.transportadoras.find(t => t.id === v.transportadora_id) : null;
+
+    const esSubasta = contexto === 'subasta';
+    const esActivo = contexto === 'activos';
+    const esHist = contexto === 'historial';
+
+    return `
+    <div class="viaje-card" id="vcard-${v.id}">
+      <div class="viaje-card-head" onclick="toggleViaje('${v.id}')">
+        <div>
+          <div class="viaje-ref">${v.viaje_ref}</div>
+          <div class="viaje-ruta">${v.origen || '—'} → ${v.destino || '—'}</div>
+          <div class="viaje-sub">${clienteNombre(v.cliente_id)} · ${fmtNum(v.peso_kg)} kg · ${v.cantidad_pedidos || 0} pedidos</div>
+        </div>
+        <div>
+          <span class="badge ${v.estado}">${v.estado}</span>
+          ${v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
+          ${transp ? `<div class="viaje-sub" style="margin-top:4px">${transp.nombre}</div>` : ''}
+        </div>
+        <div>
+          <div class="viaje-precio">${fmtCOP(v.flete_total)}</div>
+          <div class="viaje-precio-lbl">flete total</div>
+        </div>
+        <div>
+          ${esSubasta ? `
+            <div class="viaje-precio" style="font-size:14px;color:${activas.length ? 'var(--green)' : 'var(--gray-400)'}">
+              ${activas.length ? fmtCOP(minPrecio) : '—'}
+            </div>
+            <div class="viaje-precio-lbl">${activas.length ? 'mejor oferta' : 'sin ofertas'}</div>
+          ` : ''}
+          ${(esActivo || esHist) && ganadora ? `
+            <div class="viaje-precio" style="font-size:14px;color:var(--green)">${fmtCOP(ganadora.precio_oferta)}</div>
+            <div class="viaje-precio-lbl">ganadora</div>
+          ` : ''}
+        </div>
+        <div>
+          <div class="viaje-sub">${activas.length} ofer${activas.length !== 1 ? 'tas' : 'ta'}</div>
+          <div class="viaje-sub">${v.publicado_at ? 'pub ' + fmtFechaHora(v.publicado_at) : 'no pub'}</div>
+        </div>
+        <div class="viaje-chevron">▼</div>
+      </div>
+
+      <div class="viaje-card-body">
+        <div class="viaje-info-grid">
+          <div class="viaje-info-cell">
+            <div class="viaje-info-lbl">Fecha cargue</div>
+            <div class="viaje-info-val">${fmtFecha(v.fecha_cargue)}</div>
+          </div>
+          <div class="viaje-info-cell">
+            <div class="viaje-info-lbl">Zona</div>
+            <div class="viaje-info-val">${v.zona || '—'}</div>
+          </div>
+          <div class="viaje-info-cell">
+            <div class="viaje-info-lbl">Valor mercancía</div>
+            <div class="viaje-info-val">${fmtCOP(v.valor_mercancia)}</div>
+          </div>
+          <div class="viaje-info-cell">
+            <div class="viaje-info-lbl">Consecutivos</div>
+            <div class="viaje-info-val" style="font-size:11px">${(v.consecutivos || '—').substring(0, 80)}${(v.consecutivos||'').length > 80 ? '…' : ''}</div>
+          </div>
+        </div>
+
+        ${ofertas.length > 0 ? `
+          <div class="ofertas-sub">
+            <div class="ofertas-sub-title">Ofertas (${ofertas.length})</div>
+            <table class="ofertas-sub-table">
+              <thead><tr><th>#</th><th>precio</th><th>transp</th><th>estado</th><th>comentario</th><th>acción</th></tr></thead>
+              <tbody>
+                ${ofertas.sort((a,b) => a.precio_oferta - b.precio_oferta).map((o, i) => {
+                  const tNombre = o.transportadora_id
+                    ? (state.transportadoras.find(t => t.id === o.transportadora_id) || {}).nombre
+                    : '—';
+                  const esMejor = o.estado === 'activa' && i === 0;
+                  return `
+                    <tr class="${o.estado === 'aceptada' ? 'winner' : ''}">
+                      <td>${i+1}</td>
+                      <td><strong style="color:${esMejor || o.estado==='aceptada' ? 'var(--green)' : 'var(--gray-800)'}">${fmtCOP(o.precio_oferta)}</strong></td>
+                      <td>${tNombre || '—'}</td>
+                      <td><span class="badge ${o.estado === 'aceptada' ? 'entregado' : o.estado === 'rechazada' ? 'cancelado' : 'pendiente'}">${o.estado}</span></td>
+                      <td style="font-size:11px;color:var(--gray-600)">${o.comentario || '—'}</td>
+                      <td>
+                        ${esSubasta && o.estado === 'activa' ? `<button class="btn btn-success" onclick="adjudicarOferta('${o.id}')">Adjudicar</button>` : ''}
+                      </td>
+                    </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <div class="viaje-actions-row">
+          ${esSubasta ? `
+            <div class="hint">Adjudicar cierra la subasta; asignar directo skippea las ofertas.</div>
+            <button class="btn btn-ghost" onclick="abrirAjustarPrecio('${v.id}', ${v.flete_total || 0})">Ajustar precio</button>
+            <button class="btn btn-warning" onclick="abrirAsignarDirecto('${v.id}', ${v.flete_total || 0})">Asignar directo</button>
+            <button class="btn btn-danger" onclick="desconsolidar('${v.id}')">Desconsolidar</button>
+          ` : ''}
+          ${esActivo && v.estado === 'confirmado' ? `
+            <div class="hint">Adjudicado a ${transp ? transp.nombre : 'proveedor'} ${v.adjudicado_at ? '· ' + fmtFechaHora(v.adjudicado_at) : ''}</div>
+          ` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function toggleViaje(id) {
+    const card = document.getElementById('vcard-' + id);
+    if (card) card.classList.toggle('open');
+  }
+
+  // ───────── ADJUDICAR ─────────
+  async function adjudicarOferta(ofertaId) {
+    if (!confirm('¿Adjudicar esta oferta? Las demás del viaje quedarán rechazadas.')) return;
+    try {
+      await rpc('fn_adjudicar_oferta', { p_oferta_id: ofertaId });
+      toast('Oferta adjudicada', 'success');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── AJUSTAR PRECIO ─────────
+  function abrirAjustarPrecio(viajeId, fleteActual) {
+    state.modalViajeId = viajeId;
+    const v = state.viajes.find(x => x.id === viajeId);
+    document.getElementById('mod-ajustar-sub').textContent = `${v.viaje_ref} · actual: ${fmtCOP(fleteActual)}`;
+    document.getElementById('mod-ajustar-flete').value = fleteActual;
+    document.getElementById('mod-ajustar-razon').value = '';
+    abrirModal('modal-ajustar');
+  }
+
+  async function ejecutarAjustarPrecio() {
+    const flete = +document.getElementById('mod-ajustar-flete').value;
+    const razon = document.getElementById('mod-ajustar-razon').value.trim();
+    if (!flete || flete <= 0) { toast('Flete inválido', 'error'); return; }
+    if (!razon) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_ajustar_precio_viaje', {
+        p_viaje_id: state.modalViajeId,
+        p_nuevo_flete: flete,
+        p_razon: razon,
+      });
+      toast('Precio ajustado', 'success');
+      cerrarModal('modal-ajustar');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── ASIGNAR DIRECTO ─────────
+  function abrirAsignarDirecto(viajeId, fleteActual) {
+    state.modalViajeId = viajeId;
+    const v = state.viajes.find(x => x.id === viajeId);
+    document.getElementById('mod-asig-sub').textContent = `${v.viaje_ref} · flete actual: ${fmtCOP(fleteActual)}`;
+    document.getElementById('mod-asig-precio').value = fleteActual;
+    document.getElementById('mod-asig-razon').value = '';
+    abrirModal('modal-asignar');
+  }
+
+  async function ejecutarAsignarDirecto() {
+    const transpId = document.getElementById('mod-asig-transp').value;
+    const precio = +document.getElementById('mod-asig-precio').value;
+    const razon = document.getElementById('mod-asig-razon').value.trim();
+    if (!transpId) { toast('Selecciona transportadora', 'error'); return; }
+    if (!precio || precio <= 0) { toast('Precio inválido', 'error'); return; }
+    if (!razon) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_asignar_transportadora_directo', {
+        p_viaje_id: state.modalViajeId,
+        p_transportadora_id: transpId,
+        p_precio: precio,
+        p_razon: razon,
+      });
+      toast('Asignado directo', 'success');
+      cerrarModal('modal-asignar');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── DESCONSOLIDAR ─────────
+  async function desconsolidar(viajeId) {
+    if (!confirm('¿Desconsolidar? El viaje se cancelará y los pedidos vuelven a sin_consolidar.')) return;
+    try {
+      const liberados = await rpc('fn_desconsolidar_viaje', { p_viaje_id: viajeId });
+      toast(`Desconsolidado (${liberados} pedidos liberados)`, 'success');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ═════════════ TAB ACTIVOS ═════════════
+  function renderActivos() {
+    const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
+    document.getElementById('st-act-conf').textContent = activos.filter(v => v.estado === 'confirmado').length;
+    document.getElementById('st-act-ruta').textContent = activos.filter(v => v.estado === 'en_ruta').length;
+    document.getElementById('st-act-entr').textContent = activos.filter(v => v.estado === 'entregado').length;
+    document.getElementById('st-act-flete').textContent =
+      (activos.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000).toFixed(1);
+
+    const lista = document.getElementById('activos-lista');
+    if (!activos.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay viajes activos.</div>';
+      return;
+    }
+    lista.innerHTML = activos.map(v => renderViajeCard(v, 'activos')).join('');
+  }
+
+  // ═════════════ TAB HISTORIAL ═════════════
+  function setFiltroHistorial(val, btn) {
+    state.filtroHist = val;
+    document.querySelectorAll('[data-hist]').forEach(b => b.classList.toggle('active', b === btn));
+    renderHistorial();
+  }
+
+  function renderHistorial() {
+    let hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
+    if (state.filtroHist !== 'todos') hist = hist.filter(v => v.estado === state.filtroHist);
+
+    const fRef = (document.getElementById('flt-hist-ref')?.value || '').toLowerCase();
+    const fProv = (document.getElementById('flt-hist-prov')?.value || '').toLowerCase();
+    if (fRef) hist = hist.filter(v => (v.viaje_ref || '').toLowerCase().includes(fRef));
+    if (fProv) hist = hist.filter(v => (v.proveedor || '').toLowerCase().includes(fProv));
+
+    const lista = document.getElementById('historial-lista');
+    if (!hist.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay viajes en el historial.</div>';
+      return;
+    }
+    lista.innerHTML = hist.map(v => renderViajeCard(v, 'historial')).join('');
+  }
+
+  // ═════════════ MODAL UTILS ═════════════
+  function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+  function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+</script>
+</body>
+</html>

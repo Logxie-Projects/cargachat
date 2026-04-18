@@ -81,6 +81,7 @@ D:\NETFLEET\
 ├── transportador.html          → Portal transportadores (login + viajes + ofertas)
 ├── empresa.html                → Portal registro/login empresas generadoras
 ├── admin.html                  → Panel admin Logxie
+├── control.html                → Panel de control staff Logxie (Módulo 4 UI: consolidar/subasta/activos/historial)
 ├── mis-ofertas.html            → Vista ofertas del transportador
 ├── viaje.html                  → Tarjeta individual (screenshots LinkedIn)
 ├── checkderuta.html            → Módulo seguimiento de ruta en tiempo real
@@ -384,7 +385,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
 | 2 | Ingesta multicliente | AppSheet Transport Request | SQL ejecutado ✅ 2026-04-17 — tablas pobladas, falta parsers n8n |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
-| 4 | Control y consolidación | Control Transporte + script Sheets | En diseño — arquitectura definida 2026-04-17 (ver sección "Módulo 4" abajo) |
+| 4 | Control y consolidación | Control Transporte + script Sheets | Backend + UI completos ✅ 2026-04-17 — pendiente email integration, deep-linking transportador, test E2E |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
 
 ---
@@ -727,7 +728,7 @@ Las Postgres functions escriben esta tabla como parte de su transacción. Sirve 
 - [x] ✅ hecho 2026-04-17 — **Tablas `transportadoras` + `ofertas` + `invitaciones_subasta`**: 7 transportadoras seed (ENTRAPETROL, TRASAMER, JR, Nueva Colombia, PRACARGO, Global, Vigía), `ofertas` con RLS (usuario ve las suyas + staff ve todo), `invitaciones_subasta` para subastas cerradas. Ver [db/modulo4_schema_extra.sql](db/modulo4_schema_extra.sql).
 - [x] ✅ hecho 2026-04-17 — **ALTER `viajes_consolidados`**: +6 columnas (`subasta_tipo`, `publicado_at`, `adjudicado_at`, `oferta_ganadora_id`, `adjudicacion_tipo`, `transportadora_id`). CHECK de `acciones_operador.accion` extendido con `agregar_pedido`, `quitar_pedido`, `invitar`, `asignar_directo`.
 - [x] ✅ hecho 2026-04-17 — **9 Postgres functions** + helper `_recalc_viaje_agregados`: `fn_consolidar_pedidos`, `fn_agregar_pedido_a_viaje`, `fn_quitar_pedido_de_viaje`, `fn_desconsolidar_viaje`, `fn_ajustar_precio_viaje`, `fn_publicar_viaje`, `fn_invitar_transportadora`, `fn_asignar_transportadora_directo`, `fn_adjudicar_oferta`. Todas `SECURITY DEFINER` + gate `is_logxie_staff()` + audit a `acciones_operador`. Ver [db/modulo4_functions.sql](db/modulo4_functions.sql). `viaje_ref` ahora genera formato `NF-YYMMDD-HHMMSS-XXXX`.
-- [ ] **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial) — UI que invoca las 9 functions
+- [x] ✅ hecho 2026-04-17 — **control.html** con 4 tabs (sin_consolidar / subasta / activos / historial). Auth gate por `perfiles.tipo='logxie_staff'`. Invoca las 9 functions vía `/rest/v1/rpc/*`. Modales: consolidar (+ Ridge sugerido + publicar inline con tipo abierta/cerrada), ajustar_precio, asignar_directo. Adjudicar y desconsolidar inline desde cards de viaje. Ver [control.html](control.html). Smoke test SQL validado end-to-end (consolidar→ajustar→publicar→adjudicar + 4 rows de audit, ROLLBACK limpio). Ver [db/smoke_test_modulo4.sql](db/smoke_test_modulo4.sql).
 - [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)
 - [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook para publicar/invitar/adjudicar
 - [ ] **Test E2E** con 50 pedidos reales (antes de reemplazar el Apps Script)

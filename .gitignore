@@ -15,3 +15,6 @@ LogxIA/CLAVES Y APIS.txt
 
 # Migraciones históricas con PII — ejecutar local, NO versionar
 db/migrate_*.sql
+
+# Dumps de Google Sheets — datos operacionales sensibles (contactos, direcciones)
+dumps/

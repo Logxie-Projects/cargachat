@@ -416,6 +416,14 @@
         <div class="stat-card"><div class="stat-num" id="st-sub-pct">—</div><div class="stat-lbl">prom flete/valor</div></div>
       </div>
 
+      <div class="filtros" style="margin-bottom:1rem">
+        <button class="filtro-btn" id="btn-incluir-migrados" onclick="toggleIncluirMigrados()"
+          title="Incluye los 1281 viajes migrados desde Google Sheet ASIGNADOS (pre-Netfleet)">
+          🗂 Incluir migrados del Sheet ASIGNADOS
+        </button>
+        <span id="migrados-hint" style="font-size:11px;color:var(--gray-400);align-self:center"></span>
+      </div>
+
       <div id="subasta-lista">
         <div class="loading-msg">Cargando subastas…</div>
       </div>
@@ -572,6 +580,7 @@
     filtroHist: 'todos',
     modalViajeId: null,  // para modales ajustar/asignar
     ridgePrecio: null,
+    incluirMigrados: false,  // toggle en Consolidados
   };
 
   // ───────── AUTH ─────────
@@ -714,10 +723,21 @@
   }
 
   // Viajes "relevantes para subasta": borradores nuevos (fuente=netfleet) o ya publicados.
-  // Excluye los miles de viajes migrados del Sheet ASIGNADOS que quedaron en estado='pendiente'
-  // pero nunca se publicarán (son historia pre-Netfleet).
+  // Excluye por default los miles de viajes migrados del Sheet ASIGNADOS (historia pre-Netfleet).
+  // Si el usuario toggle "incluir migrados", también los muestra.
   function esViajeSubasta(v) {
-    return v.estado === 'pendiente' && (v.fuente === 'netfleet' || v.publicado_at);
+    const base = v.estado === 'pendiente' && (v.fuente === 'netfleet' || v.publicado_at);
+    if (base) return true;
+    if (state.incluirMigrados && v.estado === 'pendiente' && v.fuente === 'sheet_asignados') return true;
+    return false;
+  }
+
+  function toggleIncluirMigrados() {
+    state.incluirMigrados = !state.incluirMigrados;
+    const btn = document.getElementById('btn-incluir-migrados');
+    if (btn) btn.classList.toggle('active', state.incluirMigrados);
+    renderSubasta();
+    updateCounts();
   }
 
   function updateCounts() {
@@ -1052,6 +1072,15 @@
     if (elKg) elKg.textContent = fmtNum(Math.round(kgTotal));
     const elPed = document.getElementById('st-sub-peds');
     if (elPed) elPed.textContent = fmtNum(pedTotal);
+
+    // Hint de migrados
+    const nMigrados = state.viajes.filter(v => v.estado === 'pendiente' && v.fuente === 'sheet_asignados').length;
+    const hint = document.getElementById('migrados-hint');
+    if (hint) {
+      hint.textContent = state.incluirMigrados
+        ? `Mostrando ${nMigrados} migrados + nuevos`
+        : `${nMigrados} migrados ocultos`;
+    }
 
     const lista = document.getElementById('subasta-lista');
     if (!pendientes.length) {

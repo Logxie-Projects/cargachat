@@ -175,7 +175,7 @@ BEGIN
         END IF;
         -- UPDATE campos desde Sheet
         UPDATE viajes_consolidados SET
-          empresa             = COALESCE(v_row->>'empresa',             empresa),
+          empresa             = COALESCE(_norm_empresa(v_row->>'empresa'), empresa),
           zona                = COALESCE(v_row->>'zona',                zona),
           origen              = COALESCE(v_row->>'origen',              origen),
           destino             = COALESCE(v_row->>'destino',             destino),
@@ -218,7 +218,7 @@ BEGIN
           observaciones, foto_cargue, soporte_entrega, confirma_vehiculo,
           estado, estado_original, fuente, raw_payload
         ) VALUES (
-          v_viaje_ref, v_cliente_id, v_row->>'empresa', v_row->>'zona',
+          v_viaje_ref, v_cliente_id, _norm_empresa(v_row->>'empresa'), v_row->>'zona',
           v_row->>'origen', v_row->>'destino',
           (v_row->>'cantidad_pedidos')::int, v_row->>'consecutivos',
           (v_row->>'km_total')::numeric, (v_row->>'flete_total')::numeric,
@@ -347,7 +347,7 @@ BEGIN
         UPDATE pedidos SET
           cliente_id             = COALESCE(v_cliente_id, cliente_id),
           id_consecutivo         = COALESCE(v_row->>'id_consecutivo',         id_consecutivo),
-          empresa                = COALESCE(v_row->>'empresa',                empresa),
+          empresa                = COALESCE(_norm_empresa(v_row->>'empresa'), empresa),
           zona                   = COALESCE(v_row->>'zona',                   zona),
           origen                 = COALESCE(v_row->>'origen',                 origen),
           destino                = COALESCE(v_row->>'destino',                destino),
@@ -407,7 +407,7 @@ BEGIN
           nro_factura_proveedor,
           estado, estado_original, raw_payload
         ) VALUES (
-          v_pedido_ref, v_row->>'id_consecutivo', v_cliente_id, v_row->>'empresa', v_row->>'zona',
+          v_pedido_ref, v_row->>'id_consecutivo', v_cliente_id, _norm_empresa(v_row->>'empresa'), v_row->>'zona',
           COALESCE(v_row->>'origen', '—'), COALESCE(v_row->>'destino', '—'),
           'sheet',
           v_row->>'motivo_viaje', v_row->>'prioridad',

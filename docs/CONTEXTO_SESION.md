@@ -201,3 +201,114 @@ SANTANDERES: -213483, SUR: 79189, TOLHUIL: -18146, VALLE: 34226
 - Google Maps API key: en index.html línea 926
 - CSV URL (Sheet público): en index.html línea 923
 - GitHub: `https://github.com/Logxie-Projects/cargachat.git` (repo mantiene nombre cargachat, dominio es netfleet.app)
+
+---
+
+## Fecha: 2026-04-17 / 18 (sesión larga — control.html iteraciones)
+
+### Qué se hizo
+
+**1. Bernardo se registró en Netfleet como `logxie_staff`**
+- Detectamos que su user (`fa822bae-4743-4d40-95cf-c9fdd815214f`) ya existía en `auth.users` pero sin fila en `perfiles`. INSERT manual de perfil `logxie_staff, aprobado`. También INSERT de los otros 2 users como `transportador, pendiente`.
+
+**2. RLS `clientes` — fix pequeño con impacto grande**
+- control.html mostraba "5325d9" (UUID truncado) en vez de "AVGUST". Causa: RLS original solo permitía `service_role` leer `clientes`. Creé `db/clientes_rls_staff.sql` con policies `staff_read`, `staff_write`, `self_service_read_own`.
+
+**3. Iteraciones de UI sobre control.html (muchas)**
+Fix tras fix basado en feedback en vivo:
+- **Filtro de fechas**: desde/hasta + presets 7d/30d/90d en tab Sin consolidar.
+- **Agrupar por origen**: filas header azules con checkbox "seleccionar grupo" + subtotal (# pedidos, kg, valor, rango fechas).
+- **Fix timezone fmtFecha**: `'2026-04-10'` mostraba "9 abr" por conversión UTC→COT. Fix: `timeZone:'UTC'`.
+- **Prioridad bajo ruta**: en vez de observaciones truncadas, ahora muestra `p.prioridad` como badge colorido (URGENTE rojo, ALTA naranja, NORMAL azul). Llama_antes como flag naranja.
+- **Cliente bajo RM**: cambio a `p.cliente_nombre` (receptor final como "INGENIO DEL CAUCA SAS"), no `AVGUST/FATECO`.
+- **Botón `ℹ` + modal detalle pedido**: embalaje (contenedores/cajas/bidones/canecas/unidades), contacto, dirección, horario, motivo, vendedor, coordinador, observaciones.
+- **Sección "Pedidos incluidos" en viaje cards**: cada pedido del viaje colapsable con todo el detalle. Útil para transportador que adjudique.
+- **Stats por viaje**: $/kg, $/km, $/pedido, %flete-vs-valor (rojo si >3%).
+- **2 filas de aggregates en tab Consolidados**: total/borradores/ofertas/flete + peso total/# pedidos/prom $/kg/prom flete%.
+- **Tags adjudicación**: 🏆 subasta (dorado) vs 📌 directa (violeta) en tab Activos.
+- **Badge "borrador"** + botón "Publicar" inline en cards de viajes no publicados (antes desaparecían de la UI).
+- **Auto-switch de tab** tras cada acción (adjudicar→Activos, reabrir→Consolidados). Toasts descriptivos con nombre del proveedor.
+- **Toggle "incluir migrados Sheet ASIGNADOS"** en Consolidados (los 1281 históricos estaban ocultos por default).
+- **Fix problema silencioso**: fetch pedidos solo devolvía 58 porque PostgREST limita a 1000 rows. Fix: 2 queries separadas (sin_consolidar + viaje_id IS NOT NULL), merge con dedupe por id.
+- **Fix campo Consecutivos truncado**: removido del info grid del viaje (redundante con "Pedidos incluidos").
+
+**4. `fn_reabrir_viaje(viaje_id, razon)` — Módulo 4 nueva función**
+- Bernardo preguntó: si el proveedor queda mal después de adjudicar/asignar, ¿cómo corrijo? Hoy todas las functions gatean en `estado='pendiente'`.
+- Creé `db/modulo4_reabrir.sql`: `fn_reabrir_viaje` revierte `confirmado → pendiente`. Libera `transportadora_id`, `adjudicado_at`, `adjudicacion_tipo`, `oferta_ganadora_id`. Si adjudicación fue por subasta, reactiva ofertas (aceptada+rechazadas → activa). Pedidos `asignado → consolidado`. Solo funciona sobre `confirmado` (en_ruta/entregado bloqueado). CHECK de `acciones_operador.accion` extendido con 'reabrir'.
+- UI: botón "↩ Reabrir" en Activos con `prompt()` para razón. Auto-switch a Consolidados después.
+
+**5. Commits finales de esta tanda**
+- `75c9df2` feat: filtro fecha_cargue + presets
+- `6dfc828` feat: agrupar por origen + fix timezone
+- `aeb88bc` fix: borradores visibles + prioridad en pedidos + RLS clientes
+- `2c10220` feat: detalle completo pedidos + Consolidados + tags adjudicación
+- `6793556` feat: reabrir viajes confirmados + auto-switch + fixes varios
+- `6d642d4` feat: estadísticas de viaje ($/kg, $/km, etc.)
+
+### Riesgos y detalles frágiles
+- El gate `is_logxie_staff()` requiere `auth.uid()` del JWT. Si el Python script se conecta como `postgres` directo (sin JWT), falla. Solución: extender gate para aceptar `session_user IN ('postgres','supabase_admin')` (hecho en la siguiente sesión).
+- `_norm_empresa` no existía aún — había 82 filas con "FATECO, AVGUST" que Bernardo notó visualmente.
+
+---
+
+## Fecha: 2026-04-19 (sesión sync Sheets↔Netfleet)
+
+### Qué se hizo
+
+**1. Diseño del sync bidireccional (decisiones de Bernardo)**
+- Sync AppSheet/Sheets → Netfleet, unidireccional. Durante transición, AppSheet sigue siendo primario; Netfleet refleja.
+- **Cadencia**: 15 min automático + botón manual on-demand en control.html.
+- **Sheet nunca elimina**: pedidos eliminados se marcan "Cancelado" → se propaga a Netfleet.
+- **Conflicto "Netfleet gana"**: viajes con `fuente='netfleet'` nunca se sobrescriben por el sync.
+- Arquitectura: Postgres functions (lógica centralizada), n8n cron (disparo), botón UI (manual), script Python (backfill inicial).
+
+**2. Postgres functions de sync**
+- `fn_sync_viajes_batch(jsonb)`: UPSERT batch por `viaje_ref`. Reglas: Netfleet skip, terminales skip, cancelado propaga. Audit con counters (insertados, actualizados, saltados_netfleet, saltados_terminal, marcados_cancelado, errores, err_samples).
+- `fn_sync_pedidos_batch(jsonb)`: UPSERT batch. Match por `(cliente_id, pedido_ref)` más reciente no-terminal. Handle de duplicados legítimos (re-entradas cancelaciones/correcciones).
+- Gate extendido: acepta `is_logxie_staff() OR current_setting('role')='service_role' OR session_user IN ('postgres','supabase_admin')`.
+- Mapeo de 29 campos ASIGNADOS → viajes, 41 Base_inicio-def → pedidos. Verificado que TODOS existen en schema tras diagnóstico de columnas.
+- Helpers `_norm_estado_viaje(text)` y `_norm_estado_pedido(text)` mapean estados crudos del Sheet (`EJECUTADO`, `EN RUTA`, `PENDIENTE`) a canónicos.
+
+**3. Script Python `sync_from_csv.py`**
+- CLI que lee CSV, mapea columnas Sheet → payload canónico, llama RPCs en batches de 500.
+- Flag `--truncate` para migración limpia. Pide confirmación interactiva. Drop NOT NULL de `cliente_id` temporalmente, TRUNCATE CASCADE, sync, post_migration.sql (backfill + restore NOT NULL), linker v2.
+- Normaliza headers (trim whitespace) — Sheets exporta con espacios inconsistentes (" PEDIDOS_INCLUIDOS", "ESTADO ", etc.).
+- Parser de fechas robusto (múltiples formatos: ISO, DD/MM/YYYY, MM/DD/YYYY, con y sin hora).
+
+**4. Discrepancia del fantasma (928 viajes)**
+- Bernardo reportó 2209 filas en ASIGNADOS vs 1281 en Supabase.
+- Investigación: `=CONTARA(A:A)` en el Sheet = 1283 (+ header = 1282 filas reales).
+- Las filas 1284-2210 son **filas fantasma** (formato de celdas aplicado pero sin datos — típico de AppSheet cuando "borra" filas).
+- **Conclusión**: no faltaba data. Supabase estaba 100% alineado con el Sheet real.
+
+**5. Backfill fresh**
+- Bernardo pidió limpieza total. TRUNCATE + sync completo desde CSVs:
+  - 1281 viajes importados (100%)
+  - 3740 pedidos importados (40 menos que 3780 del CSV por duplicados legítimos de `pedido_ref`)
+  - 94.7% linkeados (3543 con viaje_id, 197 huérfanos, 128 viajes vacíos)
+- Todos los viajes migrados quedan `fuente='sheet_asignados'`. 0 netfleet tests sobrevivieron.
+
+**6. Normalizador de empresa**
+- Bernardo notó 4 variantes: AVGUST, FATECO, "AVGUST, FATECO", "FATECO, AVGUST" (+7 con espacio extra).
+- `_norm_empresa(text)`: split coma, trim, upper, dedupe, sort asc, join ", ". Tests inline con ASSERT.
+- Integrado en las 4 rutas de escritura (UPDATE viajes, INSERT viajes, UPDATE pedidos, INSERT pedidos). **Previene recurrencia en futuros syncs**.
+- UPDATE one-shot ejecutado: 82 filas "FATECO, AVGUST" → "AVGUST, FATECO". Resultado final: 3 variantes canónicas (AVGUST 688, AVGUST+FATECO 320, FATECO 273).
+
+**7. Commits**
+- `f039826` feat: sync Sheets→Netfleet + toggle migrados + control.html improvements
+- `920b457` feat: normalizador de empresa en fn_sync_*_batch
+
+### Estado final
+- BD limpia y sincronizada
+- control.html en producción con toggle para ver los 1281 migrados
+- Sync functions listas, esperan trigger (n8n) o botón (UI)
+
+### Próximo paso
+- **n8n workflow cron 15min + webhook manual** → para que el sync corra automático
+- **Botón 🔄 Sync en control.html** → disparo on-demand via webhook
+- Con eso: AppSheet → Netfleet 100% automático sin intervención manual
+
+### Riesgos y detalles frágiles
+- Si Sheet cambia nombres de columnas, el mapping Python rompe silenciosamente (warn pero no falla). Revisar headers después de cualquier refactor en AppSheet.
+- El Python script corre como postgres superuser (via pooler), bypassa RLS. OK para backfill, no para prod. El cron n8n debe usar service_role token (no postgres).
+- Dumps en `dumps/` están gitignored — contienen PII (contactos, direcciones, NITs).

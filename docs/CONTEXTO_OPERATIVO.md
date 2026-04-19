@@ -1,6 +1,6 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-17** (sesión siguiente al handoff). Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
+> Foto del proyecto al **2026-04-19** (sesión de sync Sheets↔Netfleet). Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
 
 ---
 
@@ -14,23 +14,24 @@
 - **Mis ofertas** (`mis-ofertas.html`) tabs activas/historial.
 - **Check-in ruta** (`checkderuta.html`) con webhook n8n.
 - **Analizador rutas** (`analizador-rutas.html`) multi-parada.
-- **Control staff** (`control.html`) — Módulo 4 UI: consolidar pedidos, subasta, activos, historial. Auth gate por `perfiles.tipo='logxie_staff'`. Aún no accesible (Bernardo pendiente de registrarse + promoverse).
+- **Control staff** (`control.html`) — Módulo 4 UI en producción y en uso por Bernardo. 4 tabs (Sin consolidar / Consolidados / Activos / Historial), consolidar con Ridge sugerido + publicar inline, adjudicar, asignar directo, reabrir viajes confirmados, desconsolidar, detalle completo de pedidos (embalaje/contacto/dirección/horario/observaciones), stats por viaje ($/kg, $/km, $/pedido, %flete-vs-valor), tags de adjudicación (🏆 subasta / 📌 directa), badges de estado (borrador/abierta/cerrada), auto-switch de tab tras cada acción, toggle "incluir migrados Sheet ASIGNADOS", agrupar sin_consolidar por origen, filtro de fechas 7d/30d/90d.
 
-### Supabase — tablas vivas (al 2026-04-17)
+### Supabase — estado al 2026-04-19
 
-| Tabla | Rows | Propósito |
+| Tabla | Rows | Notas |
 |---|---|---|
-| `clientes` | 2 | AVGUST, FATECO (ambos `plan_bpo=true`) |
-| `perfiles` | 0 | **Recién creada en esta sesión** — antes no existía |
-| `viajes_consolidados` | 1281 | Migrados desde Sheet ASIGNADOS |
-| `pedidos` | 3764 | Migrados desde Sheet Base_inicio-def (92% linkeados a viajes) |
+| `clientes` | 2 | AVGUST + FATECO (ambos `plan_bpo=true`) |
 | `transportadoras` | 7 | Seed: ENTRAPETROL, TRASAMER, JR, Trans Nueva Colombia, PRACARGO, Global, Vigía |
-| `ofertas` | 0 | **Recién creada** — ciclo de subasta |
-| `invitaciones_subasta` | 0 | **Recién creada** — subastas cerradas (invite-only) |
-| `acciones_operador` | 0 | **Recién creada** — audit trail M4 |
+| `perfiles` | 3 | 1 `logxie_staff` (Bernardo) + 2 `transportador` pendientes |
+| `viajes_consolidados` | **1281** | **100% sincronizados con Sheet ASIGNADOS**. Todos `fuente='sheet_asignados'`. 0 netfleet (truncate fresh 2026-04-19) |
+| `pedidos` | **3740** | 94.7% linkeados (3543 con viaje_id, 197 huérfanos) |
+| `ofertas` | 0 | Ninguna todavía |
+| `invitaciones_subasta` | 0 | Ninguna todavía |
+| `acciones_operador` | 25+ | Audit trail M4 + sync |
 
-### Supabase — 9 Postgres functions listas (Módulo 4)
-Todas `SECURITY DEFINER` con gate `is_logxie_staff()`:
+### Supabase — Postgres functions listas
+
+**Módulo 4 ciclo de operación** (9 functions `SECURITY DEFINER` con gate `is_logxie_staff()`):
 
 - `fn_consolidar_pedidos(ids[], metadata)` — crea viaje desde N pedidos
 - `fn_agregar_pedido_a_viaje(viaje, pedido)` — añade uno
@@ -41,33 +42,46 @@ Todas `SECURITY DEFINER` con gate `is_logxie_staff()`:
 - `fn_invitar_transportadora(viaje, transp)` — invita a subasta cerrada
 - `fn_asignar_transportadora_directo(viaje, transp, precio, razon)` — skippea subasta
 - `fn_adjudicar_oferta(oferta)` — gana oferta → viaje confirmado
+- `fn_reabrir_viaje(viaje_id, razon)` — revierte `confirmado → pendiente` (proveedor y adjudicación liberados, ofertas reactivadas si era subasta)
 
-Más helper `_recalc_viaje_agregados(viaje_id)` (uso interno, recomputa peso/valor/cantidad).
+**Sync Sheets→Netfleet** (creadas 2026-04-19):
+- `fn_sync_viajes_batch(jsonb)` — UPSERT batch desde ASIGNADOS. Regla: Netfleet gana (fuente=netfleet skip), terminales skip, cancelado propaga.
+- `fn_sync_pedidos_batch(jsonb)` — UPSERT batch desde Base_inicio-def. Regla: match por `(cliente_id, pedido_ref)` no-terminal más reciente. Cancelado propaga.
+- Ambas con audit en `acciones_operador` (accion='sync_viajes'/'sync_pedidos').
+
+**Helpers**:
+- `is_logxie_staff()` — SECURITY DEFINER, checkea `perfiles.tipo='logxie_staff'` via `auth.uid()`
+- `_recalc_viaje_agregados(viaje_id)` — recomputa peso/valor/cantidad de un viaje desde sus pedidos
+- `_norm_empresa(text)` — canoniza variantes ("FATECO, AVGUST" → "AVGUST, FATECO"). Usado en fn_sync_*.
+- `_norm_estado_viaje(text)` / `_norm_estado_pedido(text)` — mapea estados crudos del Sheet a canónicos
+
+### Script Python para backfill y ETL manual
+
+- [db/sync_from_csv.py](../db/sync_from_csv.py) — CLI que lee CSV export de Sheets y llama las RPC en batches de 500. Soporta `--truncate` para migración limpia. Auto-corre `post_migration.sql` + `link_pedidos_viajes_v2.sql`.
+- Uso: `python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_inicio_def.csv [--truncate]`
 
 ### n8n (automatización)
 - Workflow procesando correos de Avgust/Fateco → parsea viajes → Ridge v2 → Sheet
 - Webhook de `checkderuta.html` recibiendo check-ins
+- **PENDIENTE**: workflow cron 15min que llame a `fn_sync_viajes_batch` / `fn_sync_pedidos_batch` con datos del Sheet via Google Sheets API (credencial `IuCNLIa09oW4ZWBu`)
 
 ### Datos
-- **Google Sheet** gid=1690776181 sigue siendo la fuente principal de viajes (escribe n8n al Sheet y frontend lee CSV público).
-- **Modelo Ridge** R²=0.919, entrenado con 1,015 viajes reales.
+- **Google Sheet** gid=1690776181 sigue siendo la fuente principal — AppSheet escribe, n8n parsea, frontend lee CSV público
+- **Google Sheet ASIGNADOS + Base_inicio-def** ahora son también **fuente autoritativa del sync a Netfleet** (hasta que se abandone AppSheet)
+- **Modelo Ridge** R²=0.919, entrenado con 1,015 viajes reales
 
 ---
 
 ## Qué está pendiente
 
-### Módulo 4 — Para cerrar (prioridad alta)
+### Módulo 4 — Siguiente paso (sync automático)
 
-- [x] ✅ hecho 2026-04-17 — **Smoke test SQL** end-to-end validado. Ciclo consolidar→ajustar_precio→publicar→adjudicar pasó todas las invariantes (3 pedidos asignados, viaje confirmado, oferta aceptada, 4 audit rows). Wrap en `BEGIN;...ROLLBACK;` — no persiste nada. Ver [db/smoke_test_modulo4.sql](../db/smoke_test_modulo4.sql).
-- [x] ✅ hecho 2026-04-17 — **`control.html`** construido. 4 tabs invocando las 9 RPC functions + modales (consolidar con Ridge sugerido, ajustar_precio, asignar_directo). Auth gate por `perfiles.tipo='logxie_staff'`. Ver [control.html](../control.html).
-- [ ] **Promover Bernardo a `logxie_staff`** después de que se registre en netfleet.app:
-  ```sql
-  UPDATE perfiles SET tipo='logxie_staff', estado='aprobado'
-   WHERE email='bernardoaristizabal@logxie.com';
-  ```
-- [ ] **Integración email** — decidir: n8n webhook vs Supabase Edge Function (Resend/SendGrid). Para `fn_publicar_viaje` + `fn_invitar_transportadora` + `fn_adjudicar_oferta`.
-- [ ] **Deep-linking `transportador.html`**: query param `?viaje_ref=...` → scroll + highlight.
+- [ ] **Workflow n8n cron 15min** — lee Google Sheets (ASIGNADOS + Base_inicio-def) → normaliza → POST a `/rest/v1/rpc/fn_sync_viajes_batch` y `fn_sync_pedidos_batch` con bearer service_role. Opcional: webhook HTTP separado para disparo manual desde control.html.
+- [ ] **Botón 🔄 Sync en control.html** — POST al webhook n8n para sincronización on-demand. Header nav, toast con counters.
+- [ ] **Integración email** — decidir: n8n webhook vs Supabase Edge Function (Resend/SendGrid). Para `fn_publicar_viaje` + `fn_invitar_transportadora` + `fn_adjudicar_oferta`. Al publicar viaje, mandar mail a proveedores con link a `transportador.html?viaje_ref=NF-...`.
+- [ ] **Deep-linking `transportador.html`**: query param `?viaje_ref=...` → scroll + highlight del viaje.
 - [ ] **RLS endurecer en `viajes_consolidados`**: hoy `authenticated_all` permisivo. Cambiar a `subasta_tipo='abierta' OR existe invitación`.
+- [ ] **Data quality**: revisar los 197 pedidos huérfanos + 128 viajes vacíos (sin pedidos linkeados). Probablemente son refs que no matchean por formato — investigar en futura sesión.
 
 ### Módulo 3 — Tracking (diferido)
 
@@ -84,22 +98,35 @@ Más helper `_recalc_viaje_agregados(viaje_id)` (uso interno, recomputa peso/val
 ### Módulo 2 — Ingesta automática (parcial)
 
 - [x] ✅ Schema migrado (clientes, viajes_consolidados, pedidos) — 2026-04-17
-- [x] ✅ Linker pedidos→viajes v2 con PEDIDOS_INCLUIDOS + canonicalización — 2026-04-17 (92% match)
-- [ ] **Parser 4 — Pull Sheet ASIGNADOS cada 30min** → UPSERT en Supabase. Crítico para resolver snapshot drift.
-- [ ] **Parser 2 — Pull Sheets de clientes externos** (Nivel 2 ingesta).
-- [ ] **Parser 3 — Webhook HTTP** (Nivel 4 ingesta — CRM Avgust futuro).
-- [ ] **Parser 1 — Email texto libre** (Nivel 1) — Gmail + Claude API extrae campos.
+- [x] ✅ Linker pedidos→viajes v2 con PEDIDOS_INCLUIDOS + canonicalización — 2026-04-17 (92% match, 94.7% después del sync fresh 2026-04-19)
+- [x] ✅ **Sync unidireccional Sheets→Supabase** vía funciones Postgres + script Python — 2026-04-19 (backfill ejecutado, cubre Parser 4 + parte de Parser 2)
+- [ ] **Parser 2 real — Pull Sheets de clientes externos** (Nivel 2 ingesta) — cuando haya otros clientes BPO además de AVGUST/FATECO
+- [ ] **Parser 3 — Webhook HTTP** (Nivel 4 ingesta — CRM Avgust futuro)
+- [ ] **Parser 1 — Email texto libre** (Nivel 1) — Gmail + Claude API extrae campos
 
 ### Módulo 1 — Subasta (cerrar gaps)
 
 - [x] ✅ Tabla `ofertas` creada — 2026-04-17
-- [ ] Crear tablas `leads` y `cargas` (documentadas en CLAUDE.md pero no existen).
-- [ ] Countdown y notificación de adjudicación en `transportador.html`.
-- [ ] Fix formato `ofertas.viaje_id` — la tabla nueva usa UUID FK; el frontend legacy hitea por `viaje_rt` TEXT. Migrar frontend cuando se toque M1.
+- [ ] Crear tablas `leads` y `cargas` (documentadas en CLAUDE.md pero no existen)
+- [ ] Countdown y notificación de adjudicación en `transportador.html`
+- [ ] Fix formato `ofertas.viaje_id` — la tabla nueva usa UUID FK; el frontend legacy hitea por `viaje_rt` TEXT. Migrar frontend cuando se toque M1
+
+### Admin (diferido a próxima sesión — Bernardo solicitó)
+
+Ampliar `control.html` como hub único de admin Logxie. Nueva tab **"Admin"** con 3 sub-secciones:
+- **Clientes** — listar/crear/editar tabla `clientes` (hoy AVGUST + FATECO, mañana nuevos BPO)
+- **Transportadoras** — listar/crear/editar tabla `transportadoras`
+- **Usuarios** — listar/aprobar/rechazar/cambiar tipo de `perfiles` (reemplaza `admin.html`)
+
+Estimación: 2-3h. Prerequisito para crear usuarios staff/conductores en vivo sin tocar SQL Editor.
+
+Deferidos dentro de Admin:
+- **Conductores** — necesita crear tabla `conductores` nueva. Parte natural de Módulo 3.
+- **Crear usuarios staff desde UI** — hoy requiere Dashboard (anon key no puede crear auth.users). Solución: Edge Function con service_role que wrappee `auth.admin.createUser`.
 
 ### Seguridad — 🔥 urgente
 
-- [ ] **Rotar password de Supabase DB** — `Bjar1978*ABC` quedó en texto plano en esta sesión de chat. Dashboard → Project Settings → Database → Reset password.
+- [ ] **Rotar password de Supabase DB** — `Bjar1978*ABC` quedó en texto plano en sesiones de chat. Dashboard → Project Settings → Database → Reset password.
 - [ ] **Rotar Anthropic API key** — quedó en texto plano en `LogxIA/CLAVES Y APIS.txt` antes de gitignorarla.
 - [ ] **Rotar Telegram bot token** — en `@BotFather` → `/revoke` → `/token`.
 
@@ -120,12 +147,12 @@ Más helper `_recalc_viaje_agregados(viaje_id)` (uso interno, recomputa peso/val
 
 ## Próximos pasos inmediatos
 
-1. **Registrar Bernardo en netfleet.app + promoverlo a `logxie_staff`** — requisito para entrar a `control.html`. Un solo `UPDATE perfiles` (snippet abajo).
-2. **Test E2E con pedidos reales** — usando `control.html`, consolidar un grupo real de sin_consolidar, publicar, esperar (o simular) oferta, adjudicar. Validar paralelamente contra el Apps Script del Sheet ASIGNADOS.
-3. **Decidir email backend** (n8n vs Edge Function) — bloqueante para el mail de "SOLICITUD DE SERVICIOS" cuando se publique un viaje / se invite transportadora / se adjudique.
-4. **Deep-linking `transportador.html`** — `?viaje_ref=NF-...` → scroll + highlight. Cambio chico, habilita el link del email.
+1. **Armar workflow n8n cron 15min + webhook** — para sync automático AppSheet→Netfleet. Ya existen las funciones Postgres, falta el trigger. Sin esto, Bernardo debe correr manualmente el script Python periódicamente.
+2. **Botón 🔄 Sync en control.html** — UI para disparar el webhook. Complemento del cron.
+3. **Bernardo empieza a consolidar viajes reales en control.html** — ya puede, la BD está limpia y sincronizada.
+4. **Data quality**: investigar los 197 pedidos huérfanos + 128 viajes vacíos (si son data real o artefactos del Sheet).
 5. **Rotar password Supabase** — no bloqueante pero urgente.
-6. **Endurecer RLS `viajes_consolidados`** — hoy `authenticated_all` es muy permisivo; restringir a `subasta_tipo='abierta' OR existe invitación`.
+6. **Admin tab en control.html** — ampliar para crear/editar clientes/transportadoras/usuarios.
 
 ---
 
@@ -148,11 +175,27 @@ python db/run_migration.py --file db/<archivo>.sql
 - Output: solo imprime resultados del último statement
 - Para ver resultado de una query en medio, hacerla la última
 
+### Correr sync desde CSV
+```powershell
+# Export ASIGNADOS y Base_inicio-def como CSV desde Google Sheets
+# Guardar en D:\NETFLEET\dumps\
+
+python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_inicio_def.csv
+
+# Con --truncate para migración limpia (destruye viajes+pedidos primero)
+python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_inicio_def.csv --truncate
+```
+- Script parsea CSVs ANTES de truncar (si falla parse, no daña BD)
+- Pide confirmación antes de TRUNCATE (escribir "si")
+- Corre post_migration.sql + link_pedidos_viajes_v2.sql automáticamente al final
+- Ignora headers del Sheet sin mapeo con warning (útil para debug)
+
 ### Sensibilidades del sistema
 
 - **Supabase anon key**: usar JWT largo (`iat:1775536019`). NUNCA `sb_publishable_`.
 - **`estado: 'aprobado'`** (no `'activo'`) en `perfiles`. Frontend depende del string exacto.
-- **Password DB**: comprometida al 2026-04-17. Rotar.
+- **Password DB**: comprometida. Rotar.
+- **Gate de sync functions**: acepta `is_logxie_staff()` OR `current_setting('role')='service_role'` OR `session_user IN ('postgres','supabase_admin')`. El script Python corre como postgres superuser via pooler.
 
 ### Deploy
 - Push a `main` → Cloudflare Pages auto-deploy 1-2min.
@@ -167,9 +210,10 @@ python db/run_migration.py --file db/<archivo>.sql
 - Producción: https://netfleet.app
 - Repo: https://github.com/Logxie-Projects/cargachat (branch `main`)
 - Supabase: https://pzouapqnvllaaqnmnlbs.supabase.co
-- Admin: https://netfleet.app/admin.html
-- Último commit: `3f23453` — "feat: Módulo 4 backend completo"
+- Admin legacy: https://netfleet.app/admin.html
+- Control staff: https://netfleet.app/control.html (login con bernardoaristizabal@logxie.com)
+- Último commit: `920b457` — "feat: normalizador de empresa en fn_sync_*_batch"
 
 ---
 
-*Última actualización: 2026-04-17 (sesión nocturna)*
+*Última actualización: 2026-04-19*

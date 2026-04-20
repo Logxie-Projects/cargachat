@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NETFLEET — Control</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -365,6 +366,7 @@
     </div>
     <div class="app-nav-right">
       <span class="app-nav-user" id="app-user-email"></span>
+      <button class="app-nav-btn" onclick="doSync()" id="btn-sync" title="Sincroniza ASIGNADOS y Base_inicio-def desde Google Sheets, luego corre los linkers">🔄 Sync</button>
       <button class="app-nav-btn" onclick="recargarTodo()">↻ Recargar</button>
       <button class="app-nav-btn" onclick="cerrarSesion()">Salir</button>
     </div>
@@ -762,6 +764,18 @@
     <div id="mod-ped-content"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-pedido-detalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: SYNC ══════════════════════ -->
+<div class="modal-overlay" id="modal-sync">
+  <div class="modal-box" style="max-width:720px">
+    <div class="modal-title">🔄 Sync Sheets → Netfleet</div>
+    <div class="modal-sub" id="mod-sync-sub">Arrancando…</div>
+    <pre id="mod-sync-log" style="background:#0f172a;color:#e2e8f0;font-family:'SF Mono',Consolas,Menlo,monospace;font-size:12px;padding:1rem;border-radius:8px;max-height:420px;overflow-y:auto;margin:1rem 0;white-space:pre-wrap;word-break:break-word;line-height:1.55"></pre>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="mod-sync-close" onclick="cerrarModal('modal-sync')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2233,6 +2247,249 @@
   document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
   });
+
+  // ═════════════════════════════════════════════════════════════
+  // SYNC Sheets → Netfleet (mirror de db/sync_from_csv.py)
+  // ═════════════════════════════════════════════════════════════
+  const SYNC_URLS = {
+    viajes:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1382860925&single=true&output=csv',
+    pedidos: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1191036042&single=true&output=csv',
+  };
+  const SYNC_BATCH = 500;
+
+  // Columnas del Sheet ASIGNADOS → payload canónico
+  const VIAJES_COLS = {
+    'ID_CONSOLIDADO':            'viaje_ref',
+    'FECHA_CONSOLIDACION':       'fecha_consolidacion',
+    'PEDIDOS_INCLUIDOS':         'PEDIDOS_INCLUIDOS',
+    'ZONA_CONSOLIDADA':          'zona',
+    'ORIGEN_CONSOLIDADO':        'origen',
+    'DESTINO_CONSOLIDADO':       'destino',
+    'KM_TOTAL':                  'km_total',
+    'FLETE_TOTAL':               'flete_total',
+    'ESTADO':                    'estado_sheet',
+    'CANTIDAD_PEDIDOS':          'cantidad_pedidos',
+    'EMPRESA_CONSOLIDADA':       'empresa',
+    'CONSECUTIVOS_INCLUIDOS':    'consecutivos',
+    'Proveedor':                 'proveedor',
+    'PESO TRANSPORTADO (Kilos)': 'peso_kg',
+    'CONTENEDORES':              'contenedores',
+    'CAJAS':                     'cajas',
+    'BIDONES':                   'bidones',
+    'CANECAS':                   'canecas',
+    'UNIDADES SUELTAS':          'unidades_sueltas',
+    'VALOR DE LA MERCANCIA':     'valor_mercancia',
+    'observaciones':             'observaciones',
+    'fecha Carga':               'fecha_cargue',
+    'Identificacion Conductor':  'conductor_id',
+    'Nombre del conductor':      'conductor_nombre',
+    'Placa del Vehiculo':        'placa',
+    'Tipo Vehiculo':             'tipo_vehiculo',
+    'Foto del Cargue':           'foto_cargue',
+    'soporte de entrega':        'soporte_entrega',
+    'Confirma Vehiculo':         'confirma_vehiculo',
+  };
+
+  // Columnas Base_inicio-def → payload canónico
+  const PEDIDOS_COLS = {
+    'CONSECUTIVO IMP / LOG / CRM': 'pedido_ref',
+    'ID_consecutivo':              'id_consecutivo',
+    'EMPRESA':                     'empresa',
+    'FECHA ESTIMADA CARGUE':       'fecha_cargue',
+    'FECHA REQUERIDA DE ENTREGA':  'fecha_entrega',
+    'ZONA':                        'zona',
+    'ORIGEN':                      'origen',
+    'DESTINO':                     'destino',
+    'TIPO VEHICULO':               'tipo_vehiculo',
+    'FLETE':                       'flete',
+    'STANDBY':                     'standby',
+    'CANDADO':                     'candado',
+    'ESCOLTA':                     'escolta',
+    'ITR':                         'itr',
+    'CARGUE / DESCARGUE':          'cargue_descargue',
+    'VALOR DE LA FACTURA':         'valor_factura',
+    'PRODUCTOS / REMISION':        'tipo_mercancia',
+    'PESO TRANSPORTADO (Kilos)':   'peso_kg',
+    'CONTENEDORES':                'contenedores',
+    'CAJAS':                       'cajas',
+    'BIDONES':                     'bidones',
+    'CANECAS':                     'canecas',
+    'UNIDADES SUELTAS':            'unidades_sueltas',
+    'VALOR DE LA MERCANCIA':       'valor_mercancia',
+    'PROVEEDOR':                   'proveedor',
+    'ESTADO DEL VIAJE':            'estado_sheet',
+    'Nro FACTURA PROVEEDOR':       'nro_factura_proveedor',
+    'MOTIVO DEL VIAJE':            'motivo_viaje',
+    'JEFE DE ZONA':                'jefe_zona',
+    'VENDEDOR QUE SOLICITA':       'vendedor',
+    'COORDINADOR DEL SERVICIO':    'coordinador',
+    'CLIENTE':                     'cliente_nombre',
+    'WHATSAPP':                    'contacto_tel',
+    'PLACA':                       'placa',
+    'PRIORIDAD':                   'prioridad',
+    'Observaciones':               'observaciones',
+    'Soportes_1':                  'soporte_1',
+    'Soportes_2':                  'soporte_2',
+    'Soportes_3':                  'soporte_3',
+    'Dirrecion':                   'direccion',
+    'bodega email':                'bodega_email',
+    'Confirmar Vehiculo':          'confirma_vehiculo',
+    'Confirmar  Vehiculo':         'confirma_vehiculo',
+  };
+
+  const DATE_KEYS = new Set(['fecha_cargue','fecha_entrega','fecha_consolidacion']);
+  const NUM_KEYS  = new Set(['km_total','flete_total','peso_kg','valor_mercancia','valor_factura',
+                             'cantidad_pedidos','contenedores','cajas','bidones','canecas',
+                             'unidades_sueltas','flete','standby','candado','escolta','itr','otros']);
+  const BOOL_KEYS = new Set(['llamar_antes']);
+
+  function syncParseDate(s) {
+    if (!s) return null;
+    s = String(s).trim();
+    if (!s) return null;
+    // ISO yyyy-mm-dd[ Thh:mm:ss]
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) return new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0))).toISOString();
+    // LATAM d/m/yyyy [hh:mm[:ss]]
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) {
+      return new Date(Date.UTC(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0))).toISOString();
+    }
+    const t = Date.parse(s);
+    return isNaN(t) ? null : new Date(t).toISOString();
+  }
+
+  function syncParseValue(val, key) {
+    if (val == null) return null;
+    let s = String(val).trim();
+    if (!s || s.toUpperCase() === 'NULL') return null;
+    if (DATE_KEYS.has(key)) return syncParseDate(s);
+    if (NUM_KEYS.has(key))  {
+      s = s.replace(/\$/g,'').replace(/,/g,'').replace(/\s/g,'');
+      if (!s) return null;
+      const n = Number(s);
+      return isNaN(n) ? null : n;
+    }
+    if (BOOL_KEYS.has(key)) return ['true','1','si','sí','yes','y'].includes(s.toLowerCase());
+    return s;
+  }
+
+  async function fetchCsvRows(url, colMap) {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`Fetch ${url} → ${r.status}`);
+    const text = await r.text();
+    return new Promise((resolve, reject) => {
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: h => h.trim(),
+        complete: (result) => {
+          const rows = [];
+          for (const raw of result.data) {
+            const row = {};
+            for (const [sheetCol, canonicalKey] of Object.entries(colMap)) {
+              const trimmedCol = sheetCol.trim();
+              if (!(trimmedCol in raw)) continue;
+              const v = syncParseValue(raw[trimmedCol], canonicalKey);
+              if (v !== null && v !== undefined && v !== '') row[canonicalKey] = v;
+            }
+            if ('viaje_ref' in row || 'pedido_ref' in row) rows.push(row);
+          }
+          resolve(rows);
+        },
+        error: reject,
+      });
+    });
+  }
+
+  let syncInFlight = false;
+
+  function syncLog(line) {
+    const el = document.getElementById('mod-sync-log');
+    el.textContent += line + '\n';
+    el.scrollTop = el.scrollHeight;
+  }
+  function syncSub(txt) { document.getElementById('mod-sync-sub').textContent = txt; }
+
+  async function syncBatchRun(fnName, rows, label) {
+    syncLog(`→ ${label}: ${rows.length} filas (batches de ${SYNC_BATCH})`);
+    const agg = { insertados: 0, actualizados: 0, errores: 0 };
+    const extra = {};
+    for (let i = 0; i < rows.length; i += SYNC_BATCH) {
+      const batch = rows.slice(i, i + SYNC_BATCH);
+      syncSub(`${label} · batch ${i+1}-${i+batch.length} de ${rows.length}…`);
+      try {
+        const res = await rpc(fnName, batch);
+        for (const [k, v] of Object.entries(res || {})) {
+          if (typeof v === 'number') {
+            if (k in agg) agg[k] += v;
+            else extra[k] = (extra[k] || 0) + v;
+          }
+        }
+        const skips = Object.entries(res || {})
+          .filter(([k, v]) => k.startsWith('saltados') && typeof v === 'number')
+          .reduce((s, [,v]) => s + v, 0);
+        syncLog(`  ✓ ${i+1}-${i+batch.length} · ins=${res.insertados||0} upd=${res.actualizados||0} skip=${skips} err=${res.errores||0}`);
+        if (res.err_samples && Array.isArray(res.err_samples) && res.err_samples.length) {
+          res.err_samples.slice(0, 3).forEach(e => syncLog(`    ⚠ ${JSON.stringify(e)}`));
+        }
+      } catch (e) {
+        syncLog(`  ✗ batch ${i+1}-${i+batch.length} FAIL: ${e.message}`);
+        agg.errores += batch.length;
+      }
+    }
+    syncLog(`  TOTAL ${label}: ins=${agg.insertados} upd=${agg.actualizados} err=${agg.errores}`);
+    for (const [k,v] of Object.entries(extra)) syncLog(`    ${k}=${v}`);
+    return agg;
+  }
+
+  async function doSync() {
+    if (syncInFlight) { toast('Sync en curso…', 'warn'); return; }
+    syncInFlight = true;
+    document.getElementById('btn-sync').disabled = true;
+    document.getElementById('mod-sync-log').textContent = '';
+    syncSub('Arrancando…');
+    abrirModal('modal-sync');
+    const t0 = performance.now();
+    try {
+      syncLog('▸ Descargando CSVs desde Google Sheets…');
+      syncSub('Descargando CSVs…');
+      const [viajesRows, pedidosRows] = await Promise.all([
+        fetchCsvRows(SYNC_URLS.viajes,  VIAJES_COLS),
+        fetchCsvRows(SYNC_URLS.pedidos, PEDIDOS_COLS),
+      ]);
+      syncLog(`  ✓ ASIGNADOS: ${viajesRows.length} filas`);
+      syncLog(`  ✓ Base_inicio-def: ${pedidosRows.length} filas`);
+      syncLog('');
+
+      await syncBatchRun('fn_sync_viajes_batch',  viajesRows,  'Viajes');
+      syncLog('');
+      await syncBatchRun('fn_sync_pedidos_batch', pedidosRows, 'Pedidos');
+      syncLog('');
+
+      syncSub('Corriendo linkers v3 + v4…');
+      syncLog('▸ Linkers v3 + v4 (fn_run_linkers)');
+      const lk = await rpc('fn_run_linkers', {});
+      syncLog(`  v3 rescató: ${lk.linkeados_v3}`);
+      syncLog(`  v4 rescató: ${lk.linkeados_v4}`);
+      syncLog(`  Huérfanos: ${lk.huerfanos_antes} → ${lk.huerfanos_despues}`);
+      syncLog(`  % linked: ${lk.pct_linked}% (${lk.total_pedidos - lk.huerfanos_despues}/${lk.total_pedidos})`);
+      syncLog('');
+
+      const dt = ((performance.now() - t0) / 1000).toFixed(1);
+      syncLog(`✓ SYNC COMPLETO en ${dt}s`);
+      syncSub(`✓ Listo · ${lk.pct_linked}% linked · ${dt}s`);
+      toast(`Sync OK · ${lk.pct_linked}% linked`, 'success');
+      await recargarTodo();
+    } catch (e) {
+      syncLog(`✗ ERROR: ${e.message}`);
+      syncSub('✗ Error');
+      toast('Sync falló: ' + e.message, 'err');
+    } finally {
+      syncInFlight = false;
+      document.getElementById('btn-sync').disabled = false;
+    }
+  }
 </script>
 </body>
 </html>

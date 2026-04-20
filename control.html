@@ -487,6 +487,7 @@
         <div class="filtros-sep"></div>
         <button class="filtro-btn" id="flt-sin-viaje-btn" onclick="toggleFltSinViaje(this)" title="Solo pedidos sin viaje_id">🔗 Sin viaje</button>
         <button class="filtro-btn" id="flt-inconsist-btn" onclick="toggleFltInconsist(this)" title="Pedidos con estado incoherente (consolidado/asignado sin viaje)">⚠ Inconsistentes</button>
+        <button class="filtro-btn" onclick="autoRevisarConViaje()" title="Quita de Nuevos los pedidos que ya tienen viaje_id asignado (RT-TOTAL u otro)">✓ Auto-revisar con viaje</button>
         <button class="filtro-btn" onclick="limpiarFiltrosPedidos()">Limpiar</button>
       </div>
 
@@ -2247,6 +2248,25 @@
   document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
   });
+
+  // ═════════════ AUTO-REVISAR CON VIAJE ═════════════
+  // Marca como revisados los pedidos que están en "Nuevos"
+  // (revisado_at IS NULL) pero ya tienen viaje_id asignado.
+  async function autoRevisarConViaje() {
+    const candidatos = state.pedidos.filter(p => !p.revisado_at && p.viaje_id).length;
+    if (candidatos === 0) {
+      toast('No hay candidatos (ningún "Nuevo" con viaje asignado)', 'success');
+      return;
+    }
+    if (!confirm(`Quitar de "Nuevos" los pedidos que ya tienen viaje asignado?\n\n${candidatos} pedido(s) matchean en el estado local.\nSe marcan revisados automáticamente.`)) return;
+    try {
+      const res = await rpc('fn_auto_revisar_con_viaje', {});
+      toast(`${res.actualizados}/${res.candidatos} auto-revisados`, 'success');
+      await recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
 
   // ═════════════════════════════════════════════════════════════
   // SYNC Sheets → Netfleet (mirror de db/sync_from_csv.py)

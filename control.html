@@ -1061,15 +1061,15 @@
     const pend = state.viajes.filter(esViajeSubasta);
     const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
     const hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
-    // Count de tab Pedidos = pedidos que matchean el filtro de estado actual
-    document.getElementById('count-pedidos').textContent = pedidosDelEstadoActual().length;
+    // Tab Pedidos: total absoluto (no depende de filtro de estado activo)
+    document.getElementById('count-pedidos').textContent = fmtNum(state.pedidos.length);
+    // Sub-tabs de Viajes: count por estado
     document.getElementById('count-subasta').textContent = pend.length;
     document.getElementById('count-activos').textContent = activos.length;
     document.getElementById('count-historial').textContent = hist.length;
-    // Count agregado del workspace Viajes (botón principal)
-    const totalViajes = pend.length + activos.length + hist.length;
+    // Count agregado del workspace Viajes (botón principal) = total viajes en BD
     const elTotal = document.getElementById('count-viajes-total');
-    if (elTotal) elTotal.textContent = totalViajes;
+    if (elTotal) elTotal.textContent = fmtNum(state.viajes.length);
   }
 
   // ───────── FORMATTERS ─────────

@@ -36,6 +36,7 @@ BEGIN
   UPDATE pedidos p
   SET revisado_at    = now(),
       revisado_por   = auth.uid(),
+      estado         = CASE WHEN p.estado = 'sin_consolidar' THEN 'consolidado' ELSE p.estado END,
       revision_notas = 'Auto-revisado: ya consolidado en viaje ' ||
         COALESCE((SELECT viaje_ref FROM viajes_consolidados WHERE id = p.viaje_id), p.viaje_id::text)
   WHERE p.revisado_at IS NULL

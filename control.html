@@ -2250,18 +2250,17 @@
   });
 
   // ═════════════ AUTO-REVISAR CON VIAJE ═════════════
-  // Marca como revisados los pedidos que están en "Nuevos"
-  // (revisado_at IS NULL) pero ya tienen viaje_id asignado.
+  // Corre linker v3+v4 (rescata pedidos que textualmente matchean
+  // algún PEDIDOS_INCLUIDOS en ASIGNADOS pero tienen viaje_id=NULL)
+  // y luego marca como revisados todos los pedidos que ya tienen
+  // viaje_id asignado pero siguen con revisado_at=NULL.
   async function autoRevisarConViaje() {
-    const candidatos = state.pedidos.filter(p => !p.revisado_at && p.viaje_id).length;
-    if (candidatos === 0) {
-      toast('No hay candidatos (ningún "Nuevo" con viaje asignado)', 'success');
-      return;
-    }
-    if (!confirm(`Quitar de "Nuevos" los pedidos que ya tienen viaje asignado?\n\n${candidatos} pedido(s) matchean en el estado local.\nSe marcan revisados automáticamente.`)) return;
+    if (!confirm('Re-linker + auto-revisar?\n\n1. Corre linker v3+v4 (matchea refs faltantes contra PEDIDOS_INCLUIDOS)\n2. Marca como revisados los pedidos que ya tienen viaje\n\nEsto saca de "Nuevos" todo lo que en realidad ya está consolidado en un RT-TOTAL.')) return;
     try {
+      const lk = await rpc('fn_run_linkers', {});
+      const nuevos_links = (lk.linkeados_v3 || 0) + (lk.linkeados_v4 || 0);
       const res = await rpc('fn_auto_revisar_con_viaje', {});
-      toast(`${res.actualizados}/${res.candidatos} auto-revisados`, 'success');
+      toast(`+${nuevos_links} linkeados · ${res.actualizados} auto-revisados · ${lk.huerfanos_despues} huérfanos reales`, 'success');
       await recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');

@@ -187,6 +187,7 @@
 
     /* ── VIAJE CARD (tab subasta/activos/historial) ── */
     .viaje-card { background: white; border-radius: 14px; border: 1px solid var(--gray-100); margin-bottom: 10px; overflow: hidden; }
+    .viaje-card.selected { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy); background: #f8f9fe; }
     .viaje-card-head { display: grid; grid-template-columns: 1.2fr 1fr 120px 120px 140px 40px; gap: 12px; padding: 1rem 1.25rem; cursor: pointer; align-items: center; }
     .viaje-card-head:hover { background: var(--gray-50); }
     .viaje-ref { font-weight: 800; color: var(--navy); font-size: 13px; letter-spacing: 0.3px; }
@@ -484,6 +485,32 @@
         <div class="stat-card"><div class="stat-num" id="st-act-entr">—</div><div class="stat-lbl">entregados</div></div>
         <div class="stat-card"><div class="stat-num" id="st-act-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
       </div>
+
+      <div class="filtros">
+        <input class="filtro-input" id="flt-act-prov" placeholder="Proveedor…" oninput="renderActivos()">
+        <label style="font-size:11px;color:var(--gray-400);font-weight:600">cargue antes de:</label>
+        <input class="filtro-input" id="flt-act-cargue-antes" type="date" style="min-width:140px" oninput="renderActivos()">
+        <button class="filtro-btn" onclick="presetActCargue(30)">30d</button>
+        <button class="filtro-btn" onclick="presetActCargue(60)">60d</button>
+        <button class="filtro-btn" onclick="presetActCargue(90)">90d</button>
+        <button class="filtro-btn" onclick="presetActCargue(180)">6m</button>
+        <div class="filtros-sep"></div>
+        <button class="filtro-btn" onclick="toggleSelectAllActivos()">Sel. todos visibles</button>
+        <button class="filtro-btn" onclick="limpiarSeleccionActivos()">Limpiar selección</button>
+        <button class="filtro-btn" onclick="limpiarFiltrosActivos()">Limpiar filtros</button>
+      </div>
+
+      <div class="accion-bar" id="accion-bar-activos" style="display:none">
+        <div>
+          <div class="count" id="sel-act-count-text">0 viajes seleccionados</div>
+          <div class="hint">Cerrar = pasar a "Historial" con estado finalizado</div>
+        </div>
+        <div style="display:flex; gap:8px">
+          <button class="ghost" onclick="limpiarSeleccionActivos()">Limpiar</button>
+          <button onclick="cerrarViajesSeleccionados()">Cerrar seleccionados ↓</button>
+        </div>
+      </div>
+
       <div id="activos-lista">
         <div class="loading-msg">Cargando activos…</div>
       </div>
@@ -624,6 +651,7 @@
     clientes: [],
     transportadoras: [],
     seleccionados: new Set(),
+    seleccionadosActivos: new Set(),
     filtroHist: 'todos',
     modalViajeId: null,  // para modales ajustar/asignar
     ridgePrecio: null,
@@ -716,6 +744,25 @@
     return r.json();
   }
 
+  // Paginación: PostgREST limita a 1000 por default. Para datasets más grandes,
+  // hacemos requests secuenciales con Range header.
+  async function getJsonPaginated(path, pageSize = 1000) {
+    const h = await authHeaders();
+    let all = [];
+    let offset = 0;
+    while (true) {
+      const headers = { ...h, 'Range-Unit': 'items', 'Range': `${offset}-${offset + pageSize - 1}` };
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers });
+      if (!r.ok) throw new Error(`GET ${path} → ${r.status}: ${await r.text()}`);
+      const page = await r.json();
+      all = all.concat(page);
+      if (page.length < pageSize) break;
+      offset += pageSize;
+      if (offset > 50000) break;  // safety stop
+    }
+    return all;
+  }
+
   async function rpc(fn, body) {
     const h = await authHeaders();
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -737,11 +784,12 @@
       const [clientes, transp, pedSinCons, pedDeViajes, viajes, ofertas] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
-        // Sin consolidar: se fetchean todos sin importar el límite
-        getJson(`pedidos?select=${pedidosCols}&estado=eq.sin_consolidar&order=fecha_cargue.desc.nullslast&limit=2000`),
-        // Pedidos de viajes (consolidado/asignado/en_ruta/etc): para el detalle dentro de las cards
-        getJson(`pedidos?select=${pedidosCols}&viaje_id=not.is.null&order=created_at.desc&limit=3000`),
-        getJson('viajes_consolidados?select=*&order=created_at.desc&limit=2000'),
+        // Sin consolidar (incluye nuevos sin revisar + revisados): paginado
+        getJsonPaginated(`pedidos?select=${pedidosCols}&estado=eq.sin_consolidar&order=fecha_cargue.desc.nullslast`),
+        // Pedidos de viajes: paginado, ~3525 rows
+        getJsonPaginated(`pedidos?select=${pedidosCols}&viaje_id=not.is.null&order=created_at.desc`),
+        // Viajes: paginado, ~1281 rows
+        getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
       ]);
       // Merge (dedupe por id en caso de solape)
@@ -1250,9 +1298,13 @@
     const esActivo = contexto === 'activos';
     const esHist = contexto === 'historial';
 
+    const selActivo = esActivo && state.seleccionadosActivos.has(v.id);
     return `
-    <div class="viaje-card" id="vcard-${v.id}">
+    <div class="viaje-card ${selActivo ? 'selected' : ''}" id="vcard-${v.id}">
       <div class="viaje-card-head" onclick="toggleViaje('${v.id}')">
+        ${esActivo ? `<div onclick="event.stopPropagation(); toggleActivo('${v.id}')" style="display:flex;align-items:center;margin-right:8px">
+          <input type="checkbox" ${selActivo ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer;accent-color:var(--navy)">
+        </div>` : ''}
         <div>
           <div class="viaje-ref">${v.viaje_ref}</div>
           <div class="viaje-ruta">${v.origen || '—'} → ${v.destino || '—'}</div>
@@ -1551,20 +1603,100 @@
   }
 
   // ═════════════ TAB ACTIVOS ═════════════
+  function activosFiltrados() {
+    const fProv = (document.getElementById('flt-act-prov')?.value || '').toLowerCase();
+    const fAntes = document.getElementById('flt-act-cargue-antes')?.value || '';
+    return state.viajes
+      .filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado))
+      .filter(v => {
+        if (fProv && !((v.proveedor || '').toLowerCase().includes(fProv))) return false;
+        if (fAntes && v.fecha_cargue) {
+          const fc = v.fecha_cargue.substring(0, 10);
+          if (fc >= fAntes) return false;
+        }
+        return true;
+      });
+  }
+
+  function presetActCargue(dias) {
+    const hoy = new Date();
+    hoy.setDate(hoy.getDate() - dias);
+    document.getElementById('flt-act-cargue-antes').value = hoy.toISOString().substring(0, 10);
+    renderActivos();
+  }
+
+  function limpiarFiltrosActivos() {
+    const ids = ['flt-act-prov', 'flt-act-cargue-antes'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    renderActivos();
+  }
+
+  function toggleActivo(viajeId) {
+    if (state.seleccionadosActivos.has(viajeId)) state.seleccionadosActivos.delete(viajeId);
+    else state.seleccionadosActivos.add(viajeId);
+    actualizarSeleccionActivos();
+    renderActivos();
+  }
+
+  function toggleSelectAllActivos() {
+    const visible = activosFiltrados();
+    const allSelected = visible.every(v => state.seleccionadosActivos.has(v.id));
+    visible.forEach(v => {
+      if (allSelected) state.seleccionadosActivos.delete(v.id);
+      else state.seleccionadosActivos.add(v.id);
+    });
+    actualizarSeleccionActivos();
+    renderActivos();
+  }
+
+  function limpiarSeleccionActivos() {
+    state.seleccionadosActivos.clear();
+    actualizarSeleccionActivos();
+    renderActivos();
+  }
+
+  function actualizarSeleccionActivos() {
+    const n = state.seleccionadosActivos.size;
+    document.getElementById('accion-bar-activos').style.display = n > 0 ? 'flex' : 'none';
+    document.getElementById('sel-act-count-text').textContent =
+      `${n} viaje${n !== 1 ? 's' : ''} seleccionado${n !== 1 ? 's' : ''}`;
+  }
+
+  async function cerrarViajesSeleccionados() {
+    const ids = [...state.seleccionadosActivos];
+    if (!ids.length) return;
+    const razon = prompt(`Cerrar ${ids.length} viaje${ids.length !== 1 ? 's' : ''}?\n\nPasarán a "Historial" con estado finalizado, y sus pedidos a estado entregado.\n\nRazón (opcional):`);
+    if (razon === null) return;  // cancelled
+    try {
+      const result = await rpc('fn_cerrar_viajes_batch', {
+        p_viaje_ids: ids,
+        p_razon: razon || null,
+      });
+      toast(`${result.cerrados} cerrados · ${result.ya_cerrados} ya estaban cerrados · ${result.invalidos} con error`, 'success');
+      state.seleccionadosActivos.clear();
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
   function renderActivos() {
-    const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
-    document.getElementById('st-act-conf').textContent = activos.filter(v => v.estado === 'confirmado').length;
-    document.getElementById('st-act-ruta').textContent = activos.filter(v => v.estado === 'en_ruta').length;
-    document.getElementById('st-act-entr').textContent = activos.filter(v => v.estado === 'entregado').length;
+    const todos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
+    const activos = activosFiltrados();
+
+    document.getElementById('st-act-conf').textContent = todos.filter(v => v.estado === 'confirmado').length;
+    document.getElementById('st-act-ruta').textContent = todos.filter(v => v.estado === 'en_ruta').length;
+    document.getElementById('st-act-entr').textContent = todos.filter(v => v.estado === 'entregado').length;
     document.getElementById('st-act-flete').textContent =
-      (activos.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000).toFixed(1);
+      (todos.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000).toFixed(1);
 
     const lista = document.getElementById('activos-lista');
     if (!activos.length) {
-      lista.innerHTML = '<div class="empty-msg">No hay viajes activos.</div>';
+      lista.innerHTML = '<div class="empty-msg">No hay viajes activos con estos filtros.</div>';
       return;
     }
     lista.innerHTML = activos.map(v => renderViajeCard(v, 'activos')).join('');
+    // Aplica clases visuales para checkboxes (ver renderViajeCard)
   }
 
   // ═════════════ TAB HISTORIAL ═════════════

@@ -41,6 +41,39 @@
 
     .app-body { max-width: 1400px; margin: 0 auto; padding: 1.75rem 2rem; }
 
+    /* ── DASHBOARD INICIO ── */
+    .dashboard-header { margin-bottom: 1.5rem; }
+    .dashboard-greeting { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
+    .dashboard-subtitle { font-size: 14px; color: var(--gray-400); margin-top: 2px; }
+    .dashboard-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px; margin-bottom: 1.5rem;
+    }
+    .dash-card {
+      background: white; border: 1.5px solid var(--gray-100); border-radius: 16px;
+      padding: 1.25rem 1.5rem; cursor: pointer; transition: all .15s;
+      position: relative;
+    }
+    .dash-card:hover { border-color: var(--cyan); box-shadow: 0 8px 20px rgba(0,191,216,0.12); transform: translateY(-2px); }
+    .dash-card-icon { font-size: 28px; margin-bottom: 6px; }
+    .dash-card-num { font-size: 2.2rem; font-weight: 800; color: var(--navy); letter-spacing: -1.5px; line-height: 1; }
+    .dash-card-lbl { font-size: 12px; font-weight: 600; color: var(--gray-600); margin-top: 6px; text-transform: lowercase; }
+    .dash-card-lbl small { font-size: 10px; color: var(--gray-400); font-weight: 500; }
+    .dash-card-cta {
+      font-size: 11px; color: var(--cyan); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100);
+    }
+    .dash-card.urgente { border-color: var(--orange); background: #fff7ed; }
+    .dash-card.urgente .dash-card-num { color: var(--orange); }
+    .dash-card.zero { opacity: 0.5; }
+    .dashboard-stats {
+      display: flex; gap: 20px; padding: 0.75rem 1rem;
+      background: var(--gray-50); border-radius: 10px;
+      font-size: 12px; color: var(--gray-600);
+    }
+    .dash-stat strong, .dash-stat span { font-weight: 800; color: var(--navy); }
+
     /* ── TABS ── */
     .tabs-nav { display: flex; gap: 4px; margin-bottom: 1.5rem; background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 4px; width: fit-content; }
     .tab-btn  { padding: 9px 18px; border-radius: 9px; border: none; background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--gray-400); transition: all .2s; display: flex; align-items: center; gap: 7px; }
@@ -321,24 +354,78 @@
 
   <div class="app-body">
 
-    <!-- Tabs nav -->
+    <!-- Tabs nav — orientadas al flujo (verbos, no sustantivos) -->
     <div class="tabs-nav">
-      <button class="tab-btn active" data-tab="pedidos" onclick="cambiarTab('pedidos', this)">
-        Pedidos <span class="tab-count" id="count-pedidos">0</span>
+      <button class="tab-btn active" data-tab="inicio" onclick="cambiarTab('inicio', this)">
+        🏠 Inicio
+      </button>
+      <button class="tab-btn" data-tab="pedidos" onclick="cambiarTab('pedidos', this)">
+        📥 Pedidos <span class="tab-count" id="count-pedidos">0</span>
       </button>
       <button class="tab-btn" data-tab="subasta" onclick="cambiarTab('subasta', this)">
-        Asignar proveedor <span class="tab-count" id="count-subasta">0</span>
+        🤝 Por asignar <span class="tab-count" id="count-subasta">0</span>
       </button>
       <button class="tab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
-        En seguimiento <span class="tab-count" id="count-activos">0</span>
+        🚚 En ruta <span class="tab-count" id="count-activos">0</span>
       </button>
       <button class="tab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
-        Historial <span class="tab-count" id="count-historial">0</span>
+        📚 Archivo <span class="tab-count" id="count-historial">0</span>
       </button>
     </div>
 
+    <!-- ═══ TAB: INICIO (dashboard con KPIs clickeables) ═══ -->
+    <div class="tab-section active" id="tab-inicio">
+      <div class="dashboard-header">
+        <div class="dashboard-greeting" id="dash-greeting">Hola 👋</div>
+        <div class="dashboard-subtitle">¿Qué necesitás hacer hoy?</div>
+      </div>
+      <div class="dashboard-cards">
+        <div class="dash-card" onclick="irADashboard('pedidos-nuevos')">
+          <div class="dash-card-icon">📋</div>
+          <div class="dash-card-num" id="dash-pedidos-nuevos">—</div>
+          <div class="dash-card-lbl">pedidos nuevos<br><small>para revisar</small></div>
+          <div class="dash-card-cta">Revisar →</div>
+        </div>
+        <div class="dash-card" onclick="irADashboard('pedidos-listos')">
+          <div class="dash-card-icon">📦</div>
+          <div class="dash-card-num" id="dash-pedidos-listos">—</div>
+          <div class="dash-card-lbl">listos<br><small>para consolidar</small></div>
+          <div class="dash-card-cta">Consolidar →</div>
+        </div>
+        <div class="dash-card" onclick="irADashboard('viajes-borrador')">
+          <div class="dash-card-icon">✏️</div>
+          <div class="dash-card-num" id="dash-viajes-borrador">—</div>
+          <div class="dash-card-lbl">borradores<br><small>sin publicar</small></div>
+          <div class="dash-card-cta">Publicar →</div>
+        </div>
+        <div class="dash-card" onclick="irADashboard('viajes-asignar')">
+          <div class="dash-card-icon">🤝</div>
+          <div class="dash-card-num" id="dash-viajes-asignar">—</div>
+          <div class="dash-card-lbl">sin proveedor<br><small>por adjudicar</small></div>
+          <div class="dash-card-cta">Asignar →</div>
+        </div>
+        <div class="dash-card" onclick="irADashboard('viajes-ruta')">
+          <div class="dash-card-icon">🚛</div>
+          <div class="dash-card-num" id="dash-viajes-ruta">—</div>
+          <div class="dash-card-lbl">en ruta<br><small>rodando</small></div>
+          <div class="dash-card-cta">Seguir →</div>
+        </div>
+        <div class="dash-card" onclick="irADashboard('viajes-entregado')">
+          <div class="dash-card-icon">📬</div>
+          <div class="dash-card-num" id="dash-viajes-entregado">—</div>
+          <div class="dash-card-lbl">entregados<br><small>pendiente cerrar</small></div>
+          <div class="dash-card-cta">Cerrar →</div>
+        </div>
+      </div>
+      <div class="dashboard-stats">
+        <div class="dash-stat"><span id="dash-total-pedidos">—</span> pedidos totales</div>
+        <div class="dash-stat"><span id="dash-total-viajes">—</span> viajes totales</div>
+        <div class="dash-stat"><span id="dash-flete-mes">—</span> flete este mes</div>
+      </div>
+    </div>
+
     <!-- ═══ TAB: PEDIDOS (vista unificada — todos los estados + bulk actions) ═══ -->
-    <div class="tab-section active" id="tab-pedidos">
+    <div class="tab-section" id="tab-pedidos">
 
       <div class="stats-bar">
         <div class="stat-card"><div class="stat-num" id="st-ped-total">—</div><div class="stat-lbl">pedidos visibles</div></div>
@@ -750,6 +837,78 @@
     if (btn) cambiarTab(nombre, btn);
   }
 
+  // ═════════════ DASHBOARD INICIO ═════════════
+  function renderDashboard() {
+    // KPIs — count real basado en state
+    const pedNuevos = state.pedidos.filter(esNuevo).length;
+    const pedListos = state.pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
+    const vBorrador = state.viajes.filter(v => v.estado === 'pendiente' && !v.publicado_at && v.fuente === 'netfleet').length;
+    const vAsignar = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at).length;
+    const vRuta = state.viajes.filter(v => v.estado === 'en_ruta' || v.estado === 'confirmado').length;
+    const vEntregado = state.viajes.filter(v => v.estado === 'entregado').length;
+
+    setVal('dash-pedidos-nuevos', pedNuevos, 'pedidos-nuevos');
+    setVal('dash-pedidos-listos', pedListos, 'pedidos-listos');
+    setVal('dash-viajes-borrador', vBorrador, 'viajes-borrador');
+    setVal('dash-viajes-asignar', vAsignar, 'viajes-asignar');
+    setVal('dash-viajes-ruta', vRuta, 'viajes-ruta');
+    setVal('dash-viajes-entregado', vEntregado, 'viajes-entregado');
+
+    // Stats footer
+    document.getElementById('dash-total-pedidos').textContent = fmtNum(state.pedidos.length);
+    document.getElementById('dash-total-viajes').textContent = fmtNum(state.viajes.length);
+    const fleteM = state.viajes.reduce((s,v) => s + (+v.flete_total||0), 0) / 1_000_000;
+    document.getElementById('dash-flete-mes').textContent = '$' + fleteM.toFixed(0) + 'M';
+
+    // Greeting por hora
+    const h = new Date().getHours();
+    const saludo = h < 12 ? 'Buenos días' : h < 18 ? 'Buenas tardes' : 'Buenas noches';
+    const email = document.getElementById('app-user-email')?.textContent || '';
+    const nombre = email.split('(')[0].trim() || email;
+    document.getElementById('dash-greeting').textContent = `${saludo}${nombre ? ', ' + nombre.split(' ')[0] : ''} 👋`;
+  }
+
+  function setVal(id, n, ctx) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmtNum(n);
+    const card = el.closest('.dash-card');
+    if (!card) return;
+    card.classList.toggle('zero', n === 0);
+    card.classList.toggle('urgente', ctx === 'pedidos-nuevos' && n > 0);
+  }
+
+  function irADashboard(contexto) {
+    // Click en card del dashboard → navegar al tab + aplicar filtro
+    switch (contexto) {
+      case 'pedidos-nuevos':
+        irATab('pedidos');
+        // reset filtros + activar Nuevos
+        state.filtroEstados = new Set(['nuevo']);
+        document.querySelectorAll('[data-est]').forEach(b => b.classList.toggle('active', b.getAttribute('data-est') === 'nuevo'));
+        state.fltSinViaje = false; state.fltInconsist = false;
+        document.getElementById('flt-sin-viaje-btn')?.classList.remove('active');
+        document.getElementById('flt-inconsist-btn')?.classList.remove('active');
+        renderPedidos();
+        break;
+      case 'pedidos-listos':
+        irATab('pedidos');
+        state.filtroEstados = new Set(['sin_consolidar']);
+        document.querySelectorAll('[data-est]').forEach(b => b.classList.toggle('active', b.getAttribute('data-est') === 'sin_consolidar'));
+        state.fltSinViaje = false; state.fltInconsist = false;
+        renderPedidos();
+        break;
+      case 'viajes-borrador':
+      case 'viajes-asignar':
+        irATab('subasta');
+        break;
+      case 'viajes-ruta':
+      case 'viajes-entregado':
+        irATab('activos');
+        break;
+    }
+  }
+
   // ───────── TOAST ─────────
   let toastTimer = null;
   function toast(msg, variant='') {
@@ -828,6 +987,7 @@
         `<option value="${t.id}">${t.nombre}</option>`).join('');
 
       updateCounts();
+      renderDashboard();
       renderPedidos();
       renderSubasta();
       renderActivos();

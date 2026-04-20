@@ -2484,7 +2484,7 @@
     } catch (e) {
       syncLog(`✗ ERROR: ${e.message}`);
       syncSub('✗ Error');
-      toast('Sync falló: ' + e.message, 'err');
+      toast('Sync falló: ' + e.message, 'error');
     } finally {
       syncInFlight = false;
       document.getElementById('btn-sync').disabled = false;

@@ -330,10 +330,10 @@
         Sin consolidar <span class="tab-count" id="count-pedidos">0</span>
       </button>
       <button class="tab-btn" data-tab="subasta" onclick="cambiarTab('subasta', this)">
-        Consolidados <span class="tab-count" id="count-subasta">0</span>
+        Asignar proveedor <span class="tab-count" id="count-subasta">0</span>
       </button>
       <button class="tab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
-        Activos <span class="tab-count" id="count-activos">0</span>
+        En seguimiento <span class="tab-count" id="count-activos">0</span>
       </button>
       <button class="tab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
         Historial <span class="tab-count" id="count-historial">0</span>
@@ -1215,9 +1215,9 @@
       });
       if (publicar) {
         await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipoSubasta });
-        toast(`Consolidado y publicado (${tipoSubasta}) → ver en Consolidados`, 'success');
+        toast(`Consolidado y publicado (${tipoSubasta}) → ver en Asignar proveedor`, 'success');
       } else {
-        toast('Consolidado como borrador → ver en Consolidados', 'success');
+        toast('Consolidado como borrador → ver en Asignar proveedor', 'success');
       }
       state.seleccionados.clear();
       cerrarModal('modal-consolidar');
@@ -1501,7 +1501,7 @@
     if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
     try {
       await rpc('fn_reabrir_viaje', { p_viaje_id: viajeId, p_razon: razon });
-      toast('Viaje reabierto → ver en Consolidados', 'success');
+      toast('Viaje reabierto → ver en Asignar proveedor', 'success');
       irATab('subasta');
       recargarTodo();
     } catch (e) {
@@ -1518,7 +1518,7 @@
     if (!confirm('¿Adjudicar esta oferta? Las demás del viaje quedarán rechazadas.')) return;
     try {
       await rpc('fn_adjudicar_oferta', { p_oferta_id: ofertaId });
-      toast(`Adjudicado${transp ? ' a ' + transp : ''}${oferta ? ' por ' + fmtCOP(oferta.precio_oferta) : ''} → ver en Activos`, 'success');
+      toast(`Adjudicado${transp ? ' a ' + transp : ''}${oferta ? ' por ' + fmtCOP(oferta.precio_oferta) : ''} → ver en Seguimiento`, 'success');
       irATab('activos');
       recargarTodo();
     } catch (e) {
@@ -1581,7 +1581,7 @@
         p_precio: precio,
         p_razon: razon,
       });
-      toast(`Asignado directo a ${transpNombre} → ver en Activos`, 'success');
+      toast(`Asignado directo a ${transpNombre} → ver en Seguimiento`, 'success');
       cerrarModal('modal-asignar');
       irATab('activos');
       recargarTodo();

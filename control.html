@@ -371,6 +371,8 @@
         <button class="filtro-btn" onclick="presetFechas(30)">30d</button>
         <button class="filtro-btn" onclick="presetFechas(90)">90d</button>
         <div class="filtros-sep"></div>
+        <button class="filtro-btn" id="flt-sin-viaje-btn" onclick="toggleFltSinViaje(this)" title="Solo pedidos sin viaje_id">🔗 Sin viaje</button>
+        <button class="filtro-btn" id="flt-inconsist-btn" onclick="toggleFltInconsist(this)" title="Pedidos con estado incoherente (consolidado/asignado sin viaje)">⚠ Inconsistentes</button>
         <button class="filtro-btn" onclick="limpiarFiltrosPedidos()">Limpiar</button>
       </div>
 
@@ -383,7 +385,9 @@
           <button class="ghost" onclick="limpiarSeleccion()">Limpiar</button>
           <button class="ghost" onclick="bulkVolverNuevos()" title="Limpia revisado_at → vuelve a Nuevos">↶ Nuevos</button>
           <button class="ghost" onclick="bulkResetear()" title="estado=sin_consolidar + viaje_id=NULL">↺ Resetear</button>
+          <button class="ghost" onclick="bulkCambiarEstado()" title="Forzar cualquier estado">⇄ Cambiar estado</button>
           <button class="ghost" onclick="bulkCancelar()" style="color:#fca5a5" title="estado=cancelado">✕ Cancelar</button>
+          <button class="ghost" onclick="bulkEliminar()" style="color:#ef4444" title="DELETE hard de la BD">🗑 Eliminar</button>
           <button onclick="abrirModalConsolidar()">Consolidar →</button>
         </div>
       </div>
@@ -591,6 +595,55 @@
   </div>
 </div>
 
+<!-- ══════════════════════ MODAL: EDITAR PEDIDO ══════════════════════ -->
+<div class="modal-overlay" id="modal-pedido-editar">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-title" id="mod-ed-title">Editar pedido</div>
+    <div class="modal-sub" id="mod-ed-sub">—</div>
+
+    <div class="modal-grid-2">
+      <div><label class="modal-label">Ref pedido</label><input class="modal-input" id="ed-pedido_ref"></div>
+      <div><label class="modal-label">Empresa</label><input class="modal-input" id="ed-empresa"></div>
+      <div><label class="modal-label">Cliente (nombre final)</label><input class="modal-input" id="ed-cliente_nombre"></div>
+      <div><label class="modal-label">Zona</label><input class="modal-input" id="ed-zona"></div>
+      <div><label class="modal-label">Origen</label><input class="modal-input" id="ed-origen"></div>
+      <div><label class="modal-label">Destino</label><input class="modal-input" id="ed-destino"></div>
+      <div><label class="modal-label">Fecha cargue</label><input class="modal-input" id="ed-fecha_cargue" type="date"></div>
+      <div><label class="modal-label">Fecha entrega</label><input class="modal-input" id="ed-fecha_entrega" type="date"></div>
+      <div><label class="modal-label">Peso (kg)</label><input class="modal-input" id="ed-peso_kg" type="number" step="any"></div>
+      <div><label class="modal-label">Tipo mercancía</label><input class="modal-input" id="ed-tipo_mercancia"></div>
+      <div><label class="modal-label">Contenedores</label><input class="modal-input" id="ed-contenedores" type="number"></div>
+      <div><label class="modal-label">Cajas</label><input class="modal-input" id="ed-cajas" type="number"></div>
+      <div><label class="modal-label">Bidones</label><input class="modal-input" id="ed-bidones" type="number"></div>
+      <div><label class="modal-label">Canecas</label><input class="modal-input" id="ed-canecas" type="number"></div>
+      <div><label class="modal-label">Unidades sueltas</label><input class="modal-input" id="ed-unidades_sueltas" type="number"></div>
+      <div><label class="modal-label">Valor mercancía</label><input class="modal-input" id="ed-valor_mercancia" type="number" step="any"></div>
+      <div><label class="modal-label">Valor factura</label><input class="modal-input" id="ed-valor_factura" type="number" step="any"></div>
+      <div><label class="modal-label">Prioridad</label><input class="modal-input" id="ed-prioridad"></div>
+      <div><label class="modal-label">Motivo viaje</label><input class="modal-input" id="ed-motivo_viaje"></div>
+      <div><label class="modal-label">Proveedor</label><input class="modal-input" id="ed-proveedor"></div>
+      <div><label class="modal-label">Contacto nombre</label><input class="modal-input" id="ed-contacto_nombre"></div>
+      <div><label class="modal-label">Contacto teléfono</label><input class="modal-input" id="ed-contacto_tel"></div>
+      <div style="grid-column:1/-1"><label class="modal-label">Dirección</label><input class="modal-input" id="ed-direccion"></div>
+      <div style="grid-column:1/-1"><label class="modal-label">Horario</label><input class="modal-input" id="ed-horario"></div>
+      <div><label class="modal-label">Vendedor</label><input class="modal-input" id="ed-vendedor"></div>
+      <div><label class="modal-label">Jefe de zona</label><input class="modal-input" id="ed-jefe_zona"></div>
+      <div><label class="modal-label">Coordinador</label><input class="modal-input" id="ed-coordinador"></div>
+      <div><label class="modal-label">Llamar antes</label>
+        <select class="modal-select" id="ed-llamar_antes"><option value="false">No</option><option value="true">Sí</option></select>
+      </div>
+    </div>
+
+    <label class="modal-label">Observaciones</label>
+    <textarea class="modal-textarea" id="ed-observaciones" rows="3"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-pedido-editar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEdicion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════ MODAL: DETALLE PEDIDO ══════════════════════ -->
 <div class="modal-overlay" id="modal-pedido-detalle">
   <div class="modal-box" style="max-width:700px">
@@ -620,6 +673,9 @@
     seleccionados: new Set(),
     seleccionadosActivos: new Set(),
     filtroEstados: new Set(['sin_consolidar']),  // multiselect de estados visibles
+    fltSinViaje: false,
+    fltInconsist: false,
+    editandoPedidoId: null,
     filtroHist: 'todos',
     modalViajeId: null,  // para modales ajustar/asignar
     ridgePrecio: null,
@@ -858,6 +914,25 @@
     });
   }
 
+  function toggleFltSinViaje(btn) {
+    state.fltSinViaje = !state.fltSinViaje;
+    btn.classList.toggle('active', state.fltSinViaje);
+    state.seleccionados.clear();
+    renderPedidos();
+  }
+
+  function toggleFltInconsist(btn) {
+    state.fltInconsist = !state.fltInconsist;
+    btn.classList.toggle('active', state.fltInconsist);
+    state.seleccionados.clear();
+    renderPedidos();
+  }
+
+  function esInconsistente(p) {
+    // estado dice consolidado/asignado/en_ruta pero no hay viaje_id
+    return ['consolidado','asignado','en_ruta','entregado','entregado_novedad'].includes(p.estado) && !p.viaje_id;
+  }
+
   function toggleFiltroEstado(estado, btn) {
     if (state.filtroEstados.has(estado)) state.filtroEstados.delete(estado);
     else state.filtroEstados.add(estado);
@@ -888,6 +963,8 @@
     const fDesde   = document.getElementById('flt-fecha-desde').value;
     const fHasta   = document.getElementById('flt-fecha-hasta').value;
     return pedidosDelEstadoActual().filter(p => {
+      if (state.fltSinViaje && p.viaje_id) return false;
+      if (state.fltInconsist && !esInconsistente(p)) return false;
       if (fRef && !((p.pedido_ref||'').toLowerCase().includes(fRef))) return false;
       if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente) || (p.cliente_nombre||'').toLowerCase().includes(fCliente))) return false;
       if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
@@ -949,6 +1026,98 @@
     try {
       const res = await rpc('fn_pedidos_resetear_batch', { p_pedido_ids: ids, p_razon: razon, p_marcar_nuevo: true });
       toast(`${res.reseteados} pedidos devueltos a Nuevos`, 'success');
+      state.seleccionados.clear();
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════ EDITAR PEDIDO ═════════════
+  const ED_FIELDS = [
+    'pedido_ref','empresa','cliente_nombre','zona','origen','destino',
+    'fecha_cargue','fecha_entrega','peso_kg','tipo_mercancia',
+    'contenedores','cajas','bidones','canecas','unidades_sueltas',
+    'valor_mercancia','valor_factura','prioridad','motivo_viaje','proveedor',
+    'contacto_nombre','contacto_tel','direccion','horario',
+    'vendedor','jefe_zona','coordinador','llamar_antes','observaciones'
+  ];
+
+  function abrirModalEditar(pedidoId) {
+    const p = getPedido(pedidoId);
+    if (!p) { toast('Pedido no encontrado', 'error'); return; }
+    state.editandoPedidoId = pedidoId;
+    document.getElementById('mod-ed-title').textContent = `Editar ${p.pedido_ref || '(sin ref)'}`;
+    document.getElementById('mod-ed-sub').textContent = `${p.empresa || '—'} · ${p.origen || '—'} → ${p.destino || '—'} · estado: ${p.estado}`;
+    ED_FIELDS.forEach(f => {
+      const el = document.getElementById('ed-' + f);
+      if (!el) return;
+      let val = p[f];
+      if (val === null || val === undefined) val = '';
+      if (f === 'fecha_cargue' || f === 'fecha_entrega') val = val ? String(val).substring(0,10) : '';
+      if (f === 'llamar_antes') val = val ? 'true' : 'false';
+      el.value = val;
+    });
+    abrirModal('modal-pedido-editar');
+  }
+
+  async function guardarEdicion() {
+    const id = state.editandoPedidoId;
+    if (!id) return;
+    const campos = {};
+    ED_FIELDS.forEach(f => {
+      const el = document.getElementById('ed-' + f);
+      if (!el) return;
+      const val = el.value.trim();
+      if (val === '') return;  // no sobrescribir con vacío
+      campos[f] = val;
+    });
+    try {
+      await rpc('fn_pedido_editar', { p_pedido_id: id, p_campos: campos });
+      toast('Pedido actualizado', 'success');
+      cerrarModal('modal-pedido-editar');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════ CAMBIAR ESTADO (bulk) ═════════════
+  async function bulkCambiarEstado() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const nuevo = prompt(
+      `Nuevo estado para ${ids.length} pedido${ids.length!==1?'s':''}?\n\n` +
+      'Opciones: sin_consolidar · consolidado · asignado · en_ruta · entregado · entregado_novedad · rechazado · cancelado'
+    );
+    if (!nuevo || !nuevo.trim()) return;
+    const razon = prompt('Razón del cambio de estado (obligatoria):');
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedidos_cambiar_estado_batch', {
+        p_pedido_ids: ids,
+        p_nuevo_estado: nuevo.trim(),
+        p_razon: razon,
+      });
+      toast(`${res.cambiados} pedidos → ${nuevo.trim()}`, 'success');
+      state.seleccionados.clear();
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════ ELIMINAR (bulk, hard delete) ═════════════
+  async function bulkEliminar() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const conf1 = prompt(
+      `⚠ ELIMINAR permanentemente ${ids.length} pedido${ids.length!==1?'s':''}?\n\n` +
+      'Son DELETE hard de la BD. El snapshot queda en acciones_operador como única forma de recuperar.\n\n' +
+      'Para confirmar, escribí: ELIMINAR'
+    );
+    if (conf1 !== 'ELIMINAR') { toast('Cancelado', 'error'); return; }
+    const razon = prompt('Razón (obligatoria, queda en audit):');
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedidos_eliminar_batch', { p_pedido_ids: ids, p_razon: razon });
+      toast(`${res.eliminados} pedidos eliminados (snapshot guardado)`, 'success');
       state.seleccionados.clear();
       recargarTodo();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -1020,14 +1189,18 @@
 
       pedidos.forEach(p => {
         const esN = esNuevo(p);
+        const incon = esInconsistente(p);
         const estadoBadge = esN
           ? '<span class="badge" style="background:#fff7ed;color:var(--orange);margin-left:6px">NUEVO</span>'
           : `<span class="badge ${p.estado}" style="margin-left:6px">${p.estado}</span>`;
+        const inconBadge = incon
+          ? '<span class="badge" style="background:#fef2f2;color:var(--red);margin-left:4px" title="estado indica en viaje pero viaje_id=NULL">⚠ sin viaje</span>'
+          : '';
         html.push(`
         <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
           <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
           <td>
-            <div class="pedido-ref">${p.pedido_ref || '—'} ${estadoBadge}</div>
+            <div class="pedido-ref">${p.pedido_ref || '—'} ${estadoBadge}${inconBadge}</div>
             <div class="pedido-cliente">${p.cliente_nombre || '—'}</div>
           </td>
           <td>${p.empresa || '—'}</td>
@@ -1041,7 +1214,8 @@
           <td>${fmtCOP(p.valor_mercancia)}</td>
           <td style="display:flex;gap:4px">
             <button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button>
-            <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento en otro viaje" style="font-size:11px">⎘</button>
+            <button class="btn-info" onclick="abrirModalEditar('${p.id}')" title="Editar">✎</button>
+            <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento" style="font-size:11px">⎘</button>
           </td>
         </tr>`);
       });
@@ -1089,6 +1263,10 @@
   function limpiarFiltrosPedidos() {
     ['flt-cliente','flt-origen','flt-destino','flt-zona','flt-ref','flt-fecha-desde','flt-fecha-hasta']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    state.fltSinViaje = false;
+    state.fltInconsist = false;
+    document.getElementById('flt-sin-viaje-btn')?.classList.remove('active');
+    document.getElementById('flt-inconsist-btn')?.classList.remove('active');
     renderPedidos();
   }
 

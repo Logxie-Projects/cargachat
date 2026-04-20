@@ -2438,7 +2438,7 @@
       const batch = rows.slice(i, i + SYNC_BATCH);
       syncSub(`${label} · batch ${i+1}-${i+batch.length} de ${rows.length}…`);
       try {
-        const res = await rpc(fnName, batch);
+        const res = await rpc(fnName, { p_payload: batch });
         for (const [k, v] of Object.entries(res || {})) {
           if (typeof v === 'number') {
             if (k in agg) agg[k] += v;

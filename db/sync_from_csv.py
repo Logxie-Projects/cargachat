@@ -182,10 +182,36 @@ def csv_to_payload(csv_path, col_map):
     # Normalizar también las claves del map (trim)
     norm_map = {k.strip(): v for k, v in col_map.items()}
 
+    # Probar utf-8-sig primero, fallback a cp1252 (Excel en Windows)
+    encodings_to_try = ['utf-8-sig', 'cp1252', 'latin-1']
+    file_contents = None
+    encoding_used = None
+    for enc in encodings_to_try:
+        try:
+            with open(path, encoding=enc) as f:
+                file_contents = f.read()
+                encoding_used = enc
+                break
+        except UnicodeDecodeError:
+            continue
+    if file_contents is None:
+        print(f"✗ No se pudo decodificar {csv_path} con ninguna encoding")
+        sys.exit(1)
+    if encoding_used != 'utf-8-sig':
+        print(f"  ⓘ CSV en encoding {encoding_used} (no UTF-8)")
+
+    import io
+    # Detectar delimitador (Excel español usa ';', Google Sheets usa ',')
+    sample = file_contents[:4096]
+    first_line = sample.split('\n')[0]
+    delim = ';' if first_line.count(';') > first_line.count(',') else ','
+    if delim != ',':
+        print(f"  ⓘ Delimitador detectado: '{delim}'")
+
     rows_out = []
     unknown_headers = set()
-    with open(path, encoding='utf-8-sig', newline='') as f:
-        reader = csv.DictReader(f)
+    with io.StringIO(file_contents) as f:
+        reader = csv.DictReader(f, delimiter=delim)
         # Normalizar fieldnames (trim whitespace)
         original_fields = reader.fieldnames or []
         reader.fieldnames = [h.strip() for h in original_fields]
@@ -328,7 +354,7 @@ def main():
         print("\n→ Post-migration: backfill cliente_id + restaurar NOT NULL")
         run_sql_file(conn, 'db/post_migration.sql')
         print("\n→ Linker v2: re-vincular pedidos a viajes")
-        run_sql_file(conn, 'db/link_pedidos_viajes_v2.sql')
+        run_sql_file(conn, 'db/link_pedidos_viajes_v3.sql')
 
     conn.close()
     print("\n✓ DONE")

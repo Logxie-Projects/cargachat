@@ -38,7 +38,12 @@ ALTER TABLE acciones_operador
     'consolidar','agregar_pedido','quitar_pedido','desconsolidar',
     'ajustar_precio','publicar','invitar','asignar_directo',
     'adjudicar','cancelar','reasignar','reabrir',
-    'sync_viajes','sync_pedidos','run_linkers'
+    'sync_viajes','sync_pedidos',
+    'revisar_pedido','desmarcar_revision',
+    'cerrar','cerrar_batch','reabrir_cierre',
+    'cancelar_pedidos_batch','resetear_pedidos_batch','clonar_pedido',
+    'editar_pedido','cambiar_estado_pedido','eliminar_pedido',
+    'run_linkers'
   ));
 
 CREATE OR REPLACE FUNCTION fn_run_linkers()

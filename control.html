@@ -1460,7 +1460,11 @@
           ` : ''}
           ${esActivo && v.estado === 'confirmado' ? `
             <div class="hint">Adjudicado a ${transp ? transp.nombre : 'proveedor'} ${v.adjudicado_at ? '· ' + fmtFechaHora(v.adjudicado_at) : ''}</div>
-            <button class="btn btn-warning" onclick="reabrirViaje('${v.id}')">↩ Reabrir</button>
+            <button class="btn btn-warning" onclick="reabrirViaje('${v.id}')">↩ Reabrir adjudicación</button>
+          ` : ''}
+          ${esHist && v.estado === 'finalizado' ? `
+            <div class="hint">Cerrado como finalizado. Si fue un error, podés reabrir el cierre.</div>
+            <button class="btn btn-warning" onclick="reabrirCierre('${v.id}')">↩ Deshacer cierre</button>
           ` : ''}
         </div>
       </div>
@@ -1486,7 +1490,28 @@
     }
   }
 
-  // ───────── REABRIR VIAJE (desde Activos, revertir confirmación) ─────────
+  // ───────── REABRIR CIERRE (desde Historial, deshacer cerrar por error) ─────────
+  async function reabrirCierre(viajeId) {
+    const v = state.viajes.find(x => x.id === viajeId);
+    const razon = prompt(
+      `Deshacer cierre de ${v ? v.viaje_ref : 'viaje'}?\n\n` +
+      'El viaje vuelve a "En seguimiento" como confirmado.\n' +
+      'Los pedidos marcados entregado vuelven a asignado.\n\n' +
+      'Razón (obligatoria):'
+    );
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_reabrir_finalizado', { p_viaje_id: viajeId, p_razon: razon });
+      toast('Cierre deshecho → viaje vuelve a En seguimiento', 'success');
+      irATab('activos');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── REABRIR VIAJE (desde Seguimiento, revertir adjudicación) ─────────
   async function reabrirViaje(viajeId) {
     const v = state.viajes.find(x => x.id === viajeId);
     const transp = v && v.transportadora_id

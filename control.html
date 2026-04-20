@@ -1272,7 +1272,14 @@
     state.fltInconsist = false;
     document.getElementById('flt-sin-viaje-btn')?.classList.remove('active');
     document.getElementById('flt-inconsist-btn')?.classList.remove('active');
+    // Reset pills a solo sin_consolidar
+    state.filtroEstados = new Set(['sin_consolidar']);
+    document.querySelectorAll('[data-est]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-est') === 'sin_consolidar');
+    });
+    state.seleccionados.clear();
     renderPedidos();
+    updateCounts();
   }
 
   function actualizarSeleccion() {

@@ -355,6 +355,8 @@ def main():
         run_sql_file(conn, 'db/post_migration.sql')
         print("\n→ Linker v2: re-vincular pedidos a viajes")
         run_sql_file(conn, 'db/link_pedidos_viajes_v3.sql')
+        print("\n→ Linker v4: pase substring (rescate BUSCARX-style)")
+        run_sql_file(conn, 'db/link_pedidos_viajes_v4.sql')
 
     conn.close()
     print("\n✓ DONE")

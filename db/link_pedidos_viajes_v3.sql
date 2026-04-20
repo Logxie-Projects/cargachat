@@ -44,6 +44,9 @@ BEGIN
   FOREACH token IN ARRAY tokens LOOP
     token := trim(token);
     IF token = '' THEN CONTINUE; END IF;
+    -- Normalizar espacios alrededor de dashes: "TI -00001968" → "TI-00001968"
+    -- (preserva espacios entre refs distintas: "RM-6070 RM-6071")
+    token := regexp_replace(token, '\s*-\s*', '-', 'g');
     current_prefix := NULL;
 
     -- Extrae TODAS las refs (prefijo-número o número suelto) del token

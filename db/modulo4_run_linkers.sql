@@ -92,11 +92,14 @@ BEGIN
     FROM pedidos p
     JOIN viaje_refs vr
       ON canonicalize_pedido_ref(p.pedido_ref) = vr.canon_ref
-     AND (vr.cliente_id = p.cliente_id OR vr.cliente_id IS NULL)
     WHERE p.viaje_id IS NULL
       AND p.pedido_ref IS NOT NULL
     ORDER BY p.id,
-      CASE WHEN vr.cliente_id = p.cliente_id THEN 1 ELSE 2 END,
+      -- prefiere same-cliente, pero permite cross-cliente como fallback
+      -- (necesario cuando el Sheet tiene empresa mal tagueada en ASIGNADOS)
+      CASE WHEN vr.cliente_id = p.cliente_id THEN 1
+           WHEN vr.cliente_id IS NULL            THEN 2
+           ELSE 3 END,
       vr.created_at DESC
   )
   UPDATE pedidos p
@@ -124,7 +127,8 @@ BEGIN
     WHERE p.viaje_id IS NULL
       AND p.pedido_ref IS NOT NULL
       AND length(p.pedido_ref) >= 5
-      AND (v.cliente_id = p.cliente_id OR v.cliente_id IS NULL OR p.cliente_id IS NULL)
+      -- Sin filtro de cliente: igual que BUSCARX. Protección contra falsos
+      -- positivos = HAVING COUNT(*)=1 (match único global) abajo.
   ),
   unique_matches AS (
     SELECT pedido_id,

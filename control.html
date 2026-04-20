@@ -810,8 +810,10 @@
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
         // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
         // ej. consolidado/cancelado con viaje_id NULL — 185 rows inconsistentes)
-        getJsonPaginated(`pedidos?select=${pedidosCols}&order=created_at.desc`),
-        getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc'),
+        // sort secundario por id para paginación estable (muchos pedidos tienen
+        // created_at idéntico por la carga batch del sync)
+        getJsonPaginated(`pedidos?select=${pedidosCols}&order=created_at.desc,id.desc`),
+        getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc,id.desc'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
       ]);
       state.pedidos = pedidosAll;

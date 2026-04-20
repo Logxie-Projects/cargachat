@@ -1142,12 +1142,13 @@
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
 
-    // Stats sobre los pedidos visibles del estado filter actual
-    const visibles = pedidosDelEstadoActual();
-    document.getElementById('st-ped-total').textContent = visibles.length;
-    document.getElementById('st-ped-kg').textContent = fmtNum(visibles.reduce((s,p) => s + (+p.peso_kg||0), 0));
-    document.getElementById('st-ped-clientes').textContent = new Set(visibles.map(p => p.cliente_id).filter(Boolean)).size;
-    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${visibles.length}`;
+    // Stats sobre los pedidos EFECTIVAMENTE VISIBLES en la tabla (post-todos los filtros)
+    document.getElementById('st-ped-total').textContent = filtrados.length;
+    document.getElementById('st-ped-kg').textContent = fmtNum(filtrados.reduce((s,p) => s + (+p.peso_kg||0), 0));
+    document.getElementById('st-ped-clientes').textContent = new Set(filtrados.map(p => p.cliente_id).filter(Boolean)).size;
+    // Count secundario: qué tan filtrado está (visibles / total en estado seleccionado o total según filtros especiales)
+    const basePool = (state.fltSinViaje || state.fltInconsist) ? state.pedidos.length : pedidosDelEstadoActual().length;
+    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${basePool}`;
 
     if (!filtrados.length) {
       document.getElementById('pedidos-tbody').innerHTML =

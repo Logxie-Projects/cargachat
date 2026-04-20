@@ -323,11 +323,8 @@
 
     <!-- Tabs nav -->
     <div class="tabs-nav">
-      <button class="tab-btn active" data-tab="nuevos" onclick="cambiarTab('nuevos', this)">
-        Nuevos <span class="tab-count" id="count-nuevos">0</span>
-      </button>
-      <button class="tab-btn" data-tab="pedidos" onclick="cambiarTab('pedidos', this)">
-        Sin consolidar <span class="tab-count" id="count-pedidos">0</span>
+      <button class="tab-btn active" data-tab="pedidos" onclick="cambiarTab('pedidos', this)">
+        Pedidos <span class="tab-count" id="count-pedidos">0</span>
       </button>
       <button class="tab-btn" data-tab="subasta" onclick="cambiarTab('subasta', this)">
         Asignar proveedor <span class="tab-count" id="count-subasta">0</span>
@@ -340,65 +337,32 @@
       </button>
     </div>
 
-    <!-- ═══ TAB: NUEVOS (pendientes de revisión) ═══ -->
-    <div class="tab-section active" id="tab-nuevos">
+    <!-- ═══ TAB: PEDIDOS (vista unificada — todos los estados + bulk actions) ═══ -->
+    <div class="tab-section active" id="tab-pedidos">
 
       <div class="stats-bar">
-        <div class="stat-card"><div class="stat-num" id="st-new-total">—</div><div class="stat-lbl">sin revisar</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-new-avgust">—</div><div class="stat-lbl">AVGUST</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-new-fateco">—</div><div class="stat-lbl">FATECO</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-new-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
-      </div>
-
-      <div class="filtros">
-        <input class="filtro-input" id="flt-new-cliente" placeholder="Cliente…" oninput="renderNuevos()">
-        <input class="filtro-input" id="flt-new-origen" placeholder="Origen…" oninput="renderNuevos()">
-        <input class="filtro-input" id="flt-new-destino" placeholder="Destino…" oninput="renderNuevos()">
-        <button class="filtro-btn" onclick="limpiarFiltrosNuevos()">Limpiar</button>
-      </div>
-
-      <div class="tabla-wrap">
-        <div class="tabla-header">
-          <div class="tabla-title">Pedidos nuevos — revisar origen, destino, peso, contacto antes de consolidar</div>
-          <div class="tabla-count" id="tabla-new-count"></div>
-        </div>
-        <div style="overflow-x:auto; max-height: 70vh; overflow-y: auto">
-          <table class="pedidos-table">
-            <thead>
-              <tr>
-                <th>pedido</th>
-                <th>cliente</th>
-                <th>ruta</th>
-                <th>peso</th>
-                <th>contacto</th>
-                <th>fecha cargue</th>
-                <th style="width:60px"></th>
-                <th style="width:130px">acción</th>
-              </tr>
-            </thead>
-            <tbody id="nuevos-tbody">
-              <tr><td colspan="8" class="loading-msg">Cargando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ TAB: PEDIDOS SIN CONSOLIDAR ═══ -->
-    <div class="tab-section" id="tab-pedidos">
-
-      <div class="stats-bar">
-        <div class="stat-card"><div class="stat-num" id="st-ped-total">—</div><div class="stat-lbl">pedidos huérfanos</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-ped-total">—</div><div class="stat-lbl">pedidos visibles</div></div>
         <div class="stat-card"><div class="stat-num" id="st-ped-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-ped-clientes">—</div><div class="stat-lbl">clientes activos</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-ped-clientes">—</div><div class="stat-lbl">clientes únicos</div></div>
         <div class="stat-card"><div class="stat-num" id="st-ped-seleccionados">0</div><div class="stat-lbl">seleccionados</div></div>
       </div>
 
+      <div class="filtros">
+        <label style="font-size:11px;color:var(--gray-400);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">estado:</label>
+        <button class="filtro-btn" data-est="nuevo"          onclick="toggleFiltroEstado('nuevo', this)">Nuevos</button>
+        <button class="filtro-btn active" data-est="sin_consolidar" onclick="toggleFiltroEstado('sin_consolidar', this)">Sin consolidar</button>
+        <button class="filtro-btn" data-est="consolidado"    onclick="toggleFiltroEstado('consolidado', this)">Consolidados</button>
+        <button class="filtro-btn" data-est="asignado"       onclick="toggleFiltroEstado('asignado', this)">Asignados</button>
+        <button class="filtro-btn" data-est="entregado"      onclick="toggleFiltroEstado('entregado', this)">Entregados</button>
+        <button class="filtro-btn" data-est="cancelado"      onclick="toggleFiltroEstado('cancelado', this)">Cancelados</button>
+        <button class="filtro-btn" data-est="rechazado"      onclick="toggleFiltroEstado('rechazado', this)">Rechazados</button>
+      </div>
       <div class="filtros">
         <input class="filtro-input" id="flt-cliente" placeholder="Cliente…" oninput="renderPedidos()">
         <input class="filtro-input" id="flt-origen" placeholder="Origen…" oninput="renderPedidos()">
         <input class="filtro-input" id="flt-destino" placeholder="Destino…" oninput="renderPedidos()">
         <input class="filtro-input" id="flt-zona" placeholder="Zona…" oninput="renderPedidos()">
+        <input class="filtro-input" id="flt-ref" placeholder="Ref pedido…" oninput="renderPedidos()">
         <div class="filtros-sep"></div>
         <label style="font-size:11px;color:var(--gray-400);font-weight:600">fecha cargue:</label>
         <input class="filtro-input" id="flt-fecha-desde" type="date" style="min-width:140px" oninput="renderPedidos()">
@@ -415,8 +379,11 @@
           <div class="count" id="sel-count-text">0 pedidos seleccionados</div>
           <div class="hint" id="sel-resumen-text"></div>
         </div>
-        <div style="display:flex; gap:8px">
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
           <button class="ghost" onclick="limpiarSeleccion()">Limpiar</button>
+          <button class="ghost" onclick="bulkVolverNuevos()" title="Limpia revisado_at → vuelve a Nuevos">↶ Nuevos</button>
+          <button class="ghost" onclick="bulkResetear()" title="estado=sin_consolidar + viaje_id=NULL">↺ Resetear</button>
+          <button class="ghost" onclick="bulkCancelar()" style="color:#fca5a5" title="estado=cancelado">✕ Cancelar</button>
           <button onclick="abrirModalConsolidar()">Consolidar →</button>
         </div>
       </div>
@@ -652,6 +619,7 @@
     transportadoras: [],
     seleccionados: new Set(),
     seleccionadosActivos: new Set(),
+    filtroEstados: new Set(['sin_consolidar']),  // multiselect de estados visibles
     filtroHist: 'todos',
     modalViajeId: null,  // para modales ajustar/asignar
     ridgePrecio: null,
@@ -807,7 +775,6 @@
         `<option value="${t.id}">${t.nombre}</option>`).join('');
 
       updateCounts();
-      renderNuevos();
       renderPedidos();
       renderSubasta();
       renderActivos();
@@ -840,8 +807,8 @@
     const pend = state.viajes.filter(esViajeSubasta);
     const activos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
     const hist = state.viajes.filter(v => ['finalizado','cancelado'].includes(v.estado));
-    document.getElementById('count-nuevos').textContent = pedidosNuevos().length;
-    document.getElementById('count-pedidos').textContent = pedidosSinConsolidar().length;
+    // Count de tab Pedidos = pedidos que matchean el filtro de estado actual
+    document.getElementById('count-pedidos').textContent = pedidosDelEstadoActual().length;
     document.getElementById('count-subasta').textContent = pend.length;
     document.getElementById('count-activos').textContent = activos.length;
     document.getElementById('count-historial').textContent = hist.length;
@@ -871,15 +838,38 @@
   }
 
   // ═════════════ TAB PEDIDOS ═════════════
-  function pedidosNuevos() {
-    // Sin consolidar y sin revisar — necesitan validación del operador
-    return state.pedidos.filter(p => p.estado === 'sin_consolidar' && !p.revisado_at);
+  // Ya no filtramos "Nuevos" como tab separada — es un filtro virtual
+  // "nuevo" = sin_consolidar + revisado_at IS NULL
+  function esNuevo(p) {
+    return p.estado === 'sin_consolidar' && !p.revisado_at;
   }
 
-  function pedidosSinConsolidar() {
-    // Sin consolidar PERO ya revisados — listos para consolidar
-    return state.pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at);
+  function pedidosDelEstadoActual() {
+    if (!state.filtroEstados || state.filtroEstados.size === 0) return state.pedidos;
+    return state.pedidos.filter(p => {
+      if (state.filtroEstados.has('nuevo') && esNuevo(p)) return true;
+      if (state.filtroEstados.has(p.estado)) {
+        // Si estoy filtrando sin_consolidar pero el pedido es "nuevo",
+        // lo muestro SOLO si el filtro 'nuevo' también está activo — evita dobles
+        if (p.estado === 'sin_consolidar' && !p.revisado_at) return false;
+        return true;
+      }
+      return false;
+    });
   }
+
+  function toggleFiltroEstado(estado, btn) {
+    if (state.filtroEstados.has(estado)) state.filtroEstados.delete(estado);
+    else state.filtroEstados.add(estado);
+    btn.classList.toggle('active');
+    state.seleccionados.clear();
+    renderPedidos();
+    updateCounts();
+  }
+
+  // Compat: código antiguo puede llamar estas; las mantenemos como alias
+  function pedidosNuevos() { return state.pedidos.filter(esNuevo); }
+  function pedidosSinConsolidar() { return state.pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at); }
 
   function pedidosDelViaje(viajeId) {
     return state.pedidos.filter(p => p.viaje_id === viajeId);
@@ -894,9 +884,11 @@
     const fOrigen  = document.getElementById('flt-origen').value.toLowerCase();
     const fDestino = document.getElementById('flt-destino').value.toLowerCase();
     const fZona    = document.getElementById('flt-zona').value.toLowerCase();
+    const fRef     = (document.getElementById('flt-ref')?.value || '').toLowerCase();
     const fDesde   = document.getElementById('flt-fecha-desde').value;
     const fHasta   = document.getElementById('flt-fecha-hasta').value;
-    return pedidosSinConsolidar().filter(p => {
+    return pedidosDelEstadoActual().filter(p => {
+      if (fRef && !((p.pedido_ref||'').toLowerCase().includes(fRef))) return false;
       if (fCliente && !(clienteNombre(p.cliente_id).toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente) || (p.cliente_nombre||'').toLowerCase().includes(fCliente))) return false;
       if (fOrigen && !(p.origen||'').toLowerCase().includes(fOrigen)) return false;
       if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
@@ -919,107 +911,70 @@
     renderPedidos();
   }
 
-  // ═════════════ TAB NUEVOS (pedidos sin revisar) ═════════════
-  function renderNuevos() {
-    const fCliente = (document.getElementById('flt-new-cliente')?.value || '').toLowerCase();
-    const fOrigen  = (document.getElementById('flt-new-origen')?.value  || '').toLowerCase();
-    const fDestino = (document.getElementById('flt-new-destino')?.value || '').toLowerCase();
-
-    const todos = pedidosNuevos();
-    const filtrados = todos.filter(p => {
-      if (fCliente && !((p.cliente_nombre||'').toLowerCase().includes(fCliente) || (p.empresa||'').toLowerCase().includes(fCliente))) return false;
-      if (fOrigen  && !(p.origen||'').toLowerCase().includes(fOrigen))   return false;
-      if (fDestino && !(p.destino||'').toLowerCase().includes(fDestino)) return false;
-      return true;
-    });
-
-    document.getElementById('st-new-total').textContent = todos.length;
-    document.getElementById('st-new-avgust').textContent = todos.filter(p => (p.empresa||'').toUpperCase().includes('AVGUST')).length;
-    document.getElementById('st-new-fateco').textContent = todos.filter(p => (p.empresa||'').toUpperCase().includes('FATECO')).length;
-    document.getElementById('st-new-kg').textContent = fmtNum(todos.reduce((s,p) => s + (+p.peso_kg||0), 0));
-    document.getElementById('tabla-new-count').textContent = `${filtrados.length} de ${todos.length}`;
-
-    const tbody = document.getElementById('nuevos-tbody');
-    if (!filtrados.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">✓ No hay pedidos pendientes de revisión.</td></tr>';
-      return;
-    }
-
-    const flagIncompleto = p => {
-      const missing = [];
-      if (!p.origen  || p.origen === '—')   missing.push('origen');
-      if (!p.destino || p.destino === '—')  missing.push('destino');
-      if (!p.peso_kg || +p.peso_kg <= 0)    missing.push('peso');
-      if (!p.cliente_nombre && !p.empresa)  missing.push('cliente');
-      return missing;
-    };
-
-    tbody.innerHTML = filtrados.map(p => {
-      const miss = flagIncompleto(p);
-      const warn = miss.length ? `<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">⚠ falta: ${miss.join(', ')}</div>` : '';
-      return `
-        <tr data-id="${p.id}">
-          <td>
-            <div class="pedido-ref">${p.pedido_ref || '—'}</div>
-            <div class="pedido-cliente">${p.cliente_nombre || p.empresa || '—'}</div>
-            ${warn}
-          </td>
-          <td>${p.empresa || '—'}</td>
-          <td>
-            <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
-            ${p.prioridad ? `<div class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}">${p.prioridad}</div>` : ''}
-          </td>
-          <td>${fmtNum(p.peso_kg)} kg</td>
-          <td style="font-size:11px">${p.contacto_nombre || '—'}<br>${p.contacto_tel || ''}</td>
-          <td>${fmtFecha(p.fecha_cargue)}</td>
-          <td><button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button></td>
-          <td><button class="btn btn-success" onclick="marcarRevisado('${p.id}')">✓ Revisado</button></td>
-        </tr>`;
-    }).join('');
-  }
-
-  function limpiarFiltrosNuevos() {
-    ['flt-new-cliente','flt-new-origen','flt-new-destino'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    renderNuevos();
-  }
-
-  async function marcarRevisado(pedidoId) {
-    const notas = prompt('Notas de revisión (opcional — dejá vacío si todo OK):');
-    if (notas === null) return;  // cancel
-    try {
-      await rpc('fn_marcar_revisado', { p_pedido_id: pedidoId, p_notas: notas || null });
-      toast('Pedido marcado como revisado → ahora en Sin consolidar', 'success');
-      recargarTodo();
-    } catch (e) {
-      toast('Error: ' + e.message, 'error');
-    }
-  }
-
-  async function desmarcarRevision(pedidoId) {
-    const razon = prompt('Razón para devolver a Nuevos:');
+  // ═════════════ BULK ACTIONS (Tab Pedidos) ═════════════
+  async function bulkCancelar() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const razon = prompt(`Cancelar ${ids.length} pedido${ids.length!==1?'s':''}? Pasan a estado='cancelado'.\n\nRazón (obligatoria):`);
     if (razon === null) return;
     if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
     try {
-      await rpc('fn_marcar_no_revisado', { p_pedido_id: pedidoId, p_razon: razon });
-      toast('Vuelto a Nuevos', 'success');
+      const res = await rpc('fn_pedidos_cancelar_batch', { p_pedido_ids: ids, p_razon: razon });
+      toast(`${res.cancelados} cancelados · ${res.ya_cancelados} ya estaban cancelados`, 'success');
+      state.seleccionados.clear();
       recargarTodo();
-    } catch (e) {
-      toast('Error: ' + e.message, 'error');
-    }
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function bulkResetear() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const razon = prompt(`Resetear ${ids.length} pedido${ids.length!==1?'s':''}? Pasan a estado='sin_consolidar', viaje_id=NULL.\n\nRazón (obligatoria):`);
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedidos_resetear_batch', { p_pedido_ids: ids, p_razon: razon, p_marcar_nuevo: false });
+      toast(`${res.reseteados} pedidos reseteados → Sin consolidar`, 'success');
+      state.seleccionados.clear();
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function bulkVolverNuevos() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const razon = prompt(`Devolver ${ids.length} pedido${ids.length!==1?'s':''} a "Nuevos"? Se limpia revisado_at.\n\nRazón (obligatoria):`);
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedidos_resetear_batch', { p_pedido_ids: ids, p_razon: razon, p_marcar_nuevo: true });
+      toast(`${res.reseteados} pedidos devueltos a Nuevos`, 'success');
+      state.seleccionados.clear();
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function clonarPedido(pedidoId) {
+    const razon = prompt('Razón para clonar (ej: "Primer intento no se cargó, reintento"):');
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_pedido_clonar', { p_pedido_id: pedidoId, p_razon: razon });
+      toast('Pedido clonado → clon queda en Sin consolidar listo para nuevo viaje', 'success');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
   // ═════════════ TAB PEDIDOS (Sin consolidar — ya revisados) ═════════════
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
 
-    // Stats (sobre los sin_consolidar, no todos)
-    const sc = pedidosSinConsolidar();
-    document.getElementById('st-ped-total').textContent = sc.length;
-    document.getElementById('st-ped-kg').textContent = fmtNum(sc.reduce((s,p) => s + (+p.peso_kg||0), 0));
-    document.getElementById('st-ped-clientes').textContent = new Set(sc.map(p => p.cliente_id).filter(Boolean)).size;
-    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${sc.length}`;
+    // Stats sobre los pedidos visibles del estado filter actual
+    const visibles = pedidosDelEstadoActual();
+    document.getElementById('st-ped-total').textContent = visibles.length;
+    document.getElementById('st-ped-kg').textContent = fmtNum(visibles.reduce((s,p) => s + (+p.peso_kg||0), 0));
+    document.getElementById('st-ped-clientes').textContent = new Set(visibles.map(p => p.cliente_id).filter(Boolean)).size;
+    document.getElementById('tabla-ped-count').textContent = `${filtrados.length} de ${visibles.length}`;
 
     if (!filtrados.length) {
       document.getElementById('pedidos-tbody').innerHTML =
@@ -1063,11 +1018,16 @@
           </td>
         </tr>`);
 
-      pedidos.forEach(p => html.push(`
+      pedidos.forEach(p => {
+        const esN = esNuevo(p);
+        const estadoBadge = esN
+          ? '<span class="badge" style="background:#fff7ed;color:var(--orange);margin-left:6px">NUEVO</span>'
+          : `<span class="badge ${p.estado}" style="margin-left:6px">${p.estado}</span>`;
+        html.push(`
         <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
           <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
           <td>
-            <div class="pedido-ref">${p.pedido_ref || '—'}</div>
+            <div class="pedido-ref">${p.pedido_ref || '—'} ${estadoBadge}</div>
             <div class="pedido-cliente">${p.cliente_nombre || '—'}</div>
           </td>
           <td>${p.empresa || '—'}</td>
@@ -1079,8 +1039,12 @@
           <td>${fmtNum(p.peso_kg)} kg</td>
           <td>${fmtFecha(p.fecha_cargue)}</td>
           <td>${fmtCOP(p.valor_mercancia)}</td>
-          <td><button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle completo">ℹ</button></td>
-        </tr>`));
+          <td style="display:flex;gap:4px">
+            <button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button>
+            <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento en otro viaje" style="font-size:11px">⎘</button>
+          </td>
+        </tr>`);
+      });
     }
     document.getElementById('pedidos-tbody').innerHTML = html.join('');
 
@@ -1123,8 +1087,8 @@
   }
 
   function limpiarFiltrosPedidos() {
-    ['flt-cliente','flt-origen','flt-destino','flt-zona','flt-fecha-desde','flt-fecha-hasta']
-      .forEach(id => document.getElementById(id).value = '');
+    ['flt-cliente','flt-origen','flt-destino','flt-zona','flt-ref','flt-fecha-desde','flt-fecha-hasta']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     renderPedidos();
   }
 

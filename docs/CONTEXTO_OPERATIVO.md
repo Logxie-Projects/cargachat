@@ -1,6 +1,6 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-20** (sesión admin pedidos + linker v3 + propuesta Kanban). Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
+> Foto del proyecto al **2026-04-20 (sesión tarde/noche)** — Kanban Fase 1 + linker v4 + 97.3% link rate. Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
 
 ---
 
@@ -16,9 +16,29 @@
 - **Analizador rutas** (`analizador-rutas.html`) multi-parada.
 - **Control staff** (`control.html`) — Módulo 4 UI en producción y en uso por Bernardo.
 
-#### control.html — features actuales (2026-04-20)
+#### control.html — features actuales (2026-04-20 tarde)
 
-**Tabs**: Pedidos | Asignar proveedor | En seguimiento | Historial
+**Nav (3 workspaces + sub-nav en Viajes)**:
+```
+[ 🏠 Inicio ]  [ 📥 Pedidos ]  [ 🚚 Viajes ]
+                                     ↓ (al click)
+                                     [🤝 Por asignar] [🚛 En ruta] [📚 Archivo]
+```
+
+- Total Pedidos y total Viajes visibles en contadores de las tabs principales (3.748 / 1.297)
+- Contadores internos de sub-tabs por estado
+- Sub-nav aparece solo cuando se activa workspace Viajes
+
+**Tab Inicio — dashboard con 6 tarjetas KPI clickeables**:
+- 📋 Pedidos nuevos para revisar (naranja urgente si >0)
+- 📦 Listos para consolidar
+- ✏️ Borradores sin publicar
+- 🤝 Sin proveedor por adjudicar
+- 🚛 En ruta rodando
+- 📬 Entregados pendiente cerrar
+- + footer stats (total pedidos, total viajes, flete total)
+- Click card → salta al tab + filtros pre-aplicados
+- Saludo dinámico por hora ("Buenos días, Bernardo 👋")
 
 **Tab Pedidos — unificado con full admin**:
 - Filtros: pills multiselect de estado (Nuevos / Sin consolidar / Consolidado / Asignado / Entregado / Cancelado / Rechazado), ref, cliente, origen, destino, zona, rango de fechas (7d/30d/90d presets).
@@ -44,7 +64,7 @@
 | `transportadoras` | 7 | Seed: ENTRAPETROL, TRASAMER, JR, Trans Nueva Colombia, PRACARGO, Global, Vigía |
 | `perfiles` | 3 | 1 `logxie_staff` (Bernardo) + 2 `transportador` pendientes |
 | `viajes_consolidados` | **1297** | 100% sincronizados con Sheet ASIGNADOS (fresh sync 2026-04-20). Todos `fuente='sheet_asignados'` |
-| `pedidos` | **3748** | 88.4% linkeados a viaje (3314 con viaje_id, 434 huérfanos). Link rate menor que antes pero **más correcto** — linker v3 NO sobrelinkea. |
+| `pedidos` | **3748** | **97.3% linkeados** a viaje (3647 con viaje_id, 101 huérfanos). Linker v3 (regex) + v4 (substring BUSCARX-style) en cascada. |
 | `ofertas` | 0 | Ninguna todavía |
 | `invitaciones_subasta` | 0 | Ninguna todavía |
 | `acciones_operador` | 40+ | Audit trail M4 + sync + admin pedidos |
@@ -97,9 +117,9 @@
 - Auto-corre `post_migration.sql` + `link_pedidos_viajes_v3.sql`
 - Uso: `python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_inicio_def.csv [--truncate]`
 
-### Linker v3 — parser corregido 2026-04-20
+### Linker v3 + v4 — cascada 2026-04-20
 
-[db/link_pedidos_viajes_v3.sql](../db/link_pedidos_viajes_v3.sql):
+**Pase 1 — v3 (regex estructurado)** — [db/link_pedidos_viajes_v3.sql](../db/link_pedidos_viajes_v3.sql):
 - **Regla confirmada por operador**: separador entre pedidos = `,`. Los `-` y `/` dentro de un token son ALIASES del mismo pedido, NO rangos.
 - Split por `,` → cada token = 1 pedido lógico. Dentro del token, regex global extrae todos los (prefijo, número). Los sin prefijo heredan el último prefijo visto.
 - Ejemplos corregidos:
@@ -107,7 +127,18 @@
   - `RM-72782/72783/72784` → [RM-72782, RM-72783, RM-72784]
   - `TI-54710 - TIT-2188` → [TI-54710, TIT-2188]
   - `DEVOLUCION, RM-72777` → [RM-72777]
+- Maneja también espacios alrededor de dashes: `"TI -00001968"` → `TI-1968` (fix 2026-04-20 tarde)
 - Resultado: no hay más sobrelinkeos por rangos imposibles (ej. `RM-70325 - 73028` ya no genera 2704 refs fantasma).
+
+**Pase 2 — v4 (substring BUSCARX-style)** — [db/link_pedidos_viajes_v4.sql](../db/link_pedidos_viajes_v4.sql):
+- Replica fórmula de Bernardo en Google Sheets: `=BUSCARX("*"&ref&"*"; PEDIDOS_INCLUIDOS; ID_CONSOLIDADO)`
+- SQL: `PEDIDOS_INCLUIDOS ILIKE '%' || pedido_ref || '%'`
+- Rescata huérfanos que el regex v3 no encontró (refs con formato extraño, embebidos en texto narrativo)
+- Guardrails:
+  - Solo refs con length ≥5 (evita "RM-6" matcheando "RM-60", "RM-600")
+  - Solo matches ÚNICOS (si >1 viaje candidato, skip — ambiguo)
+  - Preferencia: cliente_id match > NULL
+- Resultado combinado: 91.7% → **97.3% linked** (+211 rescatados)
 
 ### n8n (automatización actual)
 - Workflow procesando correos de Avgust/Fateco → parsea viajes → Ridge v2 → Sheet
@@ -208,13 +239,54 @@ Deferidos dentro de Admin:
 
 ---
 
-## Próximos pasos inmediatos
+## Próximos pasos inmediatos (para abrir sesión siguiente)
 
-1. **Rediseño Lean/Kanban de control.html** — Bernardo aprobó el concepto. Implementar Fase 1 (dashboard + 2 workspaces kanban + archivo). Elimina confusión actual de 4 tabs mixtos.
-2. **n8n cron 15min + botón Sync** — para que el sync AppSheet→Netfleet sea automático.
-3. **Data quality cleanup** — revisar 434 huérfanos. Muchos son typos del operador en AppSheet.
-4. **Rotar password Supabase** — no bloqueante pero urgente.
-5. **Admin tab clientes/transportadoras/usuarios** — ampliar control.html como hub único.
+### 🔄 Botón Sync on-demand (MVP, ~30 min)
+
+Bernardo solicitó "ver en tiempo real lo de Google Sheets en Supabase o al menos lo de los 15 minutos".
+
+**Requisito de Bernardo antes de seguir**: publicar los 2 Sheets como CSV públicos (pestañas ASIGNADOS + Base_inicio-def) y pasar las URLs.
+- Google Sheets → Archivo → Compartir → Publicar en la Web → pestaña + CSV → Publicar
+- Copiar URL generada
+
+**Luego implemento**:
+1. `fn_run_linkers()` SQL — wrapper que corre v3 + v4 en secuencia
+2. Botón **🔄 Sync** en header de control.html
+3. JS: fetchea los 2 CSVs públicos → parsea con PapaParse → mapea columnas a JSON canónico → llama `fn_sync_viajes_batch` + `fn_sync_pedidos_batch` + `fn_run_linkers()` → toast con counters
+4. Resultado: 1 click = sync completo en ~5 seg, on-demand
+
+### 🔄 Cron 15min automático (siguiente, después del botón)
+
+Usa el mismo backend. 2 caminos:
+- **n8n**: workflow Schedule 15min → HTTP POST a RPCs. Armar JSON para importar.
+- **GitHub Actions**: workflow en repo con `schedule: '*/15 * * * *'` que corre el mismo flow. Zero infra nueva.
+
+### 🧹 Sanitizar pedido_ref al guardar (15 min)
+
+Helper `_norm_pedido_ref(text)` (trim + strip whitespace around `-` + upper case). Aplicar en `fn_sync_pedidos_batch` INSERT/UPDATE/lookup. Previene duplicados cuando el Sheet se corrige (ej. "TI -00001968" → "TI-00001968" tras corrección). + UPDATE masivo para normalizar los ~100 pedidos ya cargados con formato feo.
+
+### 📧 Email notificaciones (JTBD Viajes — 1-2h)
+
+Al adjudicar/asignar/cerrar viaje: disparar emails a:
+- Proveedor (transportadora ganadora)
+- Usuario solicitante (equipo Avgust)
+- Facturación (c.vahos@avgust.com.co)
+- Bodega (bodega_email del pedido)
+
+Opciones provider: Resend, SendGrid, Gmail API con OAuth. Decidir.
+Botón **📧 Notificar** en card de viaje + templates HTML (similar al mail actual del Apps Script).
+
+### 🎨 Kanban Fase 2 (futuro)
+
+Columnas horizontales lado-a-lado + drag&drop entre estados. Refactor mayor — fuera de MVP actual.
+
+### Otros pendientes (menos priorizados)
+
+- **RLS endurecer en `viajes_consolidados`**: hoy `authenticated_all` permisivo
+- **Deep-linking `transportador.html`**: query param `?viaje_ref=...`
+- **Admin tab clientes/transportadoras/usuarios** en control.html (reemplaza admin.html)
+- **Data quality cleanup** de los 101 huérfanos — mayoría son data issues del Sheet (placeholders, typos del operador, refs nunca consolidados)
+- **Rotar password Supabase** — urgente pero no bloqueante
 
 ---
 
@@ -260,7 +332,7 @@ python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_ini
 - Supabase: https://pzouapqnvllaaqnmnlbs.supabase.co
 - Admin legacy: https://netfleet.app/admin.html
 - Control staff: https://netfleet.app/control.html
-- Último commit: `13b0f49` — "feat: linker v3 parser correcto (aliases no rangos) + fix CSV parsing"
+- Último commit: `bdf5b22` — "feat: linker v4 — pase substring BUSCARX-style rescata 211 pedidos"
 
 ---
 

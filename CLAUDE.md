@@ -114,7 +114,8 @@ D:\NETFLEET\
 │   ├── modulo4_reabrir_finalizado.sql → fn_reabrir_finalizado (deshace cierre)
 │   ├── modulo4_pedidos_bulk.sql → fn_pedidos_cancelar/resetear_batch + fn_pedido_clonar
 │   ├── modulo4_pedidos_admin.sql → fn_pedido_editar + cambiar_estado_batch + eliminar_batch
-│   ├── link_pedidos_viajes_v3.sql → linker ALIASES CORRECTO (88.4% match)
+│   ├── link_pedidos_viajes_v3.sql → linker v3 regex (aliases no rangos) — pase 1
+│   ├── link_pedidos_viajes_v4.sql → linker v4 substring BUSCARX-style — pase 2 (97.3% combinado)
 │   ├── smoke_test_modulo4.sql  → E2E test del ciclo completo M4
 │   ├── sync_from_csv.py        → Python CLI para backfill + ETL manual desde CSV
 │   ├── run_migration.py        → Script ejecutor de .sql contra Supabase
@@ -399,9 +400,9 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 | # | Módulo | Reemplaza | Estado |
 |---|---|---|---|
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
-| 2 | Ingesta multicliente | AppSheet Transport Request | Schema ✅ + Sync ✅ + Linker v3 correcto (aliases no rangos) ✅ 2026-04-20. Falta n8n cron 15min |
+| 2 | Ingesta multicliente | AppSheet Transport Request | Schema ✅ + Sync ✅ + Linker v3+v4 cascada (97.3% link) ✅ 2026-04-20. Falta botón 🔄 Sync + cron 15min |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
-| 4 | Control y consolidación | Control Transporte + script Sheets | Backend + UI + sync + reabrir + cerrar bulk + admin pedidos completo ✅ 2026-04-20. Pendiente: rediseño Lean/Kanban, email, deep-linking, n8n cron |
+| 4 | Control y consolidación | Control Transporte + script Sheets | Backend + UI + sync + admin pedidos + Kanban Fase 1 ✅ 2026-04-20. Pendiente: botón Sync, email notificaciones, deep-linking, Kanban Fase 2 |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
 
 ---
@@ -753,10 +754,12 @@ Las Postgres functions escriben esta tabla como parte de su transacción. Sirve 
 - [x] ✅ hecho 2026-04-20 — **Cerrar viajes bulk + paginación fix**: `fn_cerrar_viaje` + `fn_cerrar_viajes_batch` (→ finalizado). `getJsonPaginated` con Range header — fix crítico del cap 1000 de PostgREST (antes solo veías 500/499 activos/historial de 1281). Paginación estable con `id.desc` secondary sort. Ver [db/modulo4_cerrar_viaje.sql](db/modulo4_cerrar_viaje.sql).
 - [x] ✅ hecho 2026-04-20 — **`fn_reabrir_finalizado(id, razon)`**: revierte cierre (finalizado → confirmado, pedidos entregado → asignado). Botón "↩ Deshacer cierre" en cards de Historial. Ver [db/modulo4_reabrir_finalizado.sql](db/modulo4_reabrir_finalizado.sql).
 - [x] ✅ hecho 2026-04-20 — **Tab Pedidos unificado con admin completo**: elimina tab Nuevos separado (ahora filtro virtual). 7 pills de estado multiselect + filtros `🔗 Sin viaje` y `⚠ Inconsistentes` con bypass. Bulk actions: Cancelar, Resetear, Volver a Nuevos, Cambiar estado (forzar), Eliminar (DELETE hard con snapshot). Modal Editar con 28 campos. Botones por fila: ℹ detalle, ✎ editar, ⎘ clonar para reintento. Functions: `fn_pedidos_cancelar_batch`, `fn_pedidos_resetear_batch`, `fn_pedido_clonar`, `fn_pedido_editar`, `fn_pedidos_cambiar_estado_batch`, `fn_pedidos_eliminar_batch`. Ver [db/modulo4_pedidos_bulk.sql](db/modulo4_pedidos_bulk.sql) + [db/modulo4_pedidos_admin.sql](db/modulo4_pedidos_admin.sql).
-- [x] ✅ hecho 2026-04-20 — **Linker v3 CORREGIDO**: parser entiende que `-` y `/` dentro de un token son ALIASES del mismo pedido (no rangos). Separador real de pedidos = `,`. Ejemplos: `RM-72781-72803` → 2 aliases, no 23 refs. `TI-54710 - TIT-2188` → 2 aliases cross-prefix. Tests inline con ASSERT. Resultado: 88.4% linked (vs 94.7% v2 — menor pero más correcto, sin sobrelinkeos por rangos fantasma). Ver [db/link_pedidos_viajes_v3.sql](db/link_pedidos_viajes_v3.sql).
+- [x] ✅ hecho 2026-04-20 — **Linker v3 CORREGIDO**: parser entiende que `-` y `/` dentro de un token son ALIASES del mismo pedido (no rangos). Separador real de pedidos = `,`. Fix espacios alrededor de dashes ("TI -00001968" → TI-1968). Ver [db/link_pedidos_viajes_v3.sql](db/link_pedidos_viajes_v3.sql).
+- [x] ✅ hecho 2026-04-20 — **Linker v4 substring (BUSCARX-style)**: replica la fórmula de Bernardo `=BUSCARX("*"&ref&"*"; PEDIDOS_INCLUIDOS; ID_CONSOLIDADO)` en SQL. Corre DESPUÉS de v3 como segundo pase para rescatar huérfanos. Guardrails: refs ≥5 chars, solo matches únicos. Resultado cascada v3+v4: **97.3% linked** (3647/3748). Ver [db/link_pedidos_viajes_v4.sql](db/link_pedidos_viajes_v4.sql).
+- [x] ✅ hecho 2026-04-20 — **Kanban Fase 1 en control.html**: nav 3 workspaces (🏠 Inicio / 📥 Pedidos / 🚚 Viajes) + sub-nav de Viajes (Por asignar / En ruta / Archivo). Tab Inicio con 6 tarjetas KPI clickeables (dashboard orientado a customer journey). Verb naming en tabs. Counts totales absolutos. Ver commits `bd640f5`, `6cf370d`, `7c13398`.
 - [x] ✅ hecho 2026-04-20 — **sync_from_csv.py robusto**: detección automática de encoding (utf-8-sig → cp1252 → latin-1 para Excel Windows ES) + delimiter (, vs ;). Warning si abrís CSV con Excel — corrompe formato.
 - [x] ✅ hecho 2026-04-20 — **Re-sync fresh con Sheet actual**: 1297 viajes + 3748 pedidos + 88.4% linked. Linker v3 resolvió sobrelinkeos previos (ej. RT-TOTAL-1776311734125 pasó de 46 → 26 correctos).
-- [ ] **🚀 Rediseño Lean/Kanban de control.html** — Bernardo 2026-04-20 aprobó propuesta. 3 workspaces (Inicio / Pedidos kanban 3 cols / Viajes kanban 5 cols) + Archivo lateral. Verbos como nombres de columna (Revisar / Consolidar / Publicar / Adjudicar / Seguir / Entregar / Cerrar). Principios Lean: make work visible, pull-not-push, 1-click actions, flow focus. **Próxima sesión**, estimación Fase 1: 1-2h.
+- [x] ✅ hecho 2026-04-20 — **Kanban Fase 1** (dashboard Inicio + 3 workspaces + sub-nav Viajes + verb naming). Fase 2 (kanban columnas horizontales + drag&drop) pendiente para otra sesión.
 - [ ] **n8n workflow cron 15min + webhook manual** — llama `fn_sync_viajes_batch` y `fn_sync_pedidos_batch` con data del Google Sheets API. Opcional: publicar pestañas como CSV URL (Archivo → Compartir → Publicar en la Web) y fetch directo, o usar credencial `IuCNLIa09oW4ZWBu` de n8n.
 - [ ] **Botón 🔄 Sync en control.html** — header nav, POST al webhook n8n, toast con counters.
 - [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)

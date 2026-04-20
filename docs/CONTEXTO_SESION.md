@@ -413,3 +413,94 @@ Fix tras fix basado en feedback en vivo:
 - n8n cron 15min + botón Sync
 - Data cleanup de los 434 huérfanos
 - Admin de clientes/transportadoras/usuarios
+
+---
+
+## Fecha: 2026-04-20 (tarde/noche — Kanban + linker v4 + 97.3%)
+
+### Qué se hizo
+
+**1. Kanban Fase 1 — Dashboard Inicio + verb naming**
+- Tab nueva 🏠 Inicio con 6 tarjetas KPI clickeables (pedidos nuevos, listos, borradores, sin proveedor, en ruta, entregados). Cada card navega al tab + aplica filtros. Naranja urgente si count>0. Footer con stats totales. Saludo dinámico por hora.
+- Renombrado nav con verbos: "Asignar proveedor" → "🤝 Por asignar", "En seguimiento" → "🚚 En ruta", "Historial" → "📚 Archivo".
+- Commit `bd640f5`.
+
+**2. Reorganización 3 workspaces con sub-nav**
+- Bernardo compartió JTBDs: Pedidos (ver/editar/consolidar), Viajes (asignar/pricing/notificar).
+- Reorganización: 3 tabs principales (🏠 Inicio / 📥 Pedidos / 🚚 Viajes) con sub-nav dentro de Viajes para las 3 etapas (Por asignar / En ruta / Archivo).
+- `cambiarTab` detecta TABS_VIAJES y aplica `.group-active` al botón principal + `.active` al sub-botón. Sub-nav visible solo dentro del workspace.
+- Commit `6cf370d`.
+
+**3. Fix counts absolutos**
+- Antes: count-pedidos mostraba 0 porque usaba `pedidosDelEstadoActual()` que dependía del filtro activo.
+- Fix: counts en tabs principales son TOTALES absolutos (state.pedidos.length, state.viajes.length). Sub-tabs sí filtran por estado.
+- Pedidos 3.748 | Viajes 1.297 visibles siempre. fmtNum para separador de miles.
+- Commit `7c13398`.
+
+**4. Linker v3 — fix espacios alrededor de dashes**
+- Bernardo reportó TI-00001968 y RM-00006069 apareciendo como ⚠ sin viaje a pesar de tener RT-TOTAL en AppSheet.
+- Root cause: regex no toleraba whitespace entre letter prefix y dash. "TI -00001968" → parser fallaba.
+- Fix: `token := regexp_replace(token, '\s*-\s*', '-', 'g')` antes del regex match. Normaliza espacios adyacentes al dash.
+- Link rate: 88.4% → 91.7% (+122 pedidos).
+- Commit `5926aa3`.
+
+**5. Linker v4 — pase substring BUSCARX-style**
+- Bernardo compartió su fórmula en Google Sheets: `=BUSCARX("*"&C2:C&"*"; ASIGNADOS!$C$2:$C; ASIGNADOS!$A$2:$A)`.
+- Traducción SQL: `JOIN pedidos p ON PEDIDOS_INCLUIDOS ILIKE '%' || p.pedido_ref || '%'`.
+- Cascada después de v3 para rescatar huérfanos con formato muy sucio.
+- Guardrails: refs ≥5 chars (evita "RM-6" → "RM-60"), solo matches ÚNICOS (skip si ambigüedad), preferencia cliente_id match.
+- Resultado: 91.7% → **97.3%** (+211 pedidos rescatados).
+- `sync_from_csv.py` ahora corre ambos linkers en cascada al terminar el sync.
+- Commit `bdf5b22`.
+
+**6. Docs update mid-session**
+- Actualizados CLAUDE.md + CONTEXTO_OPERATIVO + CONTEXTO_SESION con admin pedidos completo y pipeline. Commit `00ffddb`.
+
+### Diagnósticos de data quality (sin cambios de código)
+
+- **TIT-2037 (AVGUST) ⚠ sin viaje**: data quality del Sheet. El operador cambió estado en AppSheet sin haber consolidado el pedido. Bernardo confirmó: "ya encontré, se canceló pero no se actualizó en AppSheet como cancelado". Recomendación: corregir en AppSheet, el próximo sync propaga.
+- **TI-00001632 (FATECO) inconsistente**: estado=entregado pero sin viaje. Observaciones dice "CONSOLIDAR" — el operador marcó para consolidar pero nunca lo hizo. Típico del filtro ⚠ Inconsistentes.
+- Los 101 huérfanos restantes son mayormente: placeholders textuales (DEVOLUCION, "SOLICITUDES DE TRANSPORTE ABRIL..."), typos del operador, refs nunca consolidados. No son bugs del linker — son data quality issues del Sheet.
+
+### Lo que queda pendiente para próxima sesión
+
+#### 🔄 Sync on-demand + automático (MÁS IMPORTANTE)
+
+Bernardo: "quiero poder ver en tiempo real lo de Google Sheets en Supabase o al menos lo de los 15 minutos".
+
+**Pasos acordados**:
+1. **Bernardo publica los 2 Sheets como CSV públicos** (Archivo → Publicar en la Web → pestaña + CSV).
+   - Pestañas: ASIGNADOS + Base_inicio-def
+   - Me pasa ambas URLs
+2. **Yo implemento (~30 min)**:
+   - `fn_run_linkers()` SQL — wrapper v3 + v4
+   - Botón **🔄 Sync** en header de control.html
+   - JS fetchea CSVs + parsea (PapaParse) + llama `fn_sync_viajes_batch` + `fn_sync_pedidos_batch` + `fn_run_linkers()` + toast
+3. **Después del MVP manual, cron automático** — 2 opciones:
+   - n8n workflow Schedule 15min (Bernardo importa JSON que le preparo)
+   - GitHub Actions `schedule: '*/15 * * * *'` (zero infra nueva)
+
+#### Otros pendientes (ordenados por valor)
+
+- **Sanitizar pedido_ref al guardar** (15 min) — helper `_norm_pedido_ref` + UPDATE masivo. Previene duplicados futuros.
+- **Email notificaciones** (1-2h) — JTBD Viajes. Notificar a proveedor + solicitante + facturación + bodega al adjudicar/cerrar.
+- **RLS endurecer en `viajes_consolidados`**.
+- **Admin tab** clientes/transportadoras/usuarios.
+- **Kanban Fase 2** — columnas horizontales con drag&drop.
+
+### Commits de la sesión (tarde/noche)
+- `bd640f5` feat: Kanban Fase 1 — Inicio dashboard + verb naming
+- `6cf370d` feat: reorganización 3 workspaces con sub-nav
+- `7c13398` fix: counts en tabs principales son totales absolutos
+- `5926aa3` fix: linker v3 maneja espacios alrededor de dashes
+- `bdf5b22` feat: linker v4 — pase substring BUSCARX-style rescata 211 pedidos
+
+### Estado final de la sesión
+- control.html con nueva nav 3 workspaces + dashboard
+- Linker v3 (regex) + v4 (substring) en cascada → 97.3% link rate
+- 1297 viajes / 3748 pedidos / 3647 linkeados / 101 huérfanos
+
+### Para abrir sesión siguiente
+
+Prompt recomendado:
+> "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. Tengo las 2 URLs CSV públicas de los Sheets. Arrancamos con el botón 🔄 Sync."

@@ -962,7 +962,11 @@
     const fRef     = (document.getElementById('flt-ref')?.value || '').toLowerCase();
     const fDesde   = document.getElementById('flt-fecha-desde').value;
     const fHasta   = document.getElementById('flt-fecha-hasta').value;
-    return pedidosDelEstadoActual().filter(p => {
+    // Si "Sin viaje" o "Inconsistentes" están activos, bypass del filtro de estado
+    // (esos filtros quieren ver data quality issues en CUALQUIER estado)
+    const usaFltEspecial = state.fltSinViaje || state.fltInconsist;
+    const base = usaFltEspecial ? state.pedidos : pedidosDelEstadoActual();
+    return base.filter(p => {
       if (state.fltSinViaje && p.viaje_id) return false;
       if (state.fltInconsist && !esInconsistente(p)) return false;
       if (fRef && !((p.pedido_ref||'').toLowerCase().includes(fRef))) return false;

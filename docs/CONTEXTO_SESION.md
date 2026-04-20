@@ -312,3 +312,104 @@ Fix tras fix basado en feedback en vivo:
 - Si Sheet cambia nombres de columnas, el mapping Python rompe silenciosamente (warn pero no falla). Revisar headers después de cualquier refactor en AppSheet.
 - El Python script corre como postgres superuser (via pooler), bypassa RLS. OK para backfill, no para prod. El cron n8n debe usar service_role token (no postgres).
 - Dumps en `dumps/` están gitignored — contienen PII (contactos, direcciones, NITs).
+
+---
+
+## Fecha: 2026-04-20 (sesión larga — pipeline pedidos + admin completo + linker v3)
+
+### Qué se hizo
+
+**1. Fase 1 pipeline — Tab "Nuevos" + revisión de pedidos**
+- `db/modulo4_revision_pedidos.sql`: ALTER pedidos +revisado_at +revisado_por +revision_notas + 2 índices parciales. Functions `fn_marcar_revisado(id, notas)` y `fn_marcar_no_revisado(id, razon)` con gate + audit. CHECK acciones extendido con 'revisar_pedido', 'desmarcar_revision'.
+- Backfill: todos los 3740 pedidos históricos marcados como revisados (`revisado_at=created_at`) para que no aparezcan en tab Nuevos — son data migrada ya operada en AppSheet.
+- control.html: tab Nuevos con warning ⚠ si falta origen/destino/peso/cliente. Botón ✓ Revisado pasa a Sin consolidar.
+- Commit: `5613810`.
+
+**2. Bulk close + paginación fetch**
+- `db/modulo4_cerrar_viaje.sql`: `fn_cerrar_viaje` + `fn_cerrar_viajes_batch` (confirmado/en_ruta/entregado → finalizado, pedidos → entregado).
+- Fix crítico: `getJsonPaginated` con header Range — antes mi fetch capaba a 1000 rows (default PostgREST), perdiendo 281 de 1281 viajes. Confirmado viendo "Activos 500 / Historial 499".
+- Tab Activos: filtros por proveedor + "cargue antes de" (30d/60d/90d/6m), checkbox por card, action bar con "Cerrar seleccionados ↓".
+- Commit: `19bd609`.
+
+**3. Rename tabs + deshacer cierre**
+- Commit `2bfa315`: "En subasta" → "Asignar proveedor", "Activos" → "En seguimiento". Toasts actualizados.
+- `fn_reabrir_finalizado(id, razon)`: revierte `finalizado → confirmado` (mantiene proveedor). Botón ↩ Deshacer cierre en Historial. Commit `2a4f808`.
+
+**4. Viaje cards con proveedor + embalaje + vehículo + observaciones**
+- Fix: `transp?.nombre || v.proveedor` (fallback a texto legacy). Grid info ahora 4 cells incluyendo proveedor destacado.
+- Sección "Embalaje del viaje" con badges contenedores/cajas/bidones/canecas/unidades (solo >0).
+- Sección "Vehículo y ruta": tipo, placa, conductor, km_total.
+- Observaciones con whitespace preservado.
+- Commit `75d5ad8`.
+
+**5. Tab Pedidos unificado con admin completo**
+- Eliminé tab Nuevos — ahora es un filtro virtual dentro de Pedidos (sin_consolidar + revisado_at IS NULL).
+- Filtros de estado: 7 pills multiselect (Nuevos / Sin consolidar / Consolidado / Asignado / Entregado / Cancelado / Rechazado).
+- Filtro "Ref pedido" con búsqueda por texto.
+- Badges: NUEVO (naranja) si revisado_at IS NULL, estado canónico si revisado, ⚠ sin viaje si inconsistente.
+- Filtros especiales con BYPASS de estado: `🔗 Sin viaje` / `⚠ Inconsistentes`.
+- `db/modulo4_pedidos_bulk.sql`: `fn_pedidos_cancelar_batch`, `fn_pedidos_resetear_batch(..., marcar_nuevo)`, `fn_pedido_clonar`. Commit `6c87075`.
+- `db/modulo4_pedidos_admin.sql`: `fn_pedido_editar(id, jsonb)` (whitelist 29 campos + snapshot antes), `fn_pedidos_cambiar_estado_batch` (forzar estado con razón), `fn_pedidos_eliminar_batch` (DELETE hard con snapshot en audit).
+- Modal Editar pedido con 28 campos. Botones por fila: ℹ detalle, ✎ editar, ⎘ clonar. Action bar: ↶ Nuevos / ↺ Resetear / ⇄ Cambiar estado / ✕ Cancelar / 🗑 Eliminar (double confirm "ELIMINAR") / Consolidar.
+- Commit `192d7be`.
+
+**6. Fixes iterativos a filtros**
+- `fltSinViaje` y `fltInconsist` ahora bypasean filtro de estado (data quality issues deben verse en cualquier estado). Commit `2ae63b6`.
+- Stats card "pedidos visibles" ahora muestra count real (filtrados.length), no count del pool estado. Commit `632604a`.
+- Botón Limpiar resetea TODO: pills, filtros especiales, textos. Commit `170aafe`.
+- Fetch simplificado a 1 sola query paginada (no 2) para capturar los 185 pedidos con viaje_id=NULL que quedaban fuera. Commit `9116261`.
+- Fix paginación: `order=created_at.desc,id.desc` — secondary sort por id para estabilidad (sin esto, pedidos con mismo timestamp aparecían duplicados entre páginas). Commit `9d7d9f1`.
+
+**7. Linker v3 CORREGIDO — aliases, no rangos**
+- Bernardo reportó discrepancias: viaje declara 18 pedidos, linker detectó 46 (sobrelinkeo) o solo 8 (sublinker).
+- Diagnóstico: el linker v2 expandía `RM-72781 - 72803` como rango de 23 pedidos. Pero Bernardo aclaró: "la separación es ','. Cuando es 70456-70457 o 7898/7899 es un mismo pedido con varias referencias".
+- Parser v3 nuevo: split por `,` (ÚNICO separador). Dentro de cada token, extrae (prefijo, número) con regex global. Los sin prefijo heredan el último prefijo visto. Aliases del mismo pedido, no rangos.
+- `db/link_pedidos_viajes_v3.sql` con tests inline ASSERT.
+- Ejemplos:
+  - `RM-72781-72803` → [RM-72781, RM-72803] (1 pedido, 2 aliases)
+  - `RM-72782/72783/72784` → [RM-72782, RM-72783, RM-72784] (1 pedido, 3 aliases)
+  - `TI-54710 - TIT-2188` → [TI-54710, TIT-2188] (cross-prefix OK)
+  - `DEVOLUCION, RM-72777` → [RM-72777]
+- Commit `13b0f49`.
+
+**8. Sync fresh con CSVs corregidos**
+- Bernardo exportó nuevos CSVs de Sheet. Primer intento falló porque Excel abrió el archivo y corrompió el formato (agregó `;;;;;` trailing, mixed encoding).
+- Fix en `sync_from_csv.py`: detección automática de encoding (utf-8-sig → cp1252 → latin-1) + detección automática de delimiter (, vs ;).
+- Segundo intento con CSVs de Google Sheets DIRECTO (sin abrir Excel): exitoso. 1297 viajes + 3789 pedidos parseados (real).
+- Truncate + re-sync ejecutado. Resultado: **1297 viajes + 3748 pedidos, 88.4% linkeados (3314/434)**.
+- Link rate bajó de 94.7% a 88.4% pero es MÁS CORRECTO — antes había sobrelinkeos por rangos expandidos a refs fantasma.
+- Viajes problemáticos de Bernardo:
+  - RT-TOTAL-1776311734125: declarado 28, linker detectó **26** (93%) — antes 46 sobrelinkeado.
+  - RT-TOTAL-1776281261778: declarado 13, linker detectó **11** (85%) — Sheet tiene data muy sucia (TI-54710 - TIT-2188 cross-prefix, typos).
+
+**9. Propuesta Lean/Kanban para rediseño de control.html**
+- Bernardo: "veo pedidos, asignar proveedor, en seguimiento e historial — me confunde. seria mejor algo como estado de los viajes y estado de los pedidos".
+- Primera propuesta mía: 2 tabs (Pedidos + Viajes) con pills de estado. Bernardo aprobó pero pidió: "toma una posición LEAN y Customer Journey".
+- Propuesta final: **3 workspaces orientados al customer journey del día operativo**:
+  1. **🏠 Inicio** — dashboard KPIs clickeables ("12 pedidos para revisar", "3 viajes sin proveedor", "5 en ruta").
+  2. **📥 Pedidos** (kanban 3 cols): Para revisar | Listos | En viaje (archivo).
+  3. **🚚 Viajes** (kanban 5 cols): Borrador | En subasta | Confirmado | En ruta | Entregado.
+  4. **📚 Archivo** — tabla lateral para finalizados/cancelados.
+- Principios Lean: make work visible, pull-not-push, 1-click actions, flow focus, contextual CTAs, undo-friendly.
+- **PENDIENTE implementar**. Estimación Fase 1 (MVP): 1-2h. Decisión pendiente: verbos vs sustantivos para nombres de columnas.
+
+### Riesgos y detalles frágiles de esta sesión
+
+- **CSVs del Sheet**: Excel abierto = corrupto. Siempre exportar directo desde Google Sheets.
+- **Headers con `ANIO;;;;;`**: señal clara de archivo tocado por Excel. File file válido muestra header limpio con `ANIO` al final.
+- **Data quality del Sheet**: muchos viajes tienen refs con typos (RM-70325 en vez de RM-73025), cross-prefix ranges (TI-54710 - TIT-2188), placeholder strings (DEVOLUCION). 434 huérfanos son data imperfecta, no bug del linker.
+- **Link rate 88.4%**: no es peor que 94.7% anterior — es honesto. Antes incluía sobrelinkeos falsos.
+
+### Estado final de la sesión
+
+- BD limpia y sincronizada con Sheet actual (1297/3748)
+- control.html con admin completo de pedidos (editar/cambiar estado/eliminar/clonar + 4 filtros especiales)
+- Linker v3 con parser correcto de aliases
+- Sync script Python robusto a issues de encoding/delimiter
+- Propuesta Kanban aprobada, pendiente implementar
+
+### Próxima sesión
+- Implementar Kanban workspaces (Fase 1)
+- n8n cron 15min + botón Sync
+- Data cleanup de los 434 huérfanos
+- Admin de clientes/transportadoras/usuarios

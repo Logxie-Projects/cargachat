@@ -109,7 +109,12 @@ D:\NETFLEET\
 │   ├── modulo4_reabrir.sql     → fn_reabrir_viaje (revierte confirmado → pendiente)
 │   ├── modulo4_sync.sql        → fn_sync_viajes_batch + fn_sync_pedidos_batch
 │   ├── modulo4_norm_empresa.sql → _norm_empresa() helper (canonicaliza "FATECO, AVGUST")
-│   ├── link_pedidos_viajes_v2.sql → linker optimizado (94.7% match)
+│   ├── modulo4_revision_pedidos.sql → fn_marcar_revisado/no_revisado (Fase 1 pipeline)
+│   ├── modulo4_cerrar_viaje.sql → fn_cerrar_viaje + fn_cerrar_viajes_batch
+│   ├── modulo4_reabrir_finalizado.sql → fn_reabrir_finalizado (deshace cierre)
+│   ├── modulo4_pedidos_bulk.sql → fn_pedidos_cancelar/resetear_batch + fn_pedido_clonar
+│   ├── modulo4_pedidos_admin.sql → fn_pedido_editar + cambiar_estado_batch + eliminar_batch
+│   ├── link_pedidos_viajes_v3.sql → linker ALIASES CORRECTO (88.4% match)
 │   ├── smoke_test_modulo4.sql  → E2E test del ciclo completo M4
 │   ├── sync_from_csv.py        → Python CLI para backfill + ETL manual desde CSV
 │   ├── run_migration.py        → Script ejecutor de .sql contra Supabase
@@ -394,9 +399,9 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 | # | Módulo | Reemplaza | Estado |
 |---|---|---|---|
 | 1 | Subasta inversa | Mail + Google Forms | Base funcional — landing, transportador.html, tabla ofertas |
-| 2 | Ingesta multicliente | AppSheet Transport Request | Schema ✅ + Sync Sheets→Netfleet ✅ 2026-04-19 (fn_sync_*_batch + sync_from_csv.py). Falta n8n cron 15min |
+| 2 | Ingesta multicliente | AppSheet Transport Request | Schema ✅ + Sync ✅ + Linker v3 correcto (aliases no rangos) ✅ 2026-04-20. Falta n8n cron 15min |
 | 3 | Seguimiento y cumplidos | Donde Está mi Pedido + Navegador | Pendiente |
-| 4 | Control y consolidación | Control Transporte + script Sheets | Backend + UI ✅ 2026-04-17, sync ✅ 2026-04-19, reabrir viaje ✅. Pendiente: email integration, deep-linking transportador, n8n cron |
+| 4 | Control y consolidación | Control Transporte + script Sheets | Backend + UI + sync + reabrir + cerrar bulk + admin pedidos completo ✅ 2026-04-20. Pendiente: rediseño Lean/Kanban, email, deep-linking, n8n cron |
 | 5 | Analytics | DATA UNIFICADA + Looker Studio | Pendiente |
 
 ---
@@ -743,16 +748,22 @@ Las Postgres functions escriben esta tabla como parte de su transacción. Sirve 
 - [x] ✅ hecho 2026-04-17 — **`fn_reabrir_viaje(viaje_id, razon)`**: revierte viaje `confirmado → pendiente`, libera proveedor y adjudicación, pedidos vuelven a `consolidado`, ofertas reactivadas si era subasta. Botón "↩ Reabrir" en cards de tab Activos. Ver [db/modulo4_reabrir.sql](db/modulo4_reabrir.sql).
 - [x] ✅ hecho 2026-04-17 — **control.html improvements iterativos**: auto-switch de tab tras cada acción (adjudicar→Activos, reabrir→Consolidados, etc.), toasts descriptivos con proveedor, agrupar sin_consolidar por origen + checkbox grupo, filtro fechas desde/hasta + presets 7d/30d/90d, prioridad badge (URGENTE rojo, ALTA naranja, NORMAL azul), llamar_antes flag, modal detalle completo de pedido (embalaje/contacto/dirección/horario/observaciones), sección "Pedidos incluidos" expandible dentro de viaje cards, stats por viaje ($/kg, $/km, $/pedido, %flete-vs-valor rojo si >3%), 2 filas de aggregates en tab Consolidados, tags 🏆 subasta / 📌 directa en Activos, badge "borrador" + botón Publicar en cards no publicadas, RLS clientes ahora permite read/write a logxie_staff.
 - [x] ✅ hecho 2026-04-19 — **Sync Sheets→Netfleet unidireccional**: `fn_sync_viajes_batch(jsonb)` + `fn_sync_pedidos_batch(jsonb)` con UPSERT idempotente, reglas (Netfleet gana / terminales skip / cancelado propaga), audit. Helper `_norm_empresa()` canonicaliza variantes ("FATECO, AVGUST" → "AVGUST, FATECO") automáticamente en cada sync. Script Python [db/sync_from_csv.py](db/sync_from_csv.py) lee CSV exports de Sheets y llama RPCs en batches de 500, soporta `--truncate`. Ver [db/modulo4_sync.sql](db/modulo4_sync.sql) + [db/modulo4_norm_empresa.sql](db/modulo4_norm_empresa.sql).
-- [x] ✅ hecho 2026-04-19 — **Backfill inicial fresh**: TRUNCATE + sync completo desde CSVs (1281 viajes + 3740 pedidos, 94.7% linkeados — mejor que los 92% previos). 82 filas con empresa "FATECO, AVGUST" normalizadas a "AVGUST, FATECO".
-- [ ] **n8n workflow cron 15min + webhook manual** — llama `fn_sync_viajes_batch` y `fn_sync_pedidos_batch` con data del Google Sheets API. **Siguiente paso del roadmap**.
+- [x] ✅ hecho 2026-04-19 — **Backfill inicial fresh**: TRUNCATE + sync completo desde CSVs (1281 viajes + 3740 pedidos, 94.7% linkeados). 82 filas con empresa "FATECO, AVGUST" normalizadas a "AVGUST, FATECO".
+- [x] ✅ hecho 2026-04-20 — **Fase 1 Pipeline — Tab Nuevos + revisión de pedidos**: ALTER pedidos +revisado_at/revisado_por/revision_notas + 2 índices parciales. `fn_marcar_revisado` + `fn_marcar_no_revisado`. Backfill: 3740 pedidos históricos marcados como revisados (no aparecen en Nuevos). Warning visual ⚠ si falta origen/destino/peso/cliente. Ver [db/modulo4_revision_pedidos.sql](db/modulo4_revision_pedidos.sql).
+- [x] ✅ hecho 2026-04-20 — **Cerrar viajes bulk + paginación fix**: `fn_cerrar_viaje` + `fn_cerrar_viajes_batch` (→ finalizado). `getJsonPaginated` con Range header — fix crítico del cap 1000 de PostgREST (antes solo veías 500/499 activos/historial de 1281). Paginación estable con `id.desc` secondary sort. Ver [db/modulo4_cerrar_viaje.sql](db/modulo4_cerrar_viaje.sql).
+- [x] ✅ hecho 2026-04-20 — **`fn_reabrir_finalizado(id, razon)`**: revierte cierre (finalizado → confirmado, pedidos entregado → asignado). Botón "↩ Deshacer cierre" en cards de Historial. Ver [db/modulo4_reabrir_finalizado.sql](db/modulo4_reabrir_finalizado.sql).
+- [x] ✅ hecho 2026-04-20 — **Tab Pedidos unificado con admin completo**: elimina tab Nuevos separado (ahora filtro virtual). 7 pills de estado multiselect + filtros `🔗 Sin viaje` y `⚠ Inconsistentes` con bypass. Bulk actions: Cancelar, Resetear, Volver a Nuevos, Cambiar estado (forzar), Eliminar (DELETE hard con snapshot). Modal Editar con 28 campos. Botones por fila: ℹ detalle, ✎ editar, ⎘ clonar para reintento. Functions: `fn_pedidos_cancelar_batch`, `fn_pedidos_resetear_batch`, `fn_pedido_clonar`, `fn_pedido_editar`, `fn_pedidos_cambiar_estado_batch`, `fn_pedidos_eliminar_batch`. Ver [db/modulo4_pedidos_bulk.sql](db/modulo4_pedidos_bulk.sql) + [db/modulo4_pedidos_admin.sql](db/modulo4_pedidos_admin.sql).
+- [x] ✅ hecho 2026-04-20 — **Linker v3 CORREGIDO**: parser entiende que `-` y `/` dentro de un token son ALIASES del mismo pedido (no rangos). Separador real de pedidos = `,`. Ejemplos: `RM-72781-72803` → 2 aliases, no 23 refs. `TI-54710 - TIT-2188` → 2 aliases cross-prefix. Tests inline con ASSERT. Resultado: 88.4% linked (vs 94.7% v2 — menor pero más correcto, sin sobrelinkeos por rangos fantasma). Ver [db/link_pedidos_viajes_v3.sql](db/link_pedidos_viajes_v3.sql).
+- [x] ✅ hecho 2026-04-20 — **sync_from_csv.py robusto**: detección automática de encoding (utf-8-sig → cp1252 → latin-1 para Excel Windows ES) + delimiter (, vs ;). Warning si abrís CSV con Excel — corrompe formato.
+- [x] ✅ hecho 2026-04-20 — **Re-sync fresh con Sheet actual**: 1297 viajes + 3748 pedidos + 88.4% linked. Linker v3 resolvió sobrelinkeos previos (ej. RT-TOTAL-1776311734125 pasó de 46 → 26 correctos).
+- [ ] **🚀 Rediseño Lean/Kanban de control.html** — Bernardo 2026-04-20 aprobó propuesta. 3 workspaces (Inicio / Pedidos kanban 3 cols / Viajes kanban 5 cols) + Archivo lateral. Verbos como nombres de columna (Revisar / Consolidar / Publicar / Adjudicar / Seguir / Entregar / Cerrar). Principios Lean: make work visible, pull-not-push, 1-click actions, flow focus. **Próxima sesión**, estimación Fase 1: 1-2h.
+- [ ] **n8n workflow cron 15min + webhook manual** — llama `fn_sync_viajes_batch` y `fn_sync_pedidos_batch` con data del Google Sheets API. Opcional: publicar pestañas como CSV URL (Archivo → Compartir → Publicar en la Web) y fetch directo, o usar credencial `IuCNLIa09oW4ZWBu` de n8n.
 - [ ] **Botón 🔄 Sync en control.html** — header nav, POST al webhook n8n, toast con counters.
 - [ ] **Deep-linking** en transportador.html (query param `?viaje_ref=`)
 - [ ] **Integración email**: elegir proveedor + Edge Function o n8n webhook para publicar/invitar/adjudicar
-- [ ] **Test E2E** con 50 pedidos reales (antes de reemplazar el Apps Script)
-- [ ] **Admin tab en control.html**: crear/editar clientes, transportadoras, usuarios (gestión unificada, reemplaza `admin.html`). Pendiente de Bernardo solicitó 2026-04-17.
-- [ ] **Data quality**: revisar los 197 pedidos huérfanos + 128 viajes vacíos tras el sync 2026-04-19. Probablemente refs que no matchean por formato — investigar.
+- [ ] **Admin tab en control.html**: crear/editar clientes, transportadoras, usuarios (gestión unificada, reemplaza `admin.html`). Bernardo solicitó 2026-04-17.
+- [ ] **Data quality**: revisar los 434 huérfanos actuales. Muchos son refs typeados mal en el Sheet (ej. `RM-70325 - 73028` era `RM-73025 - 73028`), rangos cross-prefix imposibles, o placeholders tipo `DEVOLUCION`. Limpiar en AppSheet para que el próximo sync resuelva.
 - [x] ✅ hecho 2026-04-17 — **Migración de operadores**: Bernardo ya es `logxie_staff aprobado` en perfiles (id: fa822bae-4743-4d40-95cf-c9fdd815214f). Los otros 2 auth.users son `transportador pendiente`. Pendiente: crear cuentas para empleados Logxie (vía Admin tab futura).
-- [x] ✅ hecho 2026-04-17 — **Linker v2 pedidos→viajes**: `db/link_pedidos_viajes_v2.sql` lee `raw_payload->>'PEDIDOS_INCLUIDOS'` + canonicalización. 94.7% match tras sync fresh 2026-04-19.
 - [ ] **RLS en `viajes_consolidados`**: hoy `authenticated_all` es muy permisivo. Endurecer para que transportadoras solo vean viajes con `subasta_tipo='abierta'` o invitaciones vigentes en `invitaciones_subasta`. Deferido hasta que auth de transportadoras esté validado.
 - [ ] **Tabla `leads`/`cargas`**: no existen en Supabase (son Módulo 1, fuera de alcance M4). Diferido.
 

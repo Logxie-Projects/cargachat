@@ -805,21 +805,16 @@
   async function recargarTodo() {
     try {
       const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,revisado_at,revisado_por,revision_notas,created_at';
-      const [clientes, transp, pedSinCons, pedDeViajes, viajes, ofertas] = await Promise.all([
+      const [clientes, transp, pedidosAll, viajes, ofertas] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
-        // Sin consolidar (incluye nuevos sin revisar + revisados): paginado
-        getJsonPaginated(`pedidos?select=${pedidosCols}&estado=eq.sin_consolidar&order=fecha_cargue.desc.nullslast`),
-        // Pedidos de viajes: paginado, ~3525 rows
-        getJsonPaginated(`pedidos?select=${pedidosCols}&viaje_id=not.is.null&order=created_at.desc`),
-        // Viajes: paginado, ~1281 rows
+        // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
+        // ej. consolidado/cancelado con viaje_id NULL — 185 rows inconsistentes)
+        getJsonPaginated(`pedidos?select=${pedidosCols}&order=created_at.desc`),
         getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
       ]);
-      // Merge (dedupe por id en caso de solape)
-      const pedidosMap = new Map();
-      [...pedSinCons, ...pedDeViajes].forEach(p => pedidosMap.set(p.id, p));
-      state.pedidos = Array.from(pedidosMap.values());
+      state.pedidos = pedidosAll;
       state.clientes = clientes;
       state.transportadoras = transp;
       state.viajes = viajes;

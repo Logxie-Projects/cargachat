@@ -1315,7 +1315,7 @@
           ${v.publicado_at && v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
           ${v.adjudicacion_tipo === 'subasta' ? '<span class="badge" style="background:#fef9c3;color:#b45309;margin-left:4px">🏆 subasta</span>' : ''}
           ${v.adjudicacion_tipo === 'directa' ? '<span class="badge" style="background:#ede9fe;color:#7c3aed;margin-left:4px">📌 directa</span>' : ''}
-          ${transp ? `<div class="viaje-sub" style="margin-top:4px">${transp.nombre}</div>` : ''}
+          ${(transp?.nombre || v.proveedor) ? `<div class="viaje-sub" style="margin-top:4px;font-weight:700;color:var(--navy)">${transp?.nombre || v.proveedor}</div>` : ''}
         </div>
         <div>
           <div class="viaje-precio">${fmtCOP(v.flete_total)}</div>
@@ -1343,6 +1343,10 @@
       <div class="viaje-card-body">
         <div class="viaje-info-grid">
           <div class="viaje-info-cell">
+            <div class="viaje-info-lbl">Proveedor</div>
+            <div class="viaje-info-val importante">${transp?.nombre || v.proveedor || '—'}</div>
+          </div>
+          <div class="viaje-info-cell">
             <div class="viaje-info-lbl">Fecha cargue</div>
             <div class="viaje-info-val">${fmtFecha(v.fecha_cargue)}</div>
           </div>
@@ -1355,6 +1359,41 @@
             <div class="viaje-info-val">${fmtCOP(v.valor_mercancia)}</div>
           </div>
         </div>
+
+        ${(() => {
+          const units = [
+            { n: v.contenedores,     lbl: 'contenedores' },
+            { n: v.cajas,            lbl: 'cajas'        },
+            { n: v.bidones,          lbl: 'bidones'      },
+            { n: v.canecas,          lbl: 'canecas'      },
+            { n: v.unidades_sueltas, lbl: 'unidades'     },
+          ].filter(u => +u.n > 0);
+          if (!units.length) return '';
+          return `
+            <div class="ped-detalle-section" style="margin-top:0.5rem;padding-top:0.75rem">
+              <div class="ped-detalle-section-title">Embalaje del viaje (totales)</div>
+              <div class="ped-units-badges">
+                ${units.map(u => `<div class="ped-units-badge"><strong>${fmtNum(u.n)}</strong><span>${u.lbl}</span></div>`).join('')}
+              </div>
+            </div>`;
+        })()}
+
+        ${(v.tipo_vehiculo || v.placa || v.conductor_nombre || v.conductor_id || v.km_total) ? `
+        <div class="ped-detalle-section" style="margin-top:0.5rem">
+          <div class="ped-detalle-section-title">Vehículo y ruta</div>
+          <div class="viaje-info-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:0">
+            <div><div class="viaje-info-lbl">Tipo vehículo</div><div class="viaje-info-val">${v.tipo_vehiculo || '—'}</div></div>
+            <div><div class="viaje-info-lbl">Placa</div><div class="viaje-info-val">${v.placa || '—'}</div></div>
+            <div><div class="viaje-info-lbl">Conductor</div><div class="viaje-info-val">${v.conductor_nombre || '—'}${v.conductor_id ? ` (${v.conductor_id})` : ''}</div></div>
+            <div><div class="viaje-info-lbl">Km total</div><div class="viaje-info-val">${v.km_total ? fmtNum(v.km_total) + ' km' : '—'}</div></div>
+          </div>
+        </div>` : ''}
+
+        ${v.observaciones ? `
+        <div class="ped-detalle-section" style="margin-top:0.5rem">
+          <div class="ped-detalle-section-title">Observaciones del viaje</div>
+          <div class="ped-detalle-val" style="white-space:pre-wrap;font-size:12px">${v.observaciones}</div>
+        </div>` : ''}
 
         ${(() => {
           const flete = +v.flete_total || 0;

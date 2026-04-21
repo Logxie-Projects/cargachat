@@ -1667,15 +1667,11 @@
     document.querySelectorAll('.g-chk[data-state="indeterminate"]').forEach(chk => chk.indeterminate = true);
   }
 
-  function toggleGrupo(groupKey) {
-    // Matchea el mismo key que renderPedidos: solo origen o (origen|destino)
-    const sinConMode = state.filtroEstados?.size === 1 && state.filtroEstados.has('sin_consolidar');
-    const del = pedidosFiltrados().filter(p => {
-      const origen = (p.origen || '(sin origen)').trim().toUpperCase();
-      const destino = (p.destino || '(sin destino)').trim().toUpperCase();
-      const key = sinConMode ? `${origen}|${destino}` : origen;
-      return key === groupKey;
-    });
+  function toggleGrupo(origenKey) {
+    // Matchea el group key de renderPedidos: siempre solo el origen (uppercased, trimmed)
+    const del = pedidosFiltrados().filter(p =>
+      (p.origen || '(sin origen)').trim().toUpperCase() === origenKey
+    );
     const todosSeleccionados = del.every(p => state.seleccionados.has(p.id));
     del.forEach(p => {
       if (todosSeleccionados) state.seleccionados.delete(p.id);

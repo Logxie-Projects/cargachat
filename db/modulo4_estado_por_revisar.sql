@@ -14,6 +14,25 @@
 
 BEGIN;
 
+-- 0) Extender CHECK de pedidos.estado (constraint original no incluía por_revisar)
+DO $$
+DECLARE c record;
+BEGIN
+  FOR c IN SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.pedidos'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%estado%'
+  LOOP
+    EXECUTE format('ALTER TABLE pedidos DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
+
+ALTER TABLE pedidos ADD CONSTRAINT pedidos_estado_check
+  CHECK (estado IN (
+    'sin_consolidar','por_revisar','consolidado','asignado',
+    'en_ruta','entregado','entregado_novedad','rechazado','cancelado'
+  ));
+
 -- 1) Whitelist en cambiar_estado_batch
 CREATE OR REPLACE FUNCTION fn_pedidos_cambiar_estado_batch(
   p_pedido_ids  uuid[],

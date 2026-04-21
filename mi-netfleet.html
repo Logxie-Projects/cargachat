@@ -642,6 +642,90 @@
   </div>
 </div>
 
+<!-- ══ MODAL CUMPLIDO (subir foto de entrega por pedido) ══ -->
+<div class="modal-overlay" id="modal-cumplido">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title">📸 Subir cumplido</div>
+      <button class="modal-close" onclick="cerrarModal('modal-cumplido')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-viaje-resumen" id="cump-pedido-info"></div>
+      <div class="form-group">
+        <label class="form-label">Foto del cumplido (firma/ubicación)</label>
+        <input class="form-input" id="cump-file" type="file" accept="image/*,.pdf">
+      </div>
+      <div class="form-group">
+        <label class="form-label">¿Entrega exitosa?</label>
+        <select class="form-input" id="cump-exitoso">
+          <option value="true">✓ Sí — entregado OK</option>
+          <option value="false">✕ No — falló</option>
+        </select>
+      </div>
+      <div class="form-group" id="cump-novedad-wrap" style="display:none">
+        <label class="form-label">Tipo de novedad</label>
+        <select class="form-input" id="cump-novedad">
+          <option value="">— elegí —</option>
+          <option value="Cliente cerrado">Cliente cerrado</option>
+          <option value="Dirección errada">Dirección errada</option>
+          <option value="Producto rechazado">Producto rechazado</option>
+          <option value="No contesta">No contesta</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comentario</label>
+        <textarea class="form-textarea" id="cump-comentario" placeholder="Detalles (hora, quien recibió, etc.)"></textarea>
+      </div>
+      <div id="cump-error"   class="form-error"   style="display:none"></div>
+      <div id="cump-success" class="form-success" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal('modal-cumplido')">Cancelar</button>
+      <button class="btn-enviar" id="btn-enviar-cump" onclick="enviarCumplido()">Subir cumplido &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL FACTURA (upload PDF + datos) ══ -->
+<div class="modal-overlay" id="modal-factura">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title">💰 Subir factura</div>
+      <button class="modal-close" onclick="cerrarModal('modal-factura')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-viaje-resumen" id="fact-viaje-info"></div>
+      <div class="form-group">
+        <label class="form-label">PDF de la factura</label>
+        <input class="form-input" id="fact-file" type="file" accept=".pdf,image/*">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número de factura (el tuyo)</label>
+        <input class="form-input" id="fact-numero" placeholder="Ej: FAC-2026-0123">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monto (COP)</label>
+        <input class="form-input" id="fact-monto" type="number" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de emisión</label>
+        <input class="form-input" id="fact-fecha" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nota (opcional)</label>
+        <textarea class="form-textarea" id="fact-nota" placeholder="Cualquier referencia adicional"></textarea>
+      </div>
+      <div id="fact-error"   class="form-error"   style="display:none"></div>
+      <div id="fact-success" class="form-success" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal('modal-factura')">Cancelar</button>
+      <button class="btn-enviar" id="btn-enviar-fact" onclick="enviarFactura()">Emitir factura &rarr;</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL AUTH (login/registro) ══ -->
 <div class="modal-overlay" id="modal-auth">
   <div class="modal-box">
@@ -989,6 +1073,8 @@
 
   // ═════════════ MIS VIAJES (confirmado/en_ruta/entregado de mi empresa) ═════════════
   let misViajes = [];
+  let misPedidos = [];
+  let misIntentos = [];
 
   async function cargarMisViajes() {
     if (!perfilActual?.empresa) return;
@@ -996,16 +1082,32 @@
     if (lbl) lbl.textContent = perfilActual.empresa;
     try {
       const cols = 'id,viaje_ref,origen,destino,km_total,flete_total,peso_kg,valor_mercancia,fecha_cargue,cantidad_pedidos,zona,empresa,estado,proveedor,fuente,publicado_at,llegada_cargue,salida_cargue,llegada_descargue,salida_descargue,adjudicado_at';
-      // Match por proveedor ILIKE mi empresa (Sheet-source) OR transportadora_id = mia (Netfleet-native)
-      const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
+      const urlV = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
                 + `&estado=in.(confirmado,en_ruta,entregado)`
                 + `&proveedor=ilike.${encodeURIComponent('%' + perfilActual.empresa + '%')}`
                 + `&order=fecha_cargue.desc.nullslast&limit=200`;
-      const r = await fetch(url, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
-      misViajes = r.ok ? await r.json() : [];
+      const rv = await fetch(urlV, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
+      misViajes = rv.ok ? await rv.json() : [];
+
+      // Pedidos de esos viajes (para mostrar lista por viaje + botón cumplido)
+      if (misViajes.length) {
+        const ids = misViajes.map(v => v.id).join(',');
+        const colsP = 'id,viaje_id,pedido_ref,cliente_nombre,destino,peso_kg,estado';
+        const urlP = `${SUPABASE_URL}/rest/v1/pedidos?select=${colsP}&viaje_id=in.(${ids})`;
+        const rp = await fetch(urlP, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
+        misPedidos = rp.ok ? await rp.json() : [];
+        const pids = misPedidos.map(p => p.id).join(',');
+        if (pids) {
+          const urlI = `${SUPABASE_URL}/rest/v1/intentos_entrega?select=pedido_id,intento_num,exitoso,foto_url,fecha&pedido_id=in.(${pids})&order=pedido_id,intento_num`;
+          const ri = await fetch(urlI, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
+          misIntentos = ri.ok ? await ri.json() : [];
+        }
+      } else {
+        misPedidos = []; misIntentos = [];
+      }
     } catch (e) {
       console.error(e);
-      misViajes = [];
+      misViajes = []; misPedidos = []; misIntentos = [];
     }
     const cnt = document.getElementById('count-misviajes');
     if (cnt) cnt.textContent = misViajes.length;
@@ -1054,6 +1156,30 @@
             ${ts('Salida descargue', v.salida_descargue)}
           </div>
           ${acciones.length ? `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${acciones.join('')}</div>` : '<div style="margin-top:10px;font-size:12px;color:var(--green);font-weight:600">✓ Todos los timestamps completos</div>'}
+
+          ${(() => {
+            const peds = misPedidos.filter(p => p.viaje_id === v.id);
+            if (!peds.length) return '';
+            return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--gray-100)">
+              <div style="font-size:11px;color:var(--gray-400);text-transform:uppercase;font-weight:700;margin-bottom:6px">Pedidos del viaje (${peds.length})</div>
+              ${peds.map(p => {
+                const ints = misIntentos.filter(i => i.pedido_id === p.id);
+                const ultimoExito = ints.some(i => i.exitoso);
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px;gap:12px;border-bottom:1px solid var(--gray-100)">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-family:monospace;font-weight:700">${p.pedido_ref || '—'}</div>
+                    <div style="font-size:11px;color:var(--gray-600)">${p.cliente_nombre || '—'} → ${p.destino || '—'} · ${(+p.peso_kg||0).toLocaleString('es-CO')} kg</div>
+                  </div>
+                  <div>
+                    ${ultimoExito
+                      ? `<div style="padding:3px 10px;background:#dcfce7;color:#16a34a;border-radius:10px;font-size:10px;font-weight:700">✓ Entregado (${ints.length}/3)</div>`
+                      : `<button class="btn-mv" style="padding:4px 10px;font-size:11px" onclick="abrirModalCumplido('${p.id}','${(p.pedido_ref||'').replace(/'/g,"\\\\'")}','${(p.destino||'').replace(/'/g,"\\\\'")}')">📸 Cumplido ${ints.length}/3</button>`
+                    }
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`;
+          })()}
         </div>`;
     }).join('');
   }
@@ -1143,9 +1269,166 @@
     }).join('');
   }
 
+  // ═════════════ MODAL HELPERS ═════════════
+  function cerrarModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+  function abrirModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+
+  // ═════════════ UPLOAD CUMPLIDO ═════════════
+  let cumpPedidoActual = null;
+
+  async function abrirModalCumplido(pedidoId, pedidoRef, destino) {
+    cumpPedidoActual = pedidoId;
+    document.getElementById('cump-pedido-info').innerHTML =
+      `<div><strong>${pedidoRef}</strong></div><div style="font-size:12px;color:var(--gray-600)">→ ${destino || '—'}</div>`;
+    document.getElementById('cump-file').value = '';
+    document.getElementById('cump-exitoso').value = 'true';
+    document.getElementById('cump-novedad').value = '';
+    document.getElementById('cump-comentario').value = '';
+    document.getElementById('cump-error').style.display = 'none';
+    document.getElementById('cump-success').style.display = 'none';
+    toggleNovedadWrap();
+    abrirModal('modal-cumplido');
+  }
+  function toggleNovedadWrap() {
+    const exitoso = document.getElementById('cump-exitoso').value === 'true';
+    document.getElementById('cump-novedad-wrap').style.display = exitoso ? 'none' : '';
+  }
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'cump-exitoso') toggleNovedadWrap();
+  });
+
+  async function enviarCumplido() {
+    const file      = document.getElementById('cump-file').files[0];
+    const exitoso   = document.getElementById('cump-exitoso').value === 'true';
+    const novedad   = document.getElementById('cump-novedad').value.trim();
+    const comentario = document.getElementById('cump-comentario').value.trim();
+    const errEl = document.getElementById('cump-error');
+    const sucEl = document.getElementById('cump-success');
+    const btn   = document.getElementById('btn-enviar-cump');
+    errEl.style.display = 'none'; sucEl.style.display = 'none';
+
+    if (!file) { errEl.textContent = 'Elegí un archivo (foto o PDF).'; errEl.style.display = 'block'; return; }
+    if (!exitoso && !novedad) { errEl.textContent = 'Seleccioná la novedad.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true; btn.textContent = 'Subiendo...';
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${cumpPedidoActual}-${Date.now()}.${ext}`;
+      // Upload via Supabase Storage REST
+      const up = await fetch(`${SUPABASE_URL}/storage/v1/object/cumplidos/${path}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${tokenActual}`,
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
+      if (!up.ok) throw new Error('Upload falló: ' + await up.text());
+      const fotoUrl = `${SUPABASE_URL}/storage/v1/object/public/cumplidos/${path}`;
+
+      // Llamar fn_subir_cumplido
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_subir_cumplido`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_pedido_id: cumpPedidoActual,
+          p_foto_url: fotoUrl,
+          p_comentario: comentario || null,
+          p_exitoso: exitoso,
+          p_novedad: novedad || null,
+        }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+
+      sucEl.textContent = '✓ Cumplido subido';
+      sucEl.style.display = 'block';
+      btn.textContent = '✓ Subido';
+      setTimeout(() => { cerrarModal('modal-cumplido'); cargarMisViajes(); }, 800);
+    } catch (e) {
+      errEl.textContent = 'Error: ' + e.message.slice(0, 200);
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Subir cumplido →';
+    }
+  }
+
+  // ═════════════ UPLOAD FACTURA ═════════════
+  let factViajeActual = null;
+
   function abrirModalFactura(viajeId, monto) {
-    // Placeholder — implementado en Paso 3 con upload real
-    alert('Upload de factura: próximo commit (Paso 3). Viaje: ' + viajeId);
+    factViajeActual = viajeId;
+    const v = misViajes.find(x => x.id === viajeId) || viajesFacturar.find(x => x.id === viajeId);
+    document.getElementById('fact-viaje-info').innerHTML = v
+      ? `<div><strong>${v.viaje_ref}</strong></div><div style="font-size:12px;color:var(--gray-600)">${v.origen||'—'} → ${(v.destino||'').split(',')[0]||'—'}</div>`
+      : '';
+    document.getElementById('fact-file').value = '';
+    document.getElementById('fact-numero').value = '';
+    document.getElementById('fact-monto').value = monto || '';
+    document.getElementById('fact-fecha').value = new Date().toISOString().substring(0, 10);
+    document.getElementById('fact-nota').value = '';
+    document.getElementById('fact-error').style.display = 'none';
+    document.getElementById('fact-success').style.display = 'none';
+    abrirModal('modal-factura');
+  }
+
+  async function enviarFactura() {
+    const file     = document.getElementById('fact-file').files[0];
+    const numero   = document.getElementById('fact-numero').value.trim();
+    const monto    = parseFloat(document.getElementById('fact-monto').value);
+    const fecha    = document.getElementById('fact-fecha').value;
+    const nota     = document.getElementById('fact-nota').value.trim();
+    const errEl = document.getElementById('fact-error');
+    const sucEl = document.getElementById('fact-success');
+    const btn   = document.getElementById('btn-enviar-fact');
+    errEl.style.display = 'none'; sucEl.style.display = 'none';
+
+    if (!numero)       { errEl.textContent = 'Ingresá número de factura.'; errEl.style.display = 'block'; return; }
+    if (!monto || monto <= 0) { errEl.textContent = 'Monto inválido.'; errEl.style.display = 'block'; return; }
+    if (!fecha)        { errEl.textContent = 'Fecha de emisión requerida.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true; btn.textContent = 'Subiendo...';
+    try {
+      let pdfUrl = null;
+      if (file) {
+        const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+        const path = `${factViajeActual}-${Date.now()}.${ext}`;
+        const up = await fetch(`${SUPABASE_URL}/storage/v1/object/facturas/${path}`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': file.type || 'application/pdf' },
+          body: file,
+        });
+        if (!up.ok) throw new Error('Upload falló: ' + await up.text());
+        // Bucket facturas es privado — URL requiere token. Guardamos path relativo para signed URL después.
+        pdfUrl = `${SUPABASE_URL}/storage/v1/object/sign/facturas/${path}`;
+      }
+
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_crear_factura`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_viaje_id: factViajeActual,
+          p_numero: numero,
+          p_monto: monto,
+          p_fecha_emision: fecha,
+          p_pdf_url: pdfUrl,
+          p_nota: nota || null,
+        }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+
+      sucEl.textContent = '✓ Factura registrada';
+      sucEl.style.display = 'block';
+      btn.textContent = '✓ Subida';
+      setTimeout(() => { cerrarModal('modal-factura'); cargarParaFacturar(); }, 800);
+    } catch (e) {
+      errEl.textContent = 'Error: ' + e.message.slice(0, 200);
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Emitir factura →';
+    }
   }
 
   // ── VIAJES (desde Google Sheet CSV) ───────────────────────────

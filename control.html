@@ -332,6 +332,9 @@
     .ped-ts-badge.intento   { background: #fef3c7; color: #b45309; }
     .ped-ts-badge.pendiente { background: #eff6ff; color: #1d4ed8; }
     .ped-ts-badge.cancelado { background: var(--gray-100); color: var(--gray-400); text-decoration: line-through; }
+    .tracking-pedido-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .cumplido-link { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; background: #e0f2fe; color: #0369a1; text-decoration: none; border: 1px solid #bae6fd; transition: all .15s; }
+    .cumplido-link:hover { background: #0369a1; color: white; border-color: #0369a1; }
     @media (max-width: 720px) {
       .tracking-timeline { grid-template-columns: repeat(2, 1fr); }
     }
@@ -2076,6 +2079,19 @@
           if (p.estado === 'cancelado' || p.estado === 'rechazado') return `<span class="ped-ts-badge cancelado">✕ ${p.estado}</span>`;
           return `<span class="ped-ts-badge pendiente">${p.estado || '—'}</span>`;
         };
+        // Link al cumplido del último intento (si existe foto_url).
+        // resolverFotoUrl maneja URL directa vs Drive filename.
+        const cumplidoLink = p => {
+          const intentos = (state.intentos || []).filter(i => i.pedido_id === p.id)
+                             .sort((a,b) => (b.intento_num || 0) - (a.intento_num || 0));
+          const ult = intentos[0];
+          if (!ult?.foto_url) return '';
+          const url = resolverFotoUrl(ult.foto_url);
+          if (!url) return '';
+          const ext = String(ult.foto_url).toLowerCase().split('.').pop();
+          const isPdf = ext === 'pdf';
+          return `<a class="cumplido-link" href="${url}" target="_blank" title="Ver cumplido del intento ${ult.intento_num || '—'}">${isPdf ? '📄 PDF' : '📷 Foto'}</a>`;
+        };
         return `
         <div class="viaje-tracking">
           <div class="tracking-timeline">
@@ -2093,7 +2109,10 @@
                     <div class="tracking-pedido-ref">${p.pedido_ref || '—'}</div>
                     <div class="tracking-pedido-cli">${p.cliente_nombre || '—'} · ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
                   </div>
-                  <div>${badgePedido(p)}</div>
+                  <div class="tracking-pedido-actions">
+                    ${cumplidoLink(p)}
+                    ${badgePedido(p)}
+                  </div>
                 </div>`).join('')}
             </div>` : ''}
         </div>` ;

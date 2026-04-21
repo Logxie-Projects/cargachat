@@ -74,6 +74,7 @@ VIAJES_COLS = {
 # Mapping Base_inicio-def → pedidos (headers confirmados 2026-04-19)
 # ============================================================
 PEDIDOS_COLS = {
+    'ID_Inicio':                   'id_inicio',     # llave estable AppSheet (col A)
     'CONSECUTIVO IMP / LOG / CRM': 'pedido_ref',
     'ID_consecutivo':              'id_consecutivo',
     'EMPRESA':                     'empresa',

@@ -504,3 +504,77 @@ Bernardo: "quiero poder ver en tiempo real lo de Google Sheets en Supabase o al 
 
 Prompt recomendado:
 > "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. Tengo las 2 URLs CSV públicas de los Sheets. Arrancamos con el botón 🔄 Sync."
+
+
+---
+
+## Sesión 2026-04-21 — Día completo (sync operativo + Módulo 3 parcial + transportador Supabase)
+
+### Contexto de arranque
+Empezó ejecutando el botón 🔄 Sync por primera vez en prod (armado en sesión anterior). Una vez fluyó, fue cascada de iteraciones: rescates de data, nuevos estados, Módulo 3 parcial, transportador.html migrado, y layout 3 columnas de viajes.
+
+### Hitos de la sesión (commits relevantes)
+
+**Migración fresca + id_inicio (llave estable AppSheet):**
+- `dd2ac02` botón 🔄 Sync en control.html + SQL fn_run_linkers
+- `364f724` fix PostgREST RPC (array → param nombrado p_payload)
+- `b6eb5cb` fix toast `'err'` → `'error'`
+- `8f1942f` fix `'EN PROCESO'` del Sheet → `sin_consolidar` (no consolidado)
+- `0092a18` fix CHECK estado agrega `por_revisar`
+- `e29c976` feat `id_inicio` como llave estable → elimina huérfanos por rename
+- Truncate + fresh sync aplicado. 3802 pedidos con id_inicio poblado.
+
+**Módulo 3 parcial — tracking desde Sheet Seguimiento:**
+- `c4a2cda` feat `intentos_entrega` tabla + trigger auto-estado + `devuelto_bodega`
+- `13dd261` fix crear intento aunque no haya timestamp (foto/comentario bastan)
+- `0f669d3` feat timestamps viaje (cargue/descargue) + `fn_recalc_viaje_estado_desde_pedidos`
+- `f276a49` feat `resolverFotoUrl` → Drive search
+- Folders Drive públicas: `192ritQ72WChqjWwOvO2TTlOvqmbwa8uq` y `17QmlbCaMhlbgYO88G9mLDQ9R4rv1Gm3Y`
+
+**Features de control.html:**
+- `6ff46a2` / `d230bb6` feat Auto-revisar con viaje (bulk + linker cascade)
+- `81b8bf6` feat Marcar revisado bulk + Especiales como parking lot
+- `132827f` feat estado `por_revisar` + pill 🔍
+- `de171cf` feat Sin consolidar agrupa origen → destino
+- `840d657` fix compact mode 24px/row (checkbox col 28px, nowrap, botones 18px)
+- `2cf3121` fix checkbox grupo selecciona todos
+- `b3308f5` feat stats en card (\$/kg, \$/km, %flete, fecha)
+- `e3a8753` feat columna fecha dedicada + sort desc
+- `2d171cc` feat layout 3 columnas (RT/prov/flete | ruta/stats | chips pedidos)
+- `764a048` feat stats clickeables + sync monetario en terminales + `fn_reabrir_cancelado`
+- `cf3fb30` feat botón ↩ Resucitar en cancelados
+- `3807ab4` feat 'Asignados' tab + stats Subasta clickeables
+- `5fcfe0e` fix esViajeSubasta — Sheet sin proveedor aparece sin toggle
+- `f8967dd` feat cleanup ghosts post-sync
+
+**transportador.html migración:**
+- `f1c7646` feat lee de Supabase (no CSV)
+- `2ef5764` fix filtra recientes 7d
+- `0744aec` fix filtro viajes por_asignar (estado=pendiente + proveedor vacío)
+- `4bb2d49` fix ASIGNADO+proveedor vacío → pendiente en norm
+- `dda7619` fix haversine km fallback
+- `a2d5493` feat autofill km via fn_autofill_km_viaje (persiste en BD)
+- `ef5ddb6` fix tipo_mercancia Químico AVGUST/FATECO
+
+**Linker tolerancia:**
+- `2cef9af` fix espacio entre prefijo y número (RM 67705 = RM-67705)
+- `0f9d6ac` fix BL (Bills of Lading importación) es estándar
+
+### Decisiones tomadas
+
+- **`id_inicio` es llave estable** (AppSheet col A) → reemplaza pedido_ref+cliente_id como upsert key. Renames en Sheet = UPDATE silencioso.
+- **Seguimiento Sheet como fuente de Módulo 3** (por ahora). La data ya existe en "Donde Está mi Pedido" app, sync la trae. Módulo 3 full-Netfleet es futuro.
+- **Estado `por_revisar`** vs filter Especiales — por_revisar es estado real queryable; Especiales es lens. Los dos coexisten.
+- **Sync terminal monetario**: viajes finalizados/cancelados reciben updates de flete/peso desde Sheet pero no resucitan. Para reactivar usar botón ↩ explícito.
+- **3-col layout en viaje card** prioriza info operativa sin expandir.
+
+### Para abrir sesión siguiente
+
+Prompt recomendado:
+> "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. Seguimos con [deep-linking transportador / reemplazo Google Form / Seguimiento Proactivo / etc]."
+
+Los pendientes concretos están en CLAUDE.md sección Pendientes. En orden de impacto:
+1. **Deep-linking transportador.html `?viaje_ref=`** (45 min) + **modificar mail AppSheet** → cierra el ciclo de bidding en Netfleet, permite apagar Google Form
+2. **Seguimiento Proactivo mails** (1-2 días) → requiere directorio nombre→email Avgust
+3. **Drive API link directo fotos** → habilitar en Cloud Console + resolver filename→fileId
+4. **n8n cron 15min auto-sync** → dejar de depender de clic manual

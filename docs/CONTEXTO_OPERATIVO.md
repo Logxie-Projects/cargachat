@@ -1,6 +1,22 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-20 (sesión tarde/noche)** — Kanban Fase 1 + linker v4 + 97.3% link rate. Este documento se actualiza conforme se avanza — leer primero para tener contexto de qué está vivo, qué falta, y dónde están los riesgos hoy.
+> Foto del proyecto al **2026-04-21 (sesión completa)** — Sync 4-fases (ASIGNADOS+Base+Seguimiento+Linkers) operativo, Módulo 3 parcial funcionando vía Sheet Seguimiento, transportador.html migrado a Supabase, estado de viajes auto-derivado, capacidad de bidding end-to-end. El documento anterior (2026-04-20) hablaba de armar el Sync; hoy eso quedó atrás — el sistema es operativamente usable.
+
+## TL;DR de la sesión 2026-04-21
+
+- **Sync completo Sheets → Supabase** funcional (4 pasos, ~30s): `fn_sync_viajes_batch` (ASIGNADOS), `fn_sync_pedidos_batch` (Base_inicio-def), `fn_run_linkers` (v3+v4), `fn_sync_pedidos_seguimiento_batch` (Seguimiento). Cleanup ghosts auto integrado.
+- **`id_inicio` como llave estable** de AppSheet — eliminó huérfanos por rename en el Sheet. Migración fresca aplicada.
+- **Intentos de entrega + devolución a bodega** — tabla `intentos_entrega` (hasta 3 intentos/pedido), estado nuevo `devuelto_bodega` (después de 3 fallidos), trigger auto de estado del pedido desde intentos. Reemplaza parcialmente el Módulo 3 (data ya fluye de la app "Donde Está mi Pedido" via el Sheet Seguimiento).
+- **Timestamps de tracking** (`salida_cargue`, `llegada_descargue`, etc.) sincronizados a nivel viaje. Trigger auto-deriva el estado del viaje (`salida_cargue` set → `en_ruta`; todos pedidos terminales + entregados → `entregado`).
+- **transportador.html migrado** — ya no usa el CSV VIAJES_LANDING, lee directo de `viajes_consolidados` filtrado a `estado=pendiente + proveedor vacío`. Autofill de km_total via haversine (persistido en BD por el primer cliente logueado que lo calcula, vía `fn_autofill_km_viaje`). tipo_mercancia='Químico' para AVGUST/FATECO.
+- **Estado nuevo `por_revisar`** en pedidos — bucket operativo para pedidos que salen de Nuevos pero no están listos para consolidar. Pill 🔍 Por revisar.
+- **Layout 3 columnas en viaje card** de control.html: Col 1 RT+proveedor+flete+estado+fecha; Col 2 ruta+stats; Col 3 chips de pedidos con color por estado. Info rica sin expandir.
+- **Resolvedor foto cumplido** abre Drive search por filename (2 folders compartidas públicas). Pending: Drive API para link directo al archivo.
+- **Sub-tab renombrado**: "En ruta / seguimiento" → "Asignados". Stats cards clickeables en Activos + Subasta (filtros rápidos).
+- **Cleanup ghosts** auto en sync: viajes pendientes sin proveedor que ya no están en el CSV se cancelan (reemplaza el "delete en cascada" que el sync no hacía).
+- **Sync monetario en terminales**: viajes finalizados/cancelados actualizan solo flete/peso/valor desde el Sheet, sin resucitar.
+- **Botón "↩ Resucitar"** para cancelados en tab Archivo (`fn_reabrir_cancelado`).
+- **Agregado regex standard** — BL (Bills of Lading importación) + tolerancia a espacios `RM 67705`.
 
 ---
 

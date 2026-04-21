@@ -221,6 +221,15 @@
     .btn-ver-todos.visible { display: block; }
     .viaje-card { cursor: pointer; transition: box-shadow .2s, border-color .2s; }
     .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,191,223,0.2); }
+    @keyframes deeplink-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0,191,223,0.6), 0 4px 20px rgba(0,191,223,0.25); }
+      60%  { box-shadow: 0 0 0 14px rgba(0,191,223,0), 0 4px 24px rgba(0,191,223,0.2); }
+      100% { box-shadow: 0 0 0 0 rgba(0,191,223,0), 0 4px 20px rgba(0,191,223,0.15); }
+    }
+    .viaje-card.deeplink-focus {
+      border-color: var(--cyan) !important;
+      animation: deeplink-pulse 1.6s ease-out 2;
+    }
     .precio-pin.activo { background: var(--navy); color: white; border-color: var(--cyan); }
     .cta-mapa-wrap { text-align: center; margin-top: 1rem; }
     .cta-mapa-wrap a { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--cyan); padding-bottom: 1px; }
@@ -986,7 +995,12 @@
     document.getElementById('tabs-nav').style.display  = '';
 
     // Cargar datos del usuario
-    cargarMisOfertas().then(() => renderViajes()); // Re-render para mostrar "ya ofertaste"
+    cargarMisOfertas().then(() => {
+      renderViajes(); // Re-render para mostrar "ya ofertaste"
+      // Deep-link corre recién ahora: misOfertas ya está poblada y viajes ya renderizados con data-viaje-ref
+      if (window.__viajesReady) window.__viajesReady.then(() => handleDeepLink());
+      else handleDeepLink();
+    });
     cargarDocumentos();
 
     // Banner de perfil incompleto si faltan empresa/telefono/nit
@@ -1548,7 +1562,7 @@
       const precioFmt  = precioBase > 0 ? '$' + Math.round(precioBase).toLocaleString('es-CO') : null;
 
       return `
-        <div class="viaje-card" onclick="seleccionarViaje(${idxViaje})">
+        <div class="viaje-card" data-viaje-ref="${v.rt_total}" onclick="seleccionarViaje(${idxViaje})">
           <div class="viaje-head">
             <div>
               <div class="viaje-ruta">${v.origen || '\u2014'} \u2192 ${destRes}</div>
@@ -2018,8 +2032,62 @@
   document.getElementById('cc-zona')?.addEventListener('change', ccCalc);
   ccCalc();
 
+  // ── DEEP-LINK ?viaje_ref=... ──────────────────────────────────
+  // Soporta links del mail AppSheet "SOLICITUD DE SERVICIOS":
+  //   https://netfleet.app/mi-netfleet?viaje_ref=<viaje_ref>
+  // Comportamiento:
+  //   1. Busca el viaje por rt_total en la lista cargada
+  //   2. Scroll a la card + highlight pulse
+  //   3. Si el transportador está logueado y no ofertó antes → abre modal de oferta
+  //   4. Si no existe en la lista → toast con motivo probable
+  function handleDeepLink() {
+    const qs = new URLSearchParams(location.search);
+    const ref = qs.get('viaje_ref');
+    if (!ref) return;
+    const v = viajesDisp.find(x => x.rt_total === ref);
+    if (!v) {
+      // Viaje no está disponible: puede estar adjudicado, fuera de 7 días, o ref inválida.
+      // Toast flotante (no-bloqueante) en vez de alert nativo.
+      const toast = document.createElement('div');
+      toast.textContent = `El viaje ${ref} no está disponible para ofertar. Puede que ya se haya adjudicado o cerrado.`;
+      Object.assign(toast.style, {
+        position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+        background: '#1f2937', color: 'white', padding: '12px 20px', borderRadius: '10px',
+        fontSize: '13px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif",
+        boxShadow: '0 4px 20px rgba(0,0,0,0.2)', zIndex: '9999', maxWidth: '90%',
+        textAlign: 'center'
+      });
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
+      return;
+    }
+    // Asegura que el tab "Ofertar" esté activo (es el default, pero por si acaso)
+    const tabOfertar = document.querySelector('.tab-btn[onclick*="\'viajes\'"]');
+    if (tabOfertar && !tabOfertar.classList.contains('active')) tabOfertar.click();
+
+    // Esperar un tick a que renderViajes haya pintado las cards
+    setTimeout(() => {
+      const card = document.querySelector(`.viaje-card[data-viaje-ref="${CSS.escape(ref)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('deeplink-focus');
+      setTimeout(() => card.classList.remove('deeplink-focus'), 3500);
+
+      // Si hay sesión y no ofertó todavía → abrir modal de oferta automáticamente
+      const yaOferte = misOfertas.some(o => o.estado === 'activa' && o.viaje_rt === ref);
+      if (usuarioActual && !yaOferte) {
+        const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+        const destRes  = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
+        // Delay para que el scroll termine antes de abrir modal
+        setTimeout(() => abrirModalOferta(v.rt_total, v.origen || '', destRes, v.fecha_cargue || '', v.peso_kg || 0), 700);
+      }
+    }, 150);
+  }
+
   // ── CARGA INICIAL (sin requerir login) ────────────────────────
-  cargarViajes().then(() => {
+  // Exponemos la promise para que activarSesion() pueda encadenar el deep-link
+  // recién cuando tanto los viajes como misOfertas estén listos.
+  window.__viajesReady = cargarViajes().then(() => {
     // Actualizar hero counter
     document.getElementById('hero-count').textContent = viajesDisp.length;
     // Inicializar mapa despues de que Leaflet cargue

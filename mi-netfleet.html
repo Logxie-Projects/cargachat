@@ -1875,14 +1875,25 @@
   // ── DOCUMENTOS ────────────────────────────────────────────────
   async function cargarDocumentos() {
     if (!usuarioActual || !tokenActual) return;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/documentos_transportadora?transportadora_id=eq.${usuarioActual.id}&select=*`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
-    });
-    misDocs = await r.json() || [];
+    misDocs = [];
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/documentos_transportadora?transportadora_id=eq.${usuarioActual.id}&select=*`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
+      });
+      // La tabla puede no existir todavía (404) o responder con un objeto de error.
+      // Solo aceptamos el response si es un array; de otra manera misDocs queda [].
+      if (r.ok) {
+        const body = await r.json();
+        if (Array.isArray(body)) misDocs = body;
+      }
+    } catch (e) {
+      console.warn('Docs fetch falló:', e);
+    }
 
     // Mostrar punto rojo si hay docs pendientes de subir
     const faltantes = DOCS_CONFIG.filter(d => !misDocs.find(m => m.tipo === d.tipo));
-    document.getElementById('dot-documentos').classList.toggle('show', faltantes.length > 0);
+    const dot = document.getElementById('dot-documentos');
+    if (dot) dot.classList.toggle('show', faltantes.length > 0);
 
     renderDocumentos();
   }
@@ -2108,42 +2119,12 @@
   function ccFmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
   function ccRango(km) { return CC_RANGOS.find(r => km >= r.min && km < r.max) || CC_RANGOS[CC_RANGOS.length-1]; }
 
-  function ccCalc() {
-    const km      = parseInt(document.getElementById('cc-km').value);
-    const kg      = parseInt(document.getElementById('cc-kg').value);
-    const paradas = parseInt(document.getElementById('cc-paradas').value);
-    const zona    = document.getElementById('cc-zona').value;
-    document.getElementById('cc-km-out').textContent      = km.toLocaleString('es-CO') + ' km';
-    document.getElementById('cc-kg-out').textContent      = kg.toLocaleString('es-CO') + ' kg';
-    document.getElementById('cc-paradas-out').textContent = paradas >= 10 ? '10+' : paradas;
-    const ajusteZona = CC_ZONA_AJUSTE[zona] || 0;
-    let base;
-    if (km < 50) {
-      base = Math.max(300000, 260000 + kg * 28 + 63186 * (paradas - 1));
-    } else {
-      base = Math.max(950000, 3097.69*km + 217.94*kg + 0.1215*km*kg - 1.0566*km*km - 0.0034*kg*kg + 63186*paradas + ajusteZona - 306248);
-    }
-    document.getElementById('cc-base').textContent  = ccFmt(base);
-    const r = ccRango(km);
-    const ahorroPct = Math.round(Math.max(0, (1 - base / r.p75) * 100));
-    const ahorroCard = document.getElementById('cc-ahorro-card');
-    if (ahorroPct > 0) {
-      document.getElementById('cc-ahorro').textContent = ahorroPct + '%';
-      ahorroCard.style.display = '';
-    } else {
-      ahorroCard.style.display = 'none';
-    }
-    document.getElementById('cc-zona-badge').textContent = r.label;
-    document.getElementById('cc-hist-min').textContent   = ccFmt(r.p25);
-    document.getElementById('cc-hist-max').textContent   = ccFmt(r.p75);
-    const pct = Math.min(100, Math.max(0, (base - r.p25) / (r.p75 - r.p25) * 100));
-    document.getElementById('cc-bar').style.width = Math.round(pct) + '%';
-  }
-  document.getElementById('cc-km')?.addEventListener('input', ccCalc);
-  document.getElementById('cc-kg')?.addEventListener('input', ccCalc);
-  document.getElementById('cc-paradas')?.addEventListener('input', ccCalc);
-  document.getElementById('cc-zona')?.addEventListener('change', ccCalc);
-  ccCalc();
+  // ccCalc() y la calculadora de flete fueron removidas en el rediseño del portal
+  // (mi-netfleet es panel operativo, no landing). Los inputs cc-km/cc-kg/cc-paradas/cc-zona
+  // ya no existen en el DOM; cualquier intento de leerlos tira null pointer y corta
+  // el resto del script (incluido cargarViajes). Si en el futuro se reintegra un
+  // estimador dentro del portal, envolver cada lookup con if (el) y llamarlo solo
+  // cuando los inputs existan.
 
   // ── DEEP-LINK ?viaje_ref=... ──────────────────────────────────
   // Soporta links del mail AppSheet "SOLICITUD DE SERVICIOS":

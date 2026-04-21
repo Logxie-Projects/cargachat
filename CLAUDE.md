@@ -466,6 +466,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 - [ ] **Autofill flete_total via Ridge** — similar a `fn_autofill_km_viaje`. Cuando llega null, el primer cliente que lo calcula lo persiste. Ahora solo muestra estimado en UI sin grabar.
 - [ ] **`tipo_mercancia_default` en tabla clientes** — hoy hardcoded (AVGUST/FATECO → Químico) en transportador.html cargarViajes. Escalable: agregar columna `clientes.tipo_mercancia_default` y leer. Hacerlo cuando sumes un cliente no-químico.
 - [ ] **Auto-cerrar viajes >N días** — viajes con fecha_cargue más de 60 días atrás y estado no terminal → auto-finalizar. Previene acumulación stale. Agregar al sync cron o a un cron separado.
+- [ ] **Rediseñar `transportador.html` como landing marketing-first** — 2 CTAs claras en hero: "Soy Transportadora (empresa)" / "Soy Conductor Independiente". Cada CTA abre modal auth con `subtipo_transportador` pre-seteado. Registro diferenciado. Hoy es un clone del panel; hay que slim a marketing + login.
 
 ---
 

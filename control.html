@@ -501,6 +501,7 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap">
           <button class="ghost" onclick="limpiarSeleccion()">Limpiar</button>
+          <button class="ghost" onclick="bulkMarcarRevisado()" title="Marcar como revisado → sale de Nuevos. Si tiene ref no estándar va al pill ⚠ Especiales">✓ Revisado</button>
           <button class="ghost" onclick="bulkVolverNuevos()" title="Limpia revisado_at → vuelve a Nuevos">↶ Nuevos</button>
           <button class="ghost" onclick="bulkResetear()" title="estado=sin_consolidar + viaje_id=NULL">↺ Resetear</button>
           <button class="ghost" onclick="bulkCambiarEstado()" title="Forzar cualquier estado">⇄ Cambiar estado</button>
@@ -1149,13 +1150,18 @@
   }
 
   // pedido_ref no estándar (descriptivo): DEVOLUCION, ULTIMA MILLA, BL., RUTA, tests, etc.
-  // No matchea ^(RM|TI|TIT)-\d+ o longitud excesiva
+  // No matchea ^(RM|TI|TIT)-\d+ o longitud excesiva.
+  // Filtra los que aún NO tienen viaje (los que ya están asociados son consolidados normales).
   const RE_REF_ESTANDAR = /^(RM|TI|TIT|SA|RT|OUT|BL|FF)[-\s]?\d+/i;
-  function esEspecial(p) {
+  function esRefNoEstandar(p) {
     const ref = (p.pedido_ref || '').trim();
-    if (!ref) return true;  // sin ref = especial
-    if (ref.length > 60) return true;  // descriptivos largos
+    if (!ref) return true;
+    if (ref.length > 60) return true;
     return !RE_REF_ESTANDAR.test(ref);
+  }
+  function esEspecial(p) {
+    // "Especial" = ref no estándar + sin viaje (parking lot pendiente asociación manual)
+    return esRefNoEstandar(p) && !p.viaje_id;
   }
 
   function pedidosDelEstadoActual() {
@@ -1169,6 +1175,9 @@
         // Si estoy filtrando sin_consolidar pero el pedido es "nuevo",
         // lo muestro SOLO si el filtro 'nuevo' también está activo — evita dobles
         if (p.estado === 'sin_consolidar' && !p.revisado_at) return false;
+        // Sin consolidar es área de trabajo: excluir refs no estándar sin viaje
+        // (esos viven en el pill ⚠ Especiales)
+        if (p.estado === 'sin_consolidar' && esEspecial(p)) return false;
         return true;
       }
       return false;
@@ -1277,6 +1286,23 @@
     try {
       const res = await rpc('fn_pedidos_resetear_batch', { p_pedido_ids: ids, p_razon: razon, p_marcar_nuevo: false });
       toast(`${res.reseteados} pedidos reseteados → Sin consolidar`, 'success');
+      state.seleccionados.clear();
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function bulkMarcarRevisado() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+    const notas = prompt(`Marcar ${ids.length} pedido${ids.length!==1?'s':''} como revisado${ids.length!==1?'s':''}?\n\nLos que tengan ref no estándar (DEVOLUCIÓN, ULTIMA MILLA, etc.) van al pill ⚠ Especiales.\nLos demás van a Sin consolidar (área de trabajo).\n\nNota opcional (queda en revision_notas):`);
+    if (notas === null) return;
+    try {
+      const res = await rpc('fn_pedidos_marcar_revisado_batch', {
+        p_pedido_ids: ids,
+        p_notas: notas.trim() || null,
+      });
+      const skip = res.skip_ya_revisados || 0;
+      toast(`${res.marcados} marcados revisado${skip ? ` · ${skip} ya estaban` : ''}`, 'success');
       state.seleccionados.clear();
       recargarTodo();
     } catch (e) { toast('Error: ' + e.message, 'error'); }

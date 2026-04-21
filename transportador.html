@@ -1007,6 +1007,27 @@
         fuente:           v.fuente,
         tipo_mercancia:   '',
       }));
+
+      // Fallback km: si viene null del Sheet, estimar via haversine × 1.3
+      // para que estimarPrecioMapa devuelva un precio base.
+      await Promise.all(viajesDisp.filter(v => !v.km).map(async v => {
+        const destPrimario = (v.destino || '').split(',')[0].trim();
+        const origPrimario = (v.origen || '').split(',')[0].trim();
+        if (!origPrimario || !destPrimario) return;
+        try {
+          const [c1, c2] = await Promise.all([getCoords(origPrimario), getCoords(destPrimario)]);
+          if (c1 && c2) {
+            const R = 6371;
+            const dLat = (c2[0]-c1[0]) * Math.PI/180;
+            const dLon = (c2[1]-c1[1]) * Math.PI/180;
+            const lat1 = c1[0] * Math.PI/180, lat2 = c2[0] * Math.PI/180;
+            const a = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1)*Math.cos(lat2);
+            const linea = 2 * R * Math.asin(Math.sqrt(a));
+            v.km = Math.round(linea * 1.3);  // factor ~30% por ruta vs linea recta
+            v.km_estimado = true;
+          }
+        } catch {}
+      }));
     } catch (e) {
       console.warn('Error al cargar viajes:', e);
       viajesDisp = [];

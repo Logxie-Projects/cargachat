@@ -271,11 +271,26 @@
     /* ── VIAJE CARD (tab subasta/activos/historial) ── */
     .viaje-card { background: white; border-radius: 14px; border: 1px solid var(--gray-100); margin-bottom: 10px; overflow: hidden; }
     .viaje-card.selected { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy); background: #f8f9fe; }
-    .viaje-card-head { display: grid; grid-template-columns: 1.2fr 1fr 80px 120px 120px 140px 40px; gap: 12px; padding: 1rem 1.25rem; cursor: pointer; align-items: center; }
-    .viaje-card-head.has-chk { grid-template-columns: 28px 1.2fr 1fr 80px 120px 120px 140px 40px; }
-    .viaje-fecha-col { text-align:center; font-size:12px; line-height:1.2 }
-    .viaje-fecha-col .dia { font-weight:800; color:var(--navy); font-size:14px }
-    .viaje-fecha-col .mes { font-size:10px; color:var(--gray-600); text-transform:uppercase }
+    .viaje-card-head { display: grid; grid-template-columns: 240px 1.3fr 1.3fr 40px; gap: 16px; padding: 0.9rem 1.1rem; cursor: pointer; align-items: start; }
+    .viaje-card-head.has-chk { grid-template-columns: 28px 240px 1.3fr 1.3fr 40px; }
+    .vc-col1 .ref { font-size:11px; font-weight:700; color:var(--gray-600); font-family:'SF Mono',Consolas,monospace }
+    .vc-col1 .prov { font-size:13px; font-weight:700; color:var(--navy); margin-top:3px }
+    .vc-col1 .flete { font-size:16px; font-weight:800; color:var(--navy); margin-top:6px }
+    .vc-col1 .flete-lbl { font-size:10px; color:var(--gray-400); text-transform:uppercase }
+    .vc-col1 .fecha { font-size:11px; color:var(--gray-600); margin-top:4px }
+    .vc-col2 .ruta { font-size:13px; font-weight:700; color:var(--gray-800); line-height:1.3 }
+    .vc-col2 .ruta-sub { font-size:11px; color:var(--gray-400); margin-top:2px }
+    .vc-col2 .metric-line { font-size:11px; color:var(--gray-600); margin-top:6px; line-height:1.4 }
+    .vc-col2 .metric-line strong { color:var(--navy) }
+    .vc-col3 .peds { display:flex; flex-wrap:wrap; gap:4px; margin-top:2px }
+    .vc-col3 .ped-chip { font-size:10px; padding:2px 6px; background:var(--gray-100); border-radius:4px; color:var(--gray-800); font-family:'SF Mono',Consolas,monospace }
+    .vc-col3 .ped-chip.entregado { background:#dcfce7; color:#16a34a }
+    .vc-col3 .ped-chip.entregado_novedad { background:#fef3c7; color:#b45309 }
+    .vc-col3 .ped-chip.rechazado,
+    .vc-col3 .ped-chip.devuelto_bodega { background:#fef2f2; color:#dc2626 }
+    .vc-col3 .ped-chip.en_ruta { background:#eff6ff; color:#1d4ed8 }
+    .vc-col3 .ped-chip.cancelado { background:var(--gray-100); color:var(--gray-400); text-decoration:line-through }
+    .vc-col3 .peds-summary { font-size:11px; color:var(--gray-600); margin-top:4px }
     .viaje-card-head:hover { background: var(--gray-50); }
     .viaje-ref { font-weight: 800; color: var(--navy); font-size: 13px; letter-spacing: 0.3px; }
     .viaje-ruta { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
@@ -1924,48 +1939,59 @@
         ${esActivo ? `<div onclick="event.stopPropagation(); toggleActivo('${v.id}')" style="display:flex;align-items:center;justify-content:center">
           <input type="checkbox" ${selActivo ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer;accent-color:var(--navy)">
         </div>` : ''}
-        <div>
-          <div class="viaje-ref">${v.viaje_ref}</div>
-          <div class="viaje-ruta">${v.origen || '—'} → ${v.destino || '—'}</div>
-          <div class="viaje-sub">${clienteNombre(v.cliente_id)} · ${fmtNum(v.peso_kg)} kg · ${v.cantidad_pedidos || 0} pedidos</div>
-          ${(_ckg || _ckm || _pct) ? `<div class="viaje-sub" style="margin-top:3px;font-weight:600;color:var(--gray-600)">${[_ckg,_ckm,(_pct ? `<span style="${_pctRojo?'color:var(--red)':''}">${_pct}</span>` : '')].filter(Boolean).join(' · ')}</div>` : ''}
-        </div>
-        <div>
-          ${esSubasta && !v.publicado_at ? '<span class="badge cancelado" style="background:#fef3c7;color:#b45309">borrador</span>' : `<span class="badge ${v.estado}">${v.estado}</span>`}
-          ${v.publicado_at && v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
-          ${v.adjudicacion_tipo === 'subasta' ? '<span class="badge" style="background:#fef9c3;color:#b45309;margin-left:4px">🏆 subasta</span>' : ''}
-          ${v.adjudicacion_tipo === 'directa' ? '<span class="badge" style="background:#ede9fe;color:#7c3aed;margin-left:4px">📌 directa</span>' : ''}
-          ${(transp?.nombre || v.proveedor) ? `<div class="viaje-sub" style="margin-top:4px;font-weight:700;color:var(--navy)">${transp?.nombre || v.proveedor}</div>` : ''}
-        </div>
-        <div class="viaje-fecha-col">
+        <!-- Col 1: RT + proveedor + flete + estado + fecha -->
+        <div class="vc-col1">
+          <div class="ref">${v.viaje_ref}</div>
+          <div class="prov">${transp?.nombre || v.proveedor || '—'}</div>
+          <div class="flete">${fmtCOP(v.flete_total)}</div>
+          <div class="flete-lbl">flete total</div>
+          <div style="margin-top:6px">
+            ${esSubasta && !v.publicado_at ? '<span class="badge cancelado" style="background:#fef3c7;color:#b45309">borrador</span>' : `<span class="badge ${v.estado}">${v.estado}</span>`}
+            ${v.publicado_at && v.subasta_tipo && esSubasta ? `<span class="badge ${v.subasta_tipo}" style="margin-left:4px">${v.subasta_tipo}</span>` : ''}
+            ${v.adjudicacion_tipo === 'subasta' ? '<span class="badge" style="background:#fef9c3;color:#b45309;margin-left:4px">🏆</span>' : ''}
+            ${v.adjudicacion_tipo === 'directa' ? '<span class="badge" style="background:#ede9fe;color:#7c3aed;margin-left:4px">📌</span>' : ''}
+          </div>
           ${v.fecha_cargue ? (() => {
             const d = new Date(v.fecha_cargue);
-            const dia = d.toLocaleDateString('es-CO', { day:'2-digit', timeZone: 'UTC' });
-            const mes = d.toLocaleDateString('es-CO', { month:'short', timeZone: 'UTC' }).replace('.','');
-            const yr  = d.toLocaleDateString('es-CO', { year:'2-digit', timeZone: 'UTC' });
-            return `<div class="dia">${dia}</div><div class="mes">${mes} ${yr}</div>`;
-          })() : '<div class="mes">sin fecha</div>'}
+            const f = d.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'2-digit', timeZone: 'UTC' });
+            return `<div class="fecha">📅 ${f}</div>`;
+          })() : ''}
         </div>
-        <div>
-          <div class="viaje-precio">${fmtCOP(v.flete_total)}</div>
-          <div class="viaje-precio-lbl">flete total</div>
+
+        <!-- Col 2: Ruta + stats -->
+        <div class="vc-col2">
+          <div class="ruta">${v.origen || '—'} → ${(v.destino || '—').split(',')[0]}</div>
+          ${(() => {
+            const destinos = (v.destino || '').split(',').map(d => d.trim()).filter(Boolean);
+            return destinos.length > 1 ? `<div class="ruta-sub">+ ${destinos.length - 1} destinos más</div>` : '';
+          })()}
+          <div class="metric-line">
+            <strong>${fmtNum(v.peso_kg)} kg</strong>${v.km_total ? ` · <strong>${fmtNum(v.km_total)} km</strong>` : ''}
+          </div>
+          ${(_ckg || _ckm || _pct) ? `<div class="metric-line" style="margin-top:2px">${[_ckg, _ckm, (_pct ? `<span style="${_pctRojo?'color:var(--red);font-weight:700':''}">${_pct}</span>` : '')].filter(Boolean).join(' · ')}</div>` : ''}
+          ${esSubasta ? `<div class="metric-line" style="margin-top:4px">${activas.length} ofer${activas.length !== 1 ? 'tas' : 'ta'} · mejor: ${activas.length ? `<strong style="color:var(--green)">${fmtCOP(minPrecio)}</strong>` : '—'}</div>` : ''}
+          ${(esActivo || esHist) && ganadora ? `<div class="metric-line" style="margin-top:4px">ganó <strong style="color:var(--green)">${fmtCOP(ganadora.precio_oferta)}</strong></div>` : ''}
         </div>
-        <div>
-          ${esSubasta ? `
-            <div class="viaje-precio" style="font-size:14px;color:${activas.length ? 'var(--green)' : 'var(--gray-400)'}">
-              ${activas.length ? fmtCOP(minPrecio) : '—'}
-            </div>
-            <div class="viaje-precio-lbl">${activas.length ? 'mejor oferta' : 'sin ofertas'}</div>
-          ` : ''}
-          ${(esActivo || esHist) && ganadora ? `
-            <div class="viaje-precio" style="font-size:14px;color:var(--green)">${fmtCOP(ganadora.precio_oferta)}</div>
-            <div class="viaje-precio-lbl">ganadora</div>
-          ` : ''}
+
+        <!-- Col 3: Pedidos incluidos como chips con estado -->
+        <div class="vc-col3">
+          ${(() => {
+            const peds = (state.pedidos || []).filter(p => p.viaje_id === v.id)
+                          .sort((a,b) => (a.pedido_ref || '').localeCompare(b.pedido_ref || ''));
+            if (!peds.length) return `<div class="peds-summary">${v.cantidad_pedidos || 0} pedidos (no linkeados)</div>`;
+            const MAX = 12;
+            const visibles = peds.slice(0, MAX);
+            const resto = peds.length - MAX;
+            return `
+              <div class="peds-summary"><strong>${peds.length}</strong> pedido${peds.length!==1?'s':''}</div>
+              <div class="peds">
+                ${visibles.map(p => `<span class="ped-chip ${p.estado}" title="${p.pedido_ref} · ${p.estado} · ${p.destino || ''}">${p.pedido_ref || '—'}</span>`).join('')}
+                ${resto > 0 ? `<span class="ped-chip">+${resto}</span>` : ''}
+              </div>
+            `;
+          })()}
         </div>
-        <div>
-          <div class="viaje-sub">${activas.length} ofer${activas.length !== 1 ? 'tas' : 'ta'}</div>
-          <div class="viaje-sub">${v.publicado_at ? 'pub ' + fmtFechaHora(v.publicado_at) : 'no pub'}</div>
-        </div>
+
         <div class="viaje-chevron">▼</div>
       </div>
 

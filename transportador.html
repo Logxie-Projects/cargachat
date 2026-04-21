@@ -970,10 +970,12 @@
         'fecha_cargue','peso_kg','valor_mercancia','cantidad_pedidos',
         'zona','empresa','estado','proveedor','fuente','publicado_at'
       ].join(',');
+      // Incluye viajes sin fecha_cargue (ej. recién creados en Sheet) O con
+      // fecha reciente/futura. Filtra viajes muy viejos (>7d atrás).
       const minFecha = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
                 + `&estado=eq.pendiente`
-                + `&fecha_cargue=gte.${minFecha}`
+                + `&or=(fecha_cargue.is.null,fecha_cargue.gte.${minFecha})`
                 + `&order=fecha_cargue.asc.nullslast`
                 + `&limit=300`;
       const resp = await fetch(url, {

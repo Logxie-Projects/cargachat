@@ -255,7 +255,11 @@
     .flota-card-icon { font-size: 32px; line-height: 1; }
     .flota-card-title { font-family: var(--serif); font-size: 1.25rem; font-weight: 800; color: var(--navy); letter-spacing: -0.3px; }
     .flota-card-desc { font-size: 12.5px; color: var(--gray-600); line-height: 1.55; margin-top: 4px; }
-    .flota-card-count { font-size: 12px; color: var(--gray-400); margin-top: 10px; font-weight: 600; }
+    .flota-card-docs { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 5px; }
+    .flota-card-docs li { font-size: 12.5px; color: var(--gray-600); line-height: 1.5; padding-left: 14px; position: relative; }
+    .flota-card-docs li::before { content: '•'; color: var(--cyan); font-weight: 800; position: absolute; left: 0; }
+    .flota-card-docs li strong { color: var(--navy); }
+    .flota-card-count { font-size: 12px; color: var(--gray-400); margin-top: 12px; font-weight: 600; }
     .flota-card-btn { background: var(--navy); color: white; border: none; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: flex-start; transition: background .2s; }
     .flota-card-btn:disabled { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
     .flota-placeholder-note { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12px; text-align: center; margin-top: 8px; }
@@ -552,14 +556,21 @@
     <!-- ══ TAB FLOTA (conductores + vehículos) — placeholder, data pendiente de diseño ══ -->
     <div class="tab-section" id="tab-flota">
       <div style="padding:1rem 0;color:var(--gray-600);font-size:13px">
-        Gestioná conductores y vehículos de tu flota. Subí hojas de vida, licencias, SOAT, técnico-mecánica y demás documentos — NETFLEET los valida antes del primer viaje.
+        Gestioná conductores y vehículos de tu flota. Subí los documentos requeridos por industria — NETFLEET los valida antes del primer viaje.
       </div>
       <div class="flota-grid">
         <div class="flota-card">
           <div class="flota-card-icon">👷‍♂️</div>
           <div class="flota-card-body">
             <div class="flota-card-title">Conductores</div>
-            <div class="flota-card-desc">Hoja de vida, cédula, licencia de conducción, examen médico, antecedentes.</div>
+            <ul class="flota-card-docs">
+              <li>Cédula de ciudadanía</li>
+              <li>Licencia de conducción</li>
+              <li>Seguridad social (EPS + ARL)</li>
+              <li>Hoja de vida, examen médico, antecedentes</li>
+              <li><strong>Curso de sustancias peligrosas</strong> (obligatorio para agroquímicos)</li>
+              <li>Otros certificados según industria del cliente</li>
+            </ul>
             <div class="flota-card-count" id="flota-count-conductores">— registrados</div>
           </div>
           <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>
@@ -568,7 +579,11 @@
           <div class="flota-card-icon">🚛</div>
           <div class="flota-card-body">
             <div class="flota-card-title">Vehículos</div>
-            <div class="flota-card-desc">Tarjeta de propiedad, SOAT, técnico-mecánica, revisión interna, póliza de responsabilidad civil.</div>
+            <ul class="flota-card-docs">
+              <li>Tarjeta de propiedad</li>
+              <li>Técnico-mecánica vigente</li>
+              <li>Póliza de responsabilidad civil</li>
+            </ul>
             <div class="flota-card-count" id="flota-count-vehiculos">— registrados</div>
           </div>
           <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>

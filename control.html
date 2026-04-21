@@ -1167,14 +1167,15 @@
     return p.estado === 'sin_consolidar' && !p.revisado_at;
   }
 
-  // pedido_ref no estándar (descriptivo): DEVOLUCION, ULTIMA MILLA, BL., RUTA, tests, etc.
-  // No matchea ^(RM|TI|TIT)-\d+ o longitud excesiva.
-  // Filtra los que aún NO tienen viaje (los que ya están asociados son consolidados normales).
-  const RE_REF_ESTANDAR = /^(RM|TI|TIT|SA|RT|OUT|BL|FF)[-\s]?\d+/i;
+  // pedido_ref estándar: RM/TI/TIT/SA/RT/OUT/FF seguido de dígitos,
+  // o BL (Bill of Lading para importaciones) seguido de cualquier cosa.
+  // BL. EGLV142600832922 1*40 AVGUST → estándar (importación marítima).
+  // ULTIMA MILLA, DEVOLUCIÓN, RUTA AGROMARK, etc → descriptivos (no estándar).
+  const RE_REF_ESTANDAR = /^(?:(?:RM|TI|TIT|SA|RT|OUT|FF)[-\s]?\d+|BL\b)/i;
   function esRefNoEstandar(p) {
     const ref = (p.pedido_ref || '').trim();
     if (!ref) return true;
-    if (ref.length > 60) return true;
+    if (ref.length > 80) return true;  // descriptivos super largos (tests, consolidados de servicio)
     return !RE_REF_ESTANDAR.test(ref);
   }
   function esEspecial(p) {

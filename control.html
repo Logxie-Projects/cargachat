@@ -1895,6 +1895,17 @@
     const esHist = contexto === 'historial';
 
     const selActivo = esActivo && state.seleccionadosActivos.has(v.id);
+
+    // Stats para línea resumen (visibles sin expandir)
+    const _flete = +v.flete_total || 0;
+    const _kg    = +v.peso_kg || 0;
+    const _km    = +v.km_total || 0;
+    const _val   = +v.valor_mercancia || 0;
+    const _ckg   = (_flete && _kg) ? '$' + fmtNum(Math.round(_flete/_kg)) + '/kg' : '';
+    const _ckm   = (_flete && _km) ? '$' + fmtNum(Math.round(_flete/_km)) + '/km' : '';
+    const _pct   = (_flete && _val) ? (_flete/_val*100).toFixed(1) + '% flete' : '';
+    const _pctRojo = (_flete && _val && _flete/_val*100 > 3);
+    const _fechaStr = v.fecha_cargue ? fmtFecha(v.fecha_cargue) : '';
     return `
     <div class="viaje-card ${selActivo ? 'selected' : ''}" id="vcard-${v.id}">
       <div class="viaje-card-head" onclick="toggleViaje('${v.id}')">
@@ -1904,7 +1915,8 @@
         <div>
           <div class="viaje-ref">${v.viaje_ref}</div>
           <div class="viaje-ruta">${v.origen || '—'} → ${v.destino || '—'}</div>
-          <div class="viaje-sub">${clienteNombre(v.cliente_id)} · ${fmtNum(v.peso_kg)} kg · ${v.cantidad_pedidos || 0} pedidos</div>
+          <div class="viaje-sub">${clienteNombre(v.cliente_id)} · ${fmtNum(v.peso_kg)} kg · ${v.cantidad_pedidos || 0} pedidos${_fechaStr ? ' · 📅 '+_fechaStr : ''}</div>
+          ${(_ckg || _ckm || _pct) ? `<div class="viaje-sub" style="margin-top:3px;font-weight:600;color:var(--gray-600)">${[_ckg,_ckm,(_pct ? `<span style="${_pctRojo?'color:var(--red)':''}">${_pct}</span>` : '')].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
         <div>
           ${esSubasta && !v.publicado_at ? '<span class="badge cancelado" style="background:#fef3c7;color:#b45309">borrador</span>' : `<span class="badge ${v.estado}">${v.estado}</span>`}

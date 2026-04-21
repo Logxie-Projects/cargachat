@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NETFLEET — Portal Transportadora</title>
+  <title>mi Netfleet — Panel Transportadora</title>
   <script src="./supabase.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -820,17 +820,6 @@
 
     perfilActual = perfil;
     cerrarModalAuth();
-
-    // Si ya está aprobado → redirect al panel operativo mi-netfleet.html
-    if (perfil.estado === 'aprobado') {
-      // preservar pending actions en sessionStorage para que el panel las ejecute
-      if (pendingAceptar) sessionStorage.setItem('netfleet_pending_aceptar', JSON.stringify(pendingAceptar));
-      if (pendingOfertaViaje) sessionStorage.setItem('netfleet_pending_oferta', JSON.stringify(pendingOfertaViaje));
-      location.href = '/mi-netfleet.html';
-      return;
-    }
-
-    // No aprobado aún → queda en landing con mensaje + opciones limitadas
     activarSesion();
 
     // Auto-ejecutar accion pendiente
@@ -902,20 +891,23 @@
   }
 
   // ── RESTAURAR SESION EXISTENTE ────────────────────────────────
-  // Si ya hay sesión activa de transportadora aprobada → redirect al panel
-  // mi-netfleet.html (landing solo para visitantes + login).
+  // Este panel es SOLO para transportadoras aprobadas.
+  // Si no hay sesión → volver a landing (transportador.html) para login.
   sb.auth.getSession().then(async ({ data: { session } }) => {
-    if (!session) return;
-    const perfil = await fetchPerfil(session.user.id);
-    if (perfil?.tipo === 'transportador' && perfil?.estado === 'aprobado') {
-      location.href = '/mi-netfleet.html';
+    if (!session) {
+      location.href = '/transportador.html';
       return;
     }
-    // Logueado pero aún no aprobado → dejar ver landing con mensaje
     tokenActual   = session.access_token;
     usuarioActual = session.user;
-    perfilActual  = perfil;
-    if (perfil?.tipo === 'transportador') activarSesion();
+    const perfil  = await fetchPerfil(session.user.id);
+    if (perfil?.tipo !== 'transportador' || perfil?.estado !== 'aprobado') {
+      // Usuario logueado pero no es transportadora activa → regresar al landing
+      location.href = '/transportador.html';
+      return;
+    }
+    perfilActual = perfil;
+    activarSesion();
   });
 
   // ── COMPLETAR PERFIL (paso 2 post-registro) ──────────────────

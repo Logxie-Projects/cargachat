@@ -44,7 +44,12 @@ ALTER TABLE acciones_operador
     'consolidar','agregar_pedido','quitar_pedido','desconsolidar',
     'ajustar_precio','publicar','invitar','asignar_directo',
     'adjudicar','cancelar','reasignar','reabrir',
-    'sync_viajes','sync_pedidos'
+    'sync_viajes','sync_pedidos',
+    'revisar_pedido','desmarcar_revision',
+    'cerrar','cerrar_batch','reabrir_cierre',
+    'cancelar_pedidos_batch','resetear_pedidos_batch','clonar_pedido',
+    'editar_pedido','cambiar_estado_pedido','eliminar_pedido',
+    'run_linkers'
   ));
 
 -- ------------------------------------------------------------
@@ -77,7 +82,9 @@ LANGUAGE sql IMMUTABLE AS $$
     WHEN '' THEN 'sin_consolidar'
     WHEN 'PENDIENTE' THEN 'sin_consolidar'
     WHEN 'SIN CONSOLIDAR' THEN 'sin_consolidar'
-    WHEN 'EN PROCESO' THEN 'consolidado'
+    -- 'EN PROCESO' en el Sheet = pedido pendiente de consolidar (no "ya consolidado").
+    -- El estado real consolidado lo determina el linker cuando matchea a un RT-TOTAL.
+    WHEN 'EN PROCESO' THEN 'sin_consolidar'
     WHEN 'CONSOLIDADO' THEN 'consolidado'
     WHEN 'ASIGNADO' THEN 'asignado'
     WHEN 'EN RUTA' THEN 'en_ruta'

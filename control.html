@@ -504,6 +504,7 @@
         <button class="filtro-btn" data-est="entregado"      onclick="toggleFiltroEstado('entregado', this)">Entregados</button>
         <button class="filtro-btn" data-est="cancelado"      onclick="toggleFiltroEstado('cancelado', this)">Cancelados</button>
         <button class="filtro-btn" data-est="rechazado"      onclick="toggleFiltroEstado('rechazado', this)">Rechazados</button>
+        <button class="filtro-btn" data-est="devuelto_bodega" onclick="toggleFiltroEstado('devuelto_bodega', this)" title="3 intentos fallidos — pedido regresó a bodega">🔙 Devueltos</button>
         <div class="filtros-sep"></div>
         <button class="filtro-btn" data-est="especial"       onclick="toggleFiltroEstado('especial', this)" title="pedido_ref no estándar (no es RM-/TI-/TIT-): DEVOLUCIÓN, ULTIMA MILLA, BL., etc.">⚠ Especiales</button>
       </div>
@@ -1088,7 +1089,7 @@
   async function recargarTodo() {
     try {
       const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,revisado_at,revisado_por,revision_notas,created_at';
-      const [clientes, transp, pedidosAll, viajes, ofertas] = await Promise.all([
+      const [clientes, transp, pedidosAll, viajes, ofertas, intentos] = await Promise.all([
         getJson('clientes?select=id,nombre&order=nombre.asc'),
         getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
         // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
@@ -1098,12 +1099,14 @@
         getJsonPaginated(`pedidos?select=${pedidosCols}&order=created_at.desc,id.desc`),
         getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc,id.desc'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
+        getJsonPaginated('intentos_entrega?select=*&order=pedido_id,intento_num'),
       ]);
       state.pedidos = pedidosAll;
       state.clientes = clientes;
       state.transportadoras = transp;
       state.viajes = viajes;
       state.ofertas = ofertas;
+      state.intentos = intentos;
 
       // Poblar selector transp
       const sel = document.getElementById('mod-asig-transp');
@@ -2496,7 +2499,51 @@
         <div class="ped-detalle-val importante" style="white-space:pre-wrap">${p.observaciones}</div>
       </div>
       ` : ''}
+
+      ${(() => {
+        const intentos = (state.intentos || []).filter(i => i.pedido_id === p.id).sort((a,b) => a.intento_num - b.intento_num);
+        if (!intentos.length) return '';
+        const badgeColor = (i) => i.exitoso ? '#16a34a' : '#dc2626';
+        const badgeText  = (i) => i.exitoso ? '✓ entregado' : '✕ fallido';
+        return `
+          <div class="ped-detalle-section">
+            <div class="ped-detalle-section-title">Intentos de entrega (${intentos.length}/3)</div>
+            ${intentos.map(i => `
+              <div style="display:flex;gap:12px;padding:10px;border-left:3px solid ${badgeColor(i)};background:var(--gray-50);border-radius:0 6px 6px 0;margin-bottom:8px">
+                <div style="font-weight:700;font-size:13px;min-width:70px">
+                  Intento ${i.intento_num}<br>
+                  <span style="font-size:10px;color:${badgeColor(i)};text-transform:uppercase">${badgeText(i)}</span>
+                </div>
+                <div style="flex:1;font-size:12px;color:var(--gray-800)">
+                  <div style="color:var(--gray-600)">${i.fecha ? fmtFechaHora(i.fecha) : '—'}</div>
+                  ${i.novedad ? `<div style="margin-top:4px"><strong>Novedad:</strong> ${i.novedad}</div>` : ''}
+                  ${i.comentario ? `<div style="margin-top:4px;white-space:pre-wrap">${i.comentario}</div>` : ''}
+                  ${i.foto_url ? `<div style="margin-top:6px"><a href="${i.foto_url}" target="_blank" style="color:var(--blue);font-size:11px">📷 Ver foto cumplido</a></div>` : ''}
+                </div>
+              </div>
+            `).join('')}
+            ${p.estado === 'devuelto_bodega' ? `
+              <div style="margin-top:10px;padding:10px;background:#fef2f2;border-radius:6px;font-size:12px;color:var(--red)">
+                🔙 Pedido devuelto a bodega tras 3 intentos fallidos.
+                <button class="btn btn-ghost" style="float:right;color:var(--blue)" onclick="reintentarEntrega('${p.id}')">↺ Reabrir intentos</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      })()}
     `;
+  }
+
+  async function reintentarEntrega(pedidoId) {
+    const razon = prompt('Razón para reabrir intentos (obligatoria — ej: cliente confirmó nueva dirección):');
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedido_reintentar_entrega', { p_pedido_id: pedidoId, p_razon: razon });
+      toast(`Reabierto — ${res.intentos_borrados} intentos borrados`, 'success');
+      cerrarModal('modal-pedido-detalle');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
   function verDetallePedido(id) {
@@ -2539,8 +2586,9 @@
   // SYNC Sheets → Netfleet (mirror de db/sync_from_csv.py)
   // ═════════════════════════════════════════════════════════════
   const SYNC_URLS = {
-    viajes:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1382860925&single=true&output=csv',
-    pedidos: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1191036042&single=true&output=csv',
+    viajes:       'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1382860925&single=true&output=csv',
+    pedidos:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ93JERt_-UJ7Zzb9tQQxS4hhyUfLi6WLAO-vnoAZQCPM3i55sK1VeyyVj5hmu17EXzucPcEvHosarD/pub?gid=1191036042&single=true&output=csv',
+    seguimiento:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUPxHsgOmurm7xeumclLgCBnB0DHAyNCJsAzOIk1rfeCfbv2N6Tei3sVWpVWyUBSn_EoNQ16yeKBOy/pub?gid=1045596274&single=true&output=csv',
   };
   const SYNC_BATCH = 500;
 
@@ -2625,7 +2673,22 @@
     'Confirmar  Vehiculo':         'confirma_vehiculo',
   };
 
-  const DATE_KEYS = new Set(['fecha_cargue','fecha_entrega','fecha_consolidacion']);
+  // Columnas Seguimiento y Cumplidos → payload para fn_sync_pedidos_seguimiento_batch
+  const SEGUIMIENTO_COLS = {
+    'ID_Inicio':             'id_inicio',
+    'ESTADO':                'seguimiento_estado',
+    'ENTREGA A CLIENTE':     'intento_1_fecha',
+    'NOVEDAD':               'intento_1_novedad',
+    'Comentario Novedad':    'intento_1_comentario',
+    'ENTREGA A CLIENTE2':    'intento_2_fecha',
+    'Comentario Novedad2':   'intento_2_comentario',
+    'ENTREGA A CLIENTE3':    'intento_3_fecha',
+    'Comentario Novedad3':   'intento_3_comentario',
+    'FOTO CUMPLIDO':         'foto_cumplido',
+  };
+
+  const DATE_KEYS = new Set(['fecha_cargue','fecha_entrega','fecha_consolidacion',
+                             'intento_1_fecha','intento_2_fecha','intento_3_fecha']);
   const NUM_KEYS  = new Set(['km_total','flete_total','peso_kg','valor_mercancia','valor_factura',
                              'cantidad_pedidos','contenedores','cajas','bidones','canecas',
                              'unidades_sueltas','flete','standby','candado','escolta','itr','otros']);
@@ -2681,7 +2744,7 @@
               const v = syncParseValue(raw[trimmedCol], canonicalKey);
               if (v !== null && v !== undefined && v !== '') row[canonicalKey] = v;
             }
-            if ('viaje_ref' in row || 'pedido_ref' in row) rows.push(row);
+            if ('viaje_ref' in row || 'pedido_ref' in row || 'id_inicio' in row) rows.push(row);
           }
           resolve(rows);
         },
@@ -2742,12 +2805,14 @@
     try {
       syncLog('▸ Descargando CSVs desde Google Sheets…');
       syncSub('Descargando CSVs…');
-      const [viajesRows, pedidosRows] = await Promise.all([
-        fetchCsvRows(SYNC_URLS.viajes,  VIAJES_COLS),
-        fetchCsvRows(SYNC_URLS.pedidos, PEDIDOS_COLS),
+      const [viajesRows, pedidosRows, seguimientoRows] = await Promise.all([
+        fetchCsvRows(SYNC_URLS.viajes,       VIAJES_COLS),
+        fetchCsvRows(SYNC_URLS.pedidos,      PEDIDOS_COLS),
+        fetchCsvRows(SYNC_URLS.seguimiento,  SEGUIMIENTO_COLS),
       ]);
       syncLog(`  ✓ ASIGNADOS: ${viajesRows.length} filas`);
       syncLog(`  ✓ Base_inicio-def: ${pedidosRows.length} filas`);
+      syncLog(`  ✓ Seguimiento: ${seguimientoRows.length} filas`);
       syncLog('');
 
       await syncBatchRun('fn_sync_viajes_batch',  viajesRows,  'Viajes');
@@ -2762,6 +2827,10 @@
       syncLog(`  v4 rescató: ${lk.linkeados_v4}`);
       syncLog(`  Huérfanos: ${lk.huerfanos_antes} → ${lk.huerfanos_despues}`);
       syncLog(`  % linked: ${lk.pct_linked}% (${lk.total_pedidos - lk.huerfanos_despues}/${lk.total_pedidos})`);
+      syncLog('');
+
+      // Seguimiento al final (depende de pedidos ya insertados + linkeados)
+      await syncBatchRun('fn_sync_pedidos_seguimiento_batch', seguimientoRows, 'Seguimiento');
       syncLog('');
 
       const dt = ((performance.now() - t0) / 1000).toFixed(1);

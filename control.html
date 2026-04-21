@@ -156,11 +156,12 @@
     .pedidos-table.compact .pedido-ruta { font-size: 11px; color: var(--gray-600); }
     .pedidos-table.compact .pedido-prioridad { display: none; }
     .pedidos-table.compact .btn-info { padding: 2px 6px; font-size: 11px; }
-    /* En modo compacto, ocultar columnas redundantes (ruta y zona están en el group header) */
-    .pedidos-table.compact th:nth-child(4),
-    .pedidos-table.compact td:nth-child(4),
+    /* En compact solo zona se oculta; destino sigue visible (varía dentro del grupo) */
     .pedidos-table.compact th:nth-child(5),
     .pedidos-table.compact td:nth-child(5) { display: none; }
+    /* En la celda de ruta mostrar solo el destino (origen está en el group header) */
+    .pedidos-table.compact .pedido-ruta .origen-hide { display: none; }
+    .pedidos-table.compact .pedido-ruta .destino-only { font-weight: 600; color: var(--navy); }
     /* Ocultar badge de estado 'sin_consolidar' en modo compacto (redundante) */
     .pedidos-table.compact .badge.sin_consolidar { display: none; }
     .pedidos-table tr:last-child td, .viajes-table tr:last-child td { border-bottom: none; }
@@ -1557,25 +1558,30 @@
       return;
     }
 
-    // En modo "Sin consolidar solo" → agrupar por (origen, destino) para detectar
-    // candidatos a consolidar a simple vista. Otros filtros → agrupar por origen solo.
+    // Agrupar siempre por origen. En Sin consolidar mode, además ordena pedidos
+    // dentro del grupo por destino alfa + fecha, para que destinos iguales queden
+    // consecutivos y los patrones de consolidación salten a la vista.
     const sinConMode = state.filtroEstados?.size === 1 && state.filtroEstados.has('sin_consolidar');
-    // Toggle compact CSS class en la tabla — reduce padding, oculta columnas redundantes
     const tablaEl = document.querySelector('.pedidos-table');
     if (tablaEl) tablaEl.classList.toggle('compact', sinConMode);
     const grupos = new Map();
     filtrados.forEach(p => {
       const origen = (p.origen || '(sin origen)').trim();
-      const destino = (p.destino || '(sin destino)').trim();
-      const key = sinConMode
-        ? (origen.toUpperCase() + '|' + destino.toUpperCase())
-        : origen.toUpperCase();
-      const label = sinConMode ? `${origen} → ${destino}` : origen;
-      if (!grupos.has(key)) grupos.set(key, { label, pedidos: [] });
+      const key = origen.toUpperCase();
+      if (!grupos.has(key)) grupos.set(key, { label: origen, pedidos: [] });
       grupos.get(key).pedidos.push(p);
     });
-    // Pedidos dentro de grupo por fecha asc (urgentes primero cronológicamente)
-    grupos.forEach(g => g.pedidos.sort((a, b) => (a.fecha_cargue || '').localeCompare(b.fecha_cargue || '')));
+    // Orden de pedidos dentro del grupo:
+    //   - sinConMode: destino alfa, luego fecha → filas consecutivas con mismo destino = consolidar
+    //   - otros: solo por fecha asc
+    grupos.forEach(g => g.pedidos.sort((a, b) => {
+      if (sinConMode) {
+        const da = (a.destino || '').toUpperCase();
+        const db = (b.destino || '').toUpperCase();
+        if (da !== db) return da.localeCompare(db);
+      }
+      return (a.fecha_cargue || '').localeCompare(b.fecha_cargue || '');
+    }));
     // Grupos ordenados: más pedidos primero (más chance consolidar)
     const gruposOrdenados = [...grupos.entries()].sort((a,b) => b[1].pedidos.length - a[1].pedidos.length);
 
@@ -1623,7 +1629,7 @@
           </td>
           <td>${p.empresa || '—'}</td>
           <td>
-            <div class="pedido-ruta">${p.origen || '—'} → ${p.destino || '—'}</div>
+            <div class="pedido-ruta"><span class="origen-hide">${p.origen || '—'} → </span><span class="destino-only">${p.destino || '—'}</span></div>
             ${p.prioridad ? `<div class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}">${p.prioridad}</div>` : ''}
           </td>
           <td>${p.zona || '—'}</td>

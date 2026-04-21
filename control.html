@@ -154,7 +154,10 @@
     .pedidos-table.compact .pedido-ref { font-size: 12px; display: inline; }
     .pedidos-table.compact .pedido-cliente { font-size: 11px; display: inline; color: var(--gray-600); margin-left: 6px; }
     .pedidos-table.compact .pedido-ruta { font-size: 11px; color: var(--gray-600); }
-    .pedidos-table.compact .pedido-prioridad { display: none; }
+    .pedidos-table.compact .pedido-prioridad {
+      display: inline-block; margin-top: 0; margin-left: 8px;
+      padding: 1px 6px; font-size: 9px;
+    }
     .pedidos-table.compact .btn-info { padding: 2px 6px; font-size: 11px; }
     /* En compact solo zona se oculta; destino sigue visible (varía dentro del grupo) */
     .pedidos-table.compact th:nth-child(5),
@@ -191,6 +194,7 @@
       padding: 2px 8px; border-radius: 100px;
       background: var(--gray-100); color: var(--gray-600);
     }
+    .pedido-prioridad.prio-inmediato { background: #7f1d1d; color: white; }
     .pedido-prioridad.prio-urgente  { background: #fef2f2; color: var(--red); }
     .pedido-prioridad.prio-alta     { background: #fff7ed; color: var(--orange); }
     .pedido-prioridad.prio-media    { background: #eff6ff; color: var(--blue); }
@@ -1630,7 +1634,7 @@
           <td>${p.empresa || '—'}</td>
           <td>
             <div class="pedido-ruta"><span class="origen-hide">${p.origen || '—'} → </span><span class="destino-only">${p.destino || '—'}</span></div>
-            ${p.prioridad ? `<div class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}">${p.prioridad}</div>` : ''}
+            ${p.prioridad ? `<div class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}">${p.prioridad}</div>` : ''}
           </td>
           <td>${p.zona || '—'}</td>
           <td>${fmtNum(p.peso_kg)} kg</td>
@@ -2024,7 +2028,7 @@
                 <div class="ped-card-head" onclick="togglePedidoCard('${v.id}','${p.id}')">
                   <div class="ref">${p.pedido_ref || '—'}</div>
                   <div class="cliente">${p.cliente_nombre || '—'}
-                    ${p.prioridad ? `<span class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}" style="margin-left:6px">${p.prioridad}</span>` : ''}
+                    ${p.prioridad ? `<span class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}" style="margin-left:6px">${p.prioridad}</span>` : ''}
                     ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
                   </div>
                   <div class="ruta">${p.origen || '—'} → ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
@@ -2419,7 +2423,7 @@
 
     return `
       <div class="modal-title">${p.pedido_ref || '—'}
-        ${p.prioridad ? `<span class="pedido-prioridad prio-${(p.prioridad||'').toLowerCase().replace(/[^a-z]/g,'')}" style="margin-left:8px;font-size:11px">${p.prioridad}</span>` : ''}
+        ${p.prioridad ? `<span class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}" style="margin-left:8px;font-size:11px">${p.prioridad}</span>` : ''}
         ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
       </div>
       <div class="modal-sub">${p.empresa || '—'} · ${p.cliente_nombre || 'sin cliente final'}</div>

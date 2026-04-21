@@ -953,19 +953,40 @@
 
   // ── VIAJES (desde Google Sheet CSV) ───────────────────────────
   async function cargarViajes() {
+    // Fetch desde Supabase viajes_consolidados (single source of truth).
+    // Reemplaza el CSV legacy de VIAJES_LANDING. Incluye tanto viajes
+    // sincronizados del Sheet (RT-TOTAL-xxx) como los consolidados en
+    // Netfleet (NF-xxx). La RLS 'anon_select_publicos' permite el read.
     try {
-      const resp = await fetch(CSV_URL);
-      if (!resp.ok) throw new Error('No se pudo cargar CSV');
-      const texto = await resp.text();
-      const viajes = parseCSV(texto);
-
-      // Deduplicar por rt_total y generar ID
-      const vistos = {};
-      viajesDisp = [];
-      viajes.forEach(v => {
-        v.rt_total = generarIdViaje(v);
-        if (!vistos[v.rt_total]) { vistos[v.rt_total] = true; viajesDisp.push(v); }
+      const cols = [
+        'id','viaje_ref','origen','destino','km_total','flete_total',
+        'fecha_cargue','peso_kg','valor_mercancia','cantidad_pedidos',
+        'zona','empresa','estado','proveedor','fuente'
+      ].join(',');
+      const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
+                + `&estado=in.(pendiente,confirmado)`
+                + `&order=fecha_cargue.desc.nullslast`
+                + `&limit=500`;
+      const resp = await fetch(url, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
       });
+      if (!resp.ok) throw new Error(`Fetch ${resp.status}`);
+      const rows = await resp.json();
+      viajesDisp = rows.map(v => ({
+        rt_total:         v.viaje_ref,
+        origen:           v.origen,
+        destino:          v.destino,
+        km:               v.km_total,
+        peso_kg:          v.peso_kg,
+        valor_mercancia:  v.valor_mercancia,
+        fecha_cargue:     v.fecha_cargue ? v.fecha_cargue.substring(0, 10) : null,
+        cantidad_pedidos: v.cantidad_pedidos,
+        zona:             v.zona,
+        empresa:          v.empresa,
+        proveedor:        v.proveedor,
+        fuente:           v.fuente,
+        tipo_mercancia:   '',
+      }));
     } catch (e) {
       console.warn('Error al cargar viajes:', e);
       viajesDisp = [];

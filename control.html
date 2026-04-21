@@ -2050,12 +2050,17 @@
             ${peds.map(p => `
               <div class="ped-card" id="pcard-${v.id}-${p.id}">
                 <div class="ped-card-head" onclick="togglePedidoCard('${v.id}','${p.id}')">
-                  <div class="ref">${p.pedido_ref || '—'}</div>
-                  <div class="cliente">${p.cliente_nombre || '—'}
-                    ${p.prioridad ? `<span class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}" style="margin-left:6px">${p.prioridad}</span>` : ''}
-                    ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <div class="ref">${p.pedido_ref || '—'}</div>
+                      <div class="cliente" style="flex:1;min-width:0">${p.cliente_nombre || '—'}
+                        ${p.prioridad ? `<span class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}" style="margin-left:6px">${p.prioridad}</span>` : ''}
+                        ${p.llamar_antes ? '<span class="llamar-antes-flag">llamar antes</span>' : ''}
+                      </div>
+                      <div class="ruta" style="font-size:11px;color:var(--gray-600)">${p.origen || '—'} → ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
+                    </div>
+                    ${resumenIntentosHTML(p)}
                   </div>
-                  <div class="ruta">${p.origen || '—'} → ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
                   <div class="chev">▼</div>
                 </div>
                 <div class="ped-card-body">
@@ -2531,6 +2536,43 @@
           </div>
         `;
       })()}
+    `;
+  }
+
+  // Resumen rápido del estado de entrega de un pedido (usado dentro del viaje expandido)
+  // Devuelve HTML compacto con badge de estado + fecha último intento + link foto
+  function resumenIntentosHTML(pedido) {
+    const intentos = (state.intentos || []).filter(i => i.pedido_id === pedido.id)
+                     .sort((a,b) => a.intento_num - b.intento_num);
+    const last = intentos[intentos.length - 1];
+    // Derivar badge desde pedido.estado (el trigger ya aplicó la lógica correcta)
+    const e = pedido.estado;
+    const map = {
+      'entregado':         { label: '✓ Entregado',         bg: '#dcfce7', fg: '#16a34a' },
+      'entregado_novedad': { label: '⚠ Entregado+novedad', bg: '#fef3c7', fg: '#b45309' },
+      'rechazado':         { label: '✕ Rechazado',         bg: '#fef2f2', fg: '#dc2626' },
+      'devuelto_bodega':   { label: '🔙 Devuelto bodega',  bg: '#fef2f2', fg: '#7f1d1d' },
+      'en_ruta':           { label: '🚛 En ruta',          bg: '#eff6ff', fg: '#1d4ed8' },
+    };
+    const m = map[e];
+    const badge = m
+      ? `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${m.bg};color:${m.fg}">${m.label}</span>`
+      : '';
+    const fechaStr = last?.fecha ? fmtFecha(last.fecha) : '';
+    const novedad = last?.novedad && last.novedad.toLowerCase() !== 'sin novedad' ? last.novedad : '';
+    const coment = last?.comentario || '';
+    const foto  = last?.foto_url  ? `<a href="${resolverFotoUrl(last.foto_url)}" target="_blank" title="Ver foto cumplido" onclick="event.stopPropagation()" style="text-decoration:none">📷</a>` : '';
+    const intentoNum = last ? `· intento ${last.intento_num}/3` : '';
+
+    return `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray-600);margin-top:4px">
+        ${badge}
+        ${fechaStr ? `<span>📅 ${fechaStr}</span>` : ''}
+        ${intentos.length ? `<span>${intentoNum}</span>` : ''}
+        ${foto}
+        ${novedad ? `<span style="color:var(--orange);font-weight:600">⚠ ${novedad}</span>` : ''}
+        ${coment ? `<span style="color:var(--gray-600);font-style:italic">"${coment.slice(0,80)}${coment.length>80?'…':''}"</span>` : ''}
+      </div>
     `;
   }
 

@@ -305,6 +305,37 @@
     .viaje-card-body { display: none; border-top: 1px solid var(--gray-100); padding: 1rem 1.25rem; }
     .viaje-card.open .viaje-card-body { display: block; }
 
+    /* ── TRACKING del viaje (visible sin expandir en tab Activos) ── */
+    .viaje-tracking { border-top: 1px solid var(--gray-100); padding: 0.9rem 1.1rem; background: #fafbfd; }
+    .tracking-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .tracking-step { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: white; border: 1px solid var(--gray-100); }
+    .tracking-step.done { border-color: #bbf7d0; background: #f0fdf4; }
+    .tracking-step.pending { opacity: 0.6; }
+    .tracking-step-icon { width: 24px; height: 24px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 13px; font-weight: 800; flex-shrink: 0; background: var(--gray-100); color: var(--gray-400); }
+    .tracking-step.done .tracking-step-icon { background: #22c55e; color: white; }
+    .tracking-step-body { min-width: 0; flex: 1; }
+    .tracking-step-lbl { font-size: 11px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+    .tracking-step-when { font-size: 10px; color: var(--gray-600); margin-top: 2px; }
+    .tracking-step.done .tracking-step-when { color: #16a34a; font-weight: 600; }
+
+    .tracking-pedidos { margin-top: 12px; background: white; border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 12px; }
+    .tracking-pedidos-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--gray-400); text-transform: uppercase; margin-bottom: 8px; }
+    .tracking-pedidos-title strong { color: var(--navy); }
+    .tracking-pedido-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--gray-100); }
+    .tracking-pedido-row:last-child { border-bottom: none; }
+    .tracking-pedido-main { min-width: 0; }
+    .tracking-pedido-ref { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; font-weight: 700; color: var(--navy); }
+    .tracking-pedido-cli { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+    .ped-ts-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
+    .ped-ts-badge.entregado { background: #dcfce7; color: #15803d; }
+    .ped-ts-badge.devuelto  { background: #fef2f2; color: #dc2626; }
+    .ped-ts-badge.intento   { background: #fef3c7; color: #b45309; }
+    .ped-ts-badge.pendiente { background: #eff6ff; color: #1d4ed8; }
+    .ped-ts-badge.cancelado { background: var(--gray-100); color: var(--gray-400); text-decoration: line-through; }
+    @media (max-width: 720px) {
+      .tracking-timeline { grid-template-columns: repeat(2, 1fr); }
+    }
+
     .viaje-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
     .stats-mini {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
@@ -2018,6 +2049,55 @@
 
         <div class="viaje-chevron">▼</div>
       </div>
+
+      ${esActivo ? (() => {
+        // Bloque tracking visible SIN expandir para viajes activos
+        // (replicamos el patrón de mi-netfleet "Mis viajes" para saber de un
+        // vistazo dónde está el viaje y el estado de cada pedido).
+        const pedsV = pedidosDelViaje(v.id);
+        const ts = (label, val, emoji) => {
+          const done = !!val;
+          const when = val ? new Date(val).toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+          return `<div class="tracking-step ${done ? 'done' : 'pending'}">
+            <div class="tracking-step-icon">${done ? '✓' : emoji}</div>
+            <div class="tracking-step-body">
+              <div class="tracking-step-lbl">${label}</div>
+              <div class="tracking-step-when">${when}</div>
+            </div>
+          </div>`;
+        };
+        const badgePedido = p => {
+          const intentos = (state.intentos || []).filter(i => i.pedido_id === p.id);
+          const entregado = p.estado === 'entregado' || intentos.some(i => i.exitoso);
+          if (entregado) return '<span class="ped-ts-badge entregado">✓ Entregado</span>';
+          if (p.estado === 'devuelto_bodega') return '<span class="ped-ts-badge devuelto">🔙 Devuelto a bodega</span>';
+          if (intentos.length > 0) return `<span class="ped-ts-badge intento">⚠ Intento ${intentos.length}/3 fallido</span>`;
+          if (p.estado === 'asignado' || p.estado === 'consolidado') return '<span class="ped-ts-badge pendiente">⏳ En ruta</span>';
+          if (p.estado === 'cancelado' || p.estado === 'rechazado') return `<span class="ped-ts-badge cancelado">✕ ${p.estado}</span>`;
+          return `<span class="ped-ts-badge pendiente">${p.estado || '—'}</span>`;
+        };
+        return `
+        <div class="viaje-tracking">
+          <div class="tracking-timeline">
+            ${ts('Llegué al cargue', v.llegada_cargue, '📍')}
+            ${ts('Salí del cargue',  v.salida_cargue,  '🚛')}
+            ${ts('Llegué al descargue', v.llegada_descargue, '📍')}
+            ${ts('Descargué', v.salida_descargue, '✓')}
+          </div>
+          ${pedsV.length ? `
+            <div class="tracking-pedidos">
+              <div class="tracking-pedidos-title">Pedidos del viaje · <strong>${pedsV.length}</strong></div>
+              ${pedsV.map(p => `
+                <div class="tracking-pedido-row">
+                  <div class="tracking-pedido-main">
+                    <div class="tracking-pedido-ref">${p.pedido_ref || '—'}</div>
+                    <div class="tracking-pedido-cli">${p.cliente_nombre || '—'} · ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg</div>
+                  </div>
+                  <div>${badgePedido(p)}</div>
+                </div>`).join('')}
+            </div>` : ''}
+        </div>` ;
+      })() : ''}
 
       <div class="viaje-card-body">
         <div class="viaje-info-grid">

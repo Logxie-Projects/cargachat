@@ -992,6 +992,7 @@
         return true;
       });
       viajesDisp = rows.map(v => ({
+        supa_id:          v.id,  // UUID interno para RPCs
         rt_total:         v.viaje_ref,
         origen:           v.origen,
         destino:          v.destino,
@@ -1010,6 +1011,8 @@
 
       // Fallback km: si viene null del Sheet, estimar via haversine × 1.3
       // para que estimarPrecioMapa devuelva un precio base.
+      // Si el transportador está logueado, persistir en BD vía fn_autofill_km_viaje
+      // (el primer cliente que calcula lo guarda para todos).
       await Promise.all(viajesDisp.filter(v => !v.km).map(async v => {
         const destPrimario = (v.destino || '').split(',')[0].trim();
         const origPrimario = (v.origen || '').split(',')[0].trim();
@@ -1025,6 +1028,14 @@
             const linea = 2 * R * Math.asin(Math.sqrt(a));
             v.km = Math.round(linea * 1.3);  // factor ~30% por ruta vs linea recta
             v.km_estimado = true;
+            // Persist en BD si hay sesión (idempotente — solo UPDATE si km_total IS NULL)
+            if (tokenActual && v.supa_id) {
+              fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_autofill_km_viaje`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p_viaje_id: v.supa_id, p_km: v.km })
+              }).catch(() => {});  // fire-and-forget
+            }
           }
         } catch {}
       }));

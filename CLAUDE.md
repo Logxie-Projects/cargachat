@@ -430,6 +430,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 - [ ] **og-image.png:** 1200×630px para preview WhatsApp/LinkedIn
 - [ ] **Módulo 2 — Ingesta Multicliente:** ✅ hecho 2026-04-17 (SQL ejecutado: 2 clientes, 1281 viajes consolidados, 3764 pedidos con cliente_id). Falta: construir los 4 parsers n8n (email, sheet pull, webhook, sheet ASIGNADOS legacy)
 - [ ] **LogxIA Módulos 3-5:** Consolidación inteligente, Pricing dinámico, Predicción de demanda
+- [ ] **Drive API — links directos a foto/PDF cumplido** — hoy el link en el detalle de intento_entrega abre Drive search (el filename). Para abrir el archivo directo hace falta habilitar **Google Drive API** en el proyecto del API key de Maps (console.cloud.google.com → APIs → Biblioteca → Google Drive API → Habilitar) y después armar resolver `filename → fileId → https://drive.google.com/file/d/<id>/view`. Folders ya compartidas públicamente: `192ritQ72WChqjWwOvO2TTlOvqmbwa8uq` y `17QmlbCaMhlbgYO88G9mLDQ9R4rv1Gm3Y`.
 
 ---
 

@@ -991,23 +991,31 @@
         if (v.fuente === 'netfleet' && !v.publicado_at) return false;
         return true;
       });
-      viajesDisp = rows.map(v => ({
-        supa_id:          v.id,  // UUID interno para RPCs
-        rt_total:         v.viaje_ref,
-        origen:           v.origen,
-        destino:          v.destino,
-        km:               v.km_total,
-        flete_total:      v.flete_total,
-        peso_kg:          v.peso_kg,
-        valor_mercancia:  v.valor_mercancia,
-        fecha_cargue:     v.fecha_cargue ? v.fecha_cargue.substring(0, 10) : null,
-        cantidad_pedidos: v.cantidad_pedidos,
-        zona:             v.zona,
-        empresa:          v.empresa,
-        proveedor:        v.proveedor,
-        fuente:           v.fuente,
-        tipo_mercancia:   '',
-      }));
+      viajesDisp = rows.map(v => {
+        // tipo_mercancia derivado del empresa (AVGUST/FATECO = químicos)
+        const empresaUpper = (v.empresa || '').toUpperCase();
+        let tipo = '';
+        if (empresaUpper.includes('AVGUST') || empresaUpper.includes('FATECO')) {
+          tipo = 'Químico';
+        }
+        return {
+          supa_id:          v.id,
+          rt_total:         v.viaje_ref,
+          origen:           v.origen,
+          destino:          v.destino,
+          km:               v.km_total,
+          flete_total:      v.flete_total,
+          peso_kg:          v.peso_kg,
+          valor_mercancia:  v.valor_mercancia,
+          fecha_cargue:     v.fecha_cargue ? v.fecha_cargue.substring(0, 10) : null,
+          cantidad_pedidos: v.cantidad_pedidos,
+          zona:             v.zona,
+          empresa:          v.empresa,
+          proveedor:        v.proveedor,
+          fuente:           v.fuente,
+          tipo_mercancia:   tipo,
+        };
+      });
 
       // Fallback km: si viene null del Sheet, estimar via haversine × 1.3
       // para que estimarPrecioMapa devuelva un precio base.

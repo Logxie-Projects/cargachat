@@ -148,6 +148,21 @@
       position: sticky; top: 0;
     }
     .pedidos-table td, .viajes-table td { padding: 11px 14px; font-size: 12px; border-bottom: 1px solid var(--gray-100); }
+    /* Modo compacto: para cuando agrupamos por origen→destino en Sin consolidar */
+    .pedidos-table.compact td { padding: 4px 10px; font-size: 12px; line-height: 1.25; }
+    .pedidos-table.compact tr.group-row td { padding: 7px 10px; }
+    .pedidos-table.compact .pedido-ref { font-size: 12px; display: inline; }
+    .pedidos-table.compact .pedido-cliente { font-size: 11px; display: inline; color: var(--gray-600); margin-left: 6px; }
+    .pedidos-table.compact .pedido-ruta { font-size: 11px; color: var(--gray-600); }
+    .pedidos-table.compact .pedido-prioridad { display: none; }
+    .pedidos-table.compact .btn-info { padding: 2px 6px; font-size: 11px; }
+    /* En modo compacto, ocultar columnas redundantes (ruta y zona están en el group header) */
+    .pedidos-table.compact th:nth-child(4),
+    .pedidos-table.compact td:nth-child(4),
+    .pedidos-table.compact th:nth-child(5),
+    .pedidos-table.compact td:nth-child(5) { display: none; }
+    /* Ocultar badge de estado 'sin_consolidar' en modo compacto (redundante) */
+    .pedidos-table.compact .badge.sin_consolidar { display: none; }
     .pedidos-table tr:last-child td, .viajes-table tr:last-child td { border-bottom: none; }
     .pedidos-table tr:hover td, .viajes-table tr:hover td { background: var(--gray-50); }
     .pedidos-table tr.selected td { background: #eff6ff; }
@@ -1544,6 +1559,9 @@
     // En modo "Sin consolidar solo" → agrupar por (origen, destino) para detectar
     // candidatos a consolidar a simple vista. Otros filtros → agrupar por origen solo.
     const sinConMode = state.filtroEstados?.size === 1 && state.filtroEstados.has('sin_consolidar');
+    // Toggle compact CSS class en la tabla — reduce padding, oculta columnas redundantes
+    const tablaEl = document.querySelector('.pedidos-table');
+    if (tablaEl) tablaEl.classList.toggle('compact', sinConMode);
     const grupos = new Map();
     filtrados.forEach(p => {
       const origen = (p.origen || '(sin origen)').trim();

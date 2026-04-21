@@ -1155,10 +1155,15 @@
   // Excluye por default los miles de viajes migrados del Sheet ASIGNADOS (historia pre-Netfleet).
   // Si el usuario toggle "incluir migrados", también los muestra.
   function esViajeSubasta(v) {
-    const base = v.estado === 'pendiente' && (v.fuente === 'netfleet' || v.publicado_at);
-    if (base) return true;
-    if (state.incluirMigrados && v.estado === 'pendiente' && v.fuente === 'sheet_asignados') return true;
-    return false;
+    if (v.estado !== 'pendiente') return false;
+    // Netfleet-native → siempre visible
+    if (v.fuente === 'netfleet') return true;
+    // Publicado al marketplace → visible
+    if (v.publicado_at) return true;
+    // Sheet sin proveedor asignado → es biddable aunque no se publicó manualmente
+    if (!v.proveedor || String(v.proveedor).trim() === '') return true;
+    // Sheet con proveedor asignado → solo si toggle 'incluir migrados' activo
+    return !!state.incluirMigrados;
   }
 
   function toggleIncluirMigrados() {

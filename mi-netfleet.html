@@ -221,6 +221,49 @@
     .btn-ver-todos.visible { display: block; }
     .viaje-card { cursor: pointer; transition: box-shadow .2s, border-color .2s; }
     .viaje-card.selected { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,191,223,0.2); }
+    /* ── LOGIN PORTAL (mi-netfleet sin sesión muestra este card en vez de redirect) ── */
+    .login-portal { min-height: calc(100vh - 70px); display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%); }
+    .login-portal-card { width: 100%; max-width: 420px; background: white; border: 1px solid var(--gray-100); border-radius: 20px; padding: 2.25rem 2rem; box-shadow: 0 10px 40px rgba(14,27,77,0.08); }
+    .login-portal-hdr { text-align: center; margin-bottom: 1.5rem; }
+    .login-portal-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--cyan); margin-bottom: 10px; }
+    .login-portal-hdr h1 { font-family: var(--serif); font-size: 1.85rem; font-weight: 800; color: var(--navy); margin: 0 0 0.6rem; letter-spacing: -0.8px; line-height: 1.05; }
+    .login-portal-hdr h1 em { color: var(--cyan); font-style: normal; display: block; }
+    .login-portal-hdr p { font-size: 13px; color: var(--gray-600); line-height: 1.55; margin: 0; }
+    .login-portal-benefits { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-direction: column; gap: 8px; background: var(--gray-50); border-radius: 12px; padding: 14px 16px; }
+    .login-portal-benefits li { font-size: 12.5px; color: var(--navy); display: flex; align-items: center; gap: 10px; line-height: 1.4; }
+    .login-portal-benefits li span { color: var(--cyan); font-weight: 800; }
+    .login-portal-form { display: flex; flex-direction: column; gap: 10px; }
+    .login-portal-form .login-input { width: 100%; }
+    .login-portal-btn { background: var(--navy); color: white; border: none; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 6px; transition: background .2s; }
+    .login-portal-btn:hover { background: #0f1a45; }
+    .login-portal-err { color: var(--red); font-size: 12px; min-height: 18px; text-align: center; }
+    .login-portal-foot { margin-top: 1.25rem; text-align: center; font-size: 12px; color: var(--gray-600); }
+    .login-portal-foot a { color: var(--navy); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--cyan); }
+    /* ── STATS PORTAL (reemplaza hero) — 5 cards personalizadas del transportador ── */
+    .stats-portal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; padding: 1.5rem 0 0.5rem; }
+    .stat-p { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 1.1rem 0.75rem; text-align: center; transition: box-shadow .2s; }
+    .stat-p:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+    .stat-p-icon { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+    .stat-p-val { font-family: var(--serif); font-size: 1.45rem; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; line-height: 1.1; }
+    .stat-p-lbl { font-size: 10px; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; font-weight: 600; }
+    @media (max-width: 900px) { .stats-portal { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .stats-portal { grid-template-columns: repeat(2, 1fr); gap: 8px; } .stat-p { padding: 0.85rem 0.5rem; } .stat-p-val { font-size: 1.15rem; } }
+    /* ── TAB FLOTA (conductores + vehículos, placeholder) ── */
+    .flota-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin: 1rem 0; }
+    .flota-card { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; transition: box-shadow .2s; }
+    .flota-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .flota-card-icon { font-size: 32px; line-height: 1; }
+    .flota-card-title { font-family: var(--serif); font-size: 1.25rem; font-weight: 800; color: var(--navy); letter-spacing: -0.3px; }
+    .flota-card-desc { font-size: 12.5px; color: var(--gray-600); line-height: 1.55; margin-top: 4px; }
+    .flota-card-count { font-size: 12px; color: var(--gray-400); margin-top: 10px; font-weight: 600; }
+    .flota-card-btn { background: var(--navy); color: white; border: none; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: flex-start; transition: background .2s; }
+    .flota-card-btn:disabled { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
+    .flota-placeholder-note { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12px; text-align: center; margin-top: 8px; }
+    /* Mapa del portal (sin grid 2-col, ancho completo, altura fija) */
+    .mapa-portal { margin: 1.25rem 0; }
+    .mapa-portal .mapa-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--gray-100); }
+    .mapa-portal #map { height: 340px; width: 100%; }
+    @media (max-width: 600px) { .mapa-portal #map { height: 260px; } }
     @keyframes deeplink-pulse {
       0%   { box-shadow: 0 0 0 0 rgba(0,191,223,0.6), 0 4px 20px rgba(0,191,223,0.25); }
       60%  { box-shadow: 0 0 0 14px rgba(0,191,223,0), 0 4px 24px rgba(0,191,223,0.2); }
@@ -346,23 +389,32 @@
   </div>
 </nav>
 
-<!-- ══ HERO TRANSPORTADOR ══ -->
-<section class="hero-transportador">
-  <h1>Carga en todo el pais.<br><em>Planea tu retorno.</em></h1>
-  <p class="hero-t-sub">No mas viajes vacios. Encuentra <strong>carga de regreso</strong>, oferta tu precio y cobra sin comisiones ocultas.</p>
-  <div class="hero-t-proof">
-    <span>&#10003; Carga real de empresas verificadas</span>
-    <span>&#10003; Tu pones el precio</span>
-    <span>&#10003; $0 comision</span>
+<!-- ══ LOGIN PORTAL (se muestra cuando NO hay sesión) ══ -->
+<section class="login-portal" id="login-portal" style="display:none">
+  <div class="login-portal-card">
+    <div class="login-portal-hdr">
+      <div class="login-portal-eyebrow">PORTAL TRANSPORTADORA</div>
+      <h1>Llená tu flota. <em>Planeá tu retorno.</em></h1>
+      <p>Carga real de empresas verificadas. Vos ponés el precio.</p>
+    </div>
+
+    <ul class="login-portal-benefits">
+      <li><span>✓</span> Pago garantizado, sin intermediarios</li>
+      <li><span>✓</span> Retornos disponibles en todo el país</li>
+      <li><span>✓</span> $0 comisión — lo que ofertás es lo que cobrás</li>
+    </ul>
+
+    <div class="login-portal-form">
+      <input class="login-input" id="lp-email" type="email" placeholder="Email" autocomplete="email">
+      <input class="login-input" id="lp-pass"  type="password" placeholder="Contraseña" autocomplete="current-password">
+      <button class="login-portal-btn" onclick="loginPortal()">Ingresar &rarr;</button>
+      <div id="lp-error" class="login-portal-err"></div>
+    </div>
+    <div class="login-portal-foot">
+      ¿Sos transportadora nueva? <a href="/transportador.html">Registrate acá</a>
+    </div>
   </div>
 </section>
-
-<!-- ══ HERO MINI ══ -->
-<div class="hero-mini">
-  <strong id="hero-count">&mdash;</strong> viajes disponibles ahora
-  <span class="hero-sep">|</span> Pago garantizado
-  <span class="hero-sep">|</span> $0 comision
-</div>
 
 <!-- ══ PERFIL INCOMPLETO BANNER (oculto por defecto) ══ -->
 <div class="perfil-banner" id="perfil-banner">
@@ -383,19 +435,32 @@
 <div class="panel-wrap" id="panel-wrap">
   <div class="panel-body">
 
-    <!-- Stats (solo con login) -->
-    <div class="stats-bar" id="stats-bar" style="display:none">
-      <div class="stat-card">
-        <div class="stat-num" id="stat-disponibles">&mdash;</div>
-        <div class="stat-lbl">Disponibles</div>
+    <!-- Stats del portal — 5 cards personalizadas del transportador logueado -->
+    <div class="stats-portal" id="stats-bar" style="display:none">
+      <div class="stat-p">
+        <div class="stat-p-icon">🚚</div>
+        <div class="stat-p-val" id="stat-viajes-total">&mdash;</div>
+        <div class="stat-p-lbl">Viajes con Netfleet</div>
       </div>
-      <div class="stat-card activas">
-        <div class="stat-num" id="stat-mis-activas">&mdash;</div>
-        <div class="stat-lbl">Mis ofertas activas</div>
+      <div class="stat-p">
+        <div class="stat-p-icon">📏</div>
+        <div class="stat-p-val" id="stat-km-total">&mdash;</div>
+        <div class="stat-p-lbl">Km recorridos</div>
       </div>
-      <div class="stat-card ganadas">
-        <div class="stat-num" id="stat-ganadas">&mdash;</div>
-        <div class="stat-lbl">Adjudicadas</div>
+      <div class="stat-p">
+        <div class="stat-p-icon">💰</div>
+        <div class="stat-p-val" id="stat-facturado">&mdash;</div>
+        <div class="stat-p-lbl">Facturado</div>
+      </div>
+      <div class="stat-p">
+        <div class="stat-p-icon">🌱</div>
+        <div class="stat-p-val" id="stat-co2">&mdash;</div>
+        <div class="stat-p-lbl">CO₂ evitado</div>
+      </div>
+      <div class="stat-p">
+        <div class="stat-p-icon">⚖️</div>
+        <div class="stat-p-val" id="stat-peso">&mdash;</div>
+        <div class="stat-p-lbl">Peso transportado</div>
       </div>
     </div>
 
@@ -405,6 +470,7 @@
       <button class="tab-btn" onclick="cambiarTab('misviajes', this)">🚚 Mis viajes <span class="tab-count" id="count-misviajes">0</span></button>
       <button class="tab-btn" onclick="cambiarTab('facturar', this)">💰 Facturar <span class="tab-count" id="count-facturar">0</span></button>
       <button class="tab-btn" onclick="cambiarTab('ofertas', this)">📋 Mis ofertas</button>
+      <button class="tab-btn" onclick="cambiarTab('flota', this)">🚛 Flota</button>
       <button class="tab-btn" onclick="cambiarTab('documentos', this)">
         📄 Documentos
         <span class="tab-dot" id="dot-documentos"></span>
@@ -442,137 +508,17 @@
         </div>
       </div>
 
-      <!-- VIAJES GRID (arriba del mapa) -->
+      <!-- MAPA — arriba del listado para ver rutas de un vistazo -->
+      <div class="mapa-portal">
+        <div class="mapa-wrap">
+          <div id="map"></div>
+          <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">&larr; Ver todos</button>
+        </div>
+      </div>
+
+      <!-- VIAJES GRID -->
       <div class="viajes-grid" id="viajes-lista">
         <div class="loading-msg">Cargando viajes...</div>
-      </div>
-
-      <!-- BADGES CONFIANZA -->
-      <div class="trust-transportador">
-        <div class="trust-t-item">
-          <span class="trust-t-icon">&#128176;</span>
-          <div><strong>Pago garantizado</strong><br><small>Cobras directo sin intermediarios</small></div>
-        </div>
-        <div class="trust-t-item">
-          <span class="trust-t-icon">&#128260;</span>
-          <div><strong>Retornos disponibles</strong><br><small>Planea tu viaje de regreso con carga</small></div>
-        </div>
-        <div class="trust-t-item">
-          <span class="trust-t-icon">&#127970;</span>
-          <div><strong>Empresas verificadas</strong><br><small>Carga real de companias con NIT y Camara de Comercio</small></div>
-        </div>
-        <div class="trust-t-item">
-          <span class="trust-t-icon">&#128241;</span>
-          <div><strong>Sin comisiones ocultas</strong><br><small>Lo que ofertas es lo que cobras</small></div>
-        </div>
-      </div>
-
-      <!-- COMO FUNCIONA -->
-      <div class="como-funciona-t">
-        <h3>Asi de facil</h3>
-        <div class="pasos-t">
-          <div class="paso-t"><span class="paso-num">1</span><strong>Explora</strong><p>Ve los viajes disponibles con precios reales</p></div>
-          <div class="paso-t"><span class="paso-num">2</span><strong>Oferta</strong><p>Acepta el precio base o haz tu contraoferta</p></div>
-          <div class="paso-t"><span class="paso-num">3</span><strong>Gana y cobra</strong><p>Si tu oferta es elegida, ejecutas y cobras sin descuentos</p></div>
-        </div>
-      </div>
-
-      <!-- MAPA + CALCULADORA -->
-      <div class="mapa-calc-section">
-        <!-- MAPA -->
-        <div class="mapa-col">
-          <div class="section-hdr">
-            <h2>Explora las rutas con carga disponible</h2>
-            <p>Rutas activas hoy en todo el pais</p>
-          </div>
-          <div class="mapa-wrap">
-            <div id="map"></div>
-            <button class="btn-ver-todos" id="btn-ver-todos" onclick="seleccionarViaje(viajeSeleccionado)">&larr; Ver todos</button>
-          </div>
-          <div class="cta-mapa-wrap">
-            <a id="cta-mapa" href="#viajes-lista">Ver todos los viajes &rarr;</a>
-          </div>
-        </div>
-
-        <!-- CALCULADORA DE FLETE -->
-        <div class="calc-col">
-          <div class="section-hdr">
-            <h2>Estimador de flete</h2>
-            <p>Basado en mas de 1.000 viajes reales en Colombia</p>
-          </div>
-          <div class="calc-card">
-            <div class="calc-row">
-              <label class="calc-label">Distancia</label>
-              <div class="calc-slider-wrap">
-                <input type="range" id="cc-km" min="10" max="1200" step="10" value="400">
-                <span class="calc-val" id="cc-km-out">400 km</span>
-              </div>
-            </div>
-            <div class="calc-row">
-              <label class="calc-label">Peso de la carga</label>
-              <div class="calc-slider-wrap">
-                <input type="range" id="cc-kg" min="100" max="50000" step="100" value="5000">
-                <span class="calc-val" id="cc-kg-out">5.000 kg</span>
-              </div>
-            </div>
-            <div class="calc-row">
-              <label class="calc-label">Paradas de entrega</label>
-              <div class="calc-slider-wrap">
-                <input type="range" id="cc-paradas" min="1" max="10" step="1" value="1">
-                <span class="calc-val" id="cc-paradas-out">1</span>
-              </div>
-            </div>
-            <div class="calc-row">
-              <label class="calc-label">Zona de destino</label>
-              <select id="cc-zona" class="calc-select">
-                <option value="">Sin especificar</option>
-                <option value="HUB">Hub (entre bodegas)</option>
-                <option value="ANTIOQUIA">Antioquia</option>
-                <option value="BOYACA">Boyaca</option>
-                <option value="CENTRO">Centro</option>
-                <option value="CUNDINAMARCA">Cundinamarca</option>
-                <option value="EJE CAFETERO">Eje Cafetero</option>
-                <option value="LLANOS">Llanos</option>
-                <option value="NORTE">Norte / Costa</option>
-                <option value="OCCIDENTE">Occidente</option>
-                <option value="ORIENTE">Oriente</option>
-                <option value="SANTANDERES">Santanderes</option>
-                <option value="SUR">Sur / Narino</option>
-                <option value="TOLHUIL">Tolima / Huila</option>
-                <option value="VALLE">Valle</option>
-              </select>
-            </div>
-            <div class="calc-results" style="grid-template-columns:1fr auto;">
-              <div class="calc-result-card main">
-                <div class="calc-result-label">Precio base estimado</div>
-                <div class="calc-result-val" id="cc-base">&mdash;</div>
-              </div>
-              <div class="calc-result-card cc-ahorro" id="cc-ahorro-card" style="display:none;">
-                <div class="calc-result-label">Ahorra hasta</div>
-                <div class="calc-result-val" id="cc-ahorro" style="color:#00875a;">&mdash;</div>
-              </div>
-            </div>
-            <div class="calc-rango">
-              <div class="calc-rango-label">Rango historico &mdash; <span id="cc-zona-badge">&mdash;</span></div>
-              <div class="calc-bar-track"><div class="calc-bar-fill" id="cc-bar"></div></div>
-              <div class="calc-bar-extremos">
-                <span id="cc-hist-min">&mdash;</span>
-                <span style="color:var(--gray-400);font-size:11px">mediana historica</span>
-                <span id="cc-hist-max">&mdash;</span>
-              </div>
-            </div>
-            <div class="calc-nota">
-              Modelo: regresion polinomial (n=1.015 viajes) &middot; Fuente: viajes Colombia 2025&ndash;2026
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CTA FINAL -->
-      <div class="cta-final">
-        <h3>Listo para llenar tu flota?</h3>
-        <p>Registrate gratis y empieza a recibir carga hoy</p>
-        <button onclick="abrirModalAuth('registro')" class="btn-cta-final">Crear cuenta gratis &rarr;</button>
       </div>
     </div>
 
@@ -600,6 +546,36 @@
     <div class="tab-section" id="tab-ofertas">
       <div id="mis-ofertas-lista">
         <div class="loading-msg">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ══ TAB FLOTA (conductores + vehículos) — placeholder, data pendiente de diseño ══ -->
+    <div class="tab-section" id="tab-flota">
+      <div style="padding:1rem 0;color:var(--gray-600);font-size:13px">
+        Gestioná conductores y vehículos de tu flota. Subí hojas de vida, licencias, SOAT, técnico-mecánica y demás documentos — NETFLEET los valida antes del primer viaje.
+      </div>
+      <div class="flota-grid">
+        <div class="flota-card">
+          <div class="flota-card-icon">👷‍♂️</div>
+          <div class="flota-card-body">
+            <div class="flota-card-title">Conductores</div>
+            <div class="flota-card-desc">Hoja de vida, cédula, licencia de conducción, examen médico, antecedentes.</div>
+            <div class="flota-card-count" id="flota-count-conductores">— registrados</div>
+          </div>
+          <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>
+        </div>
+        <div class="flota-card">
+          <div class="flota-card-icon">🚛</div>
+          <div class="flota-card-body">
+            <div class="flota-card-title">Vehículos</div>
+            <div class="flota-card-desc">Tarjeta de propiedad, SOAT, técnico-mecánica, revisión interna, póliza de responsabilidad civil.</div>
+            <div class="flota-card-count" id="flota-count-vehiculos">— registrados</div>
+          </div>
+          <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>
+        </div>
+      </div>
+      <div class="flota-placeholder-note">
+        Módulo en construcción · Pronto vas a poder asignar conductor y vehículo a cada viaje adjudicado.
       </div>
     </div>
 
@@ -1002,6 +978,7 @@
       else handleDeepLink();
     });
     cargarDocumentos();
+    cargarStatsTransportador();
 
     // Banner de perfil incompleto si faltan empresa/telefono/nit
     if (!perfilActual?.empresa || !perfilActual?.telefono || !perfilActual?.nit) {
@@ -1011,18 +988,66 @@
 
   // ── RESTAURAR SESION EXISTENTE ────────────────────────────────
   // Este panel es SOLO para transportadoras aprobadas.
-  // Si no hay sesión → volver a landing (transportador.html) para login.
+  // Si no hay sesión → mostrar card de login inline (la URL /mi-netfleet se puede
+  // compartir con transportadoras y ellas ven un login, no la landing marketing).
+  function mostrarLoginPortal(mensaje = '') {
+    document.getElementById('login-portal').style.display = 'flex';
+    document.getElementById('panel-wrap').style.display   = 'none';
+    if (mensaje) {
+      const err = document.getElementById('lp-error');
+      if (err) err.textContent = mensaje;
+    }
+  }
+  function ocultarLoginPortal() {
+    document.getElementById('login-portal').style.display = 'none';
+    document.getElementById('panel-wrap').style.display   = '';
+  }
+
+  async function loginPortal() {
+    const email = document.getElementById('lp-email').value.trim();
+    const pass  = document.getElementById('lp-pass').value;
+    const errEl = document.getElementById('lp-error');
+    errEl.textContent = '';
+    if (!email || !pass) { errEl.textContent = 'Ingresá email y contraseña.'; return; }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = 'Email o contraseña incorrectos.'; return; }
+    tokenActual   = data.session.access_token;
+    usuarioActual = data.user;
+    const perfil  = await fetchPerfil(data.user.id);
+    if (!perfil) { errEl.textContent = 'No encontramos tu cuenta.'; return; }
+    if (perfil.tipo !== 'transportador' || perfil.estado !== 'aprobado') {
+      errEl.textContent = perfil.estado === 'pendiente'
+        ? 'Tu cuenta está pendiente de aprobación por Logxie.'
+        : 'Este portal es solo para transportadoras aprobadas.';
+      await sb.auth.signOut();
+      tokenActual = null; usuarioActual = null;
+      return;
+    }
+    perfilActual = perfil;
+    ocultarLoginPortal();
+    activarSesion();
+  }
+
+  ['lp-email', 'lp-pass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') loginPortal(); });
+  });
+
   sb.auth.getSession().then(async ({ data: { session } }) => {
     if (!session) {
-      location.href = '/transportador.html';
+      mostrarLoginPortal();
       return;
     }
     tokenActual   = session.access_token;
     usuarioActual = session.user;
     const perfil  = await fetchPerfil(session.user.id);
     if (perfil?.tipo !== 'transportador' || perfil?.estado !== 'aprobado') {
-      // Usuario logueado pero no es transportadora activa → regresar al landing
-      location.href = '/transportador.html';
+      // Sesión válida pero no es transportadora aprobada → cerrar y mostrar login con mensaje
+      await sb.auth.signOut();
+      tokenActual = null; usuarioActual = null;
+      mostrarLoginPortal(perfil?.estado === 'pendiente'
+        ? 'Tu cuenta está pendiente de aprobación por Logxie.'
+        : 'Este portal es solo para transportadoras aprobadas.');
       return;
     }
     perfilActual = perfil;
@@ -1065,6 +1090,61 @@
       setTimeout(() => { msg.innerHTML = ''; }, 3000);
     } else {
       msg.innerHTML = '<span style="color:var(--red)">Error al guardar. Intenta de nuevo.</span>';
+    }
+  }
+
+  // ── STATS DEL PORTAL (5 KPIs de la empresa logueada) ──────────
+  // Calcula los números desde viajes_consolidados donde el proveedor
+  // coincide con la empresa del transportador. Se llama tras activarSesion.
+  async function cargarStatsTransportador() {
+    if (!perfilActual?.empresa) return;
+    const emp = encodeURIComponent('%' + perfilActual.empresa + '%');
+    const urlV = `${SUPABASE_URL}/rest/v1/viajes_consolidados`
+              + `?select=estado,km_total,peso_kg,flete_total`
+              + `&proveedor=ilike.${emp}`
+              + `&limit=5000`;
+    try {
+      const rv = await fetch(urlV, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
+      const viajes = rv.ok ? await rv.json() : [];
+      // "Realizados" = todo excepto cancelado. Cancelados no aportan km/peso/facturado.
+      const realizados = viajes.filter(v => v.estado !== 'cancelado');
+      const total     = realizados.length;
+      const km        = realizados.reduce((s, v) => s + (+v.km_total  || 0), 0);
+      const pesoKg    = realizados.reduce((s, v) => s + (+v.peso_kg   || 0), 0);
+      // Facturado = flete_total de los finalizados (lo cobrado)
+      const facturado = realizados
+        .filter(v => v.estado === 'finalizado')
+        .reduce((s, v) => s + (+v.flete_total || 0), 0);
+      // CO2 evitado por consolidación — factor EPA: 0.062 kg CO₂ por ton·km, asumir 25% ahorro
+      // por agrupar pedidos en 1 camión en vez de N viajes individuales.
+      const tonKm  = (pesoKg / 1000) * km;
+      const co2Kg  = tonKm * 0.062 * 0.25;
+
+      const fmtMiles = n => n.toLocaleString('es-CO');
+      const fmtMoney = n => {
+        // Formato compacto para plata grande: $1.2M, $120K, o completo si es chico
+        if (n >= 1_000_000_000) return '$' + (n/1_000_000_000).toFixed(1).replace(/\.0$/,'') + 'B';
+        if (n >= 1_000_000)     return '$' + (n/1_000_000).toFixed(1).replace(/\.0$/,'') + 'M';
+        if (n >= 1_000)         return '$' + Math.round(n/1_000) + 'K';
+        return '$' + Math.round(n).toLocaleString('es-CO');
+      };
+      const fmtTon = kg => {
+        if (kg >= 1_000) {
+          const t = kg / 1_000;
+          return t >= 100 ? Math.round(t).toLocaleString('es-CO') + ' t'
+                          : t.toFixed(1).replace(/\.0$/,'') + ' t';
+        }
+        return Math.round(kg) + ' kg';
+      };
+
+      const $ = id => document.getElementById(id);
+      if ($('stat-viajes-total')) $('stat-viajes-total').textContent = fmtMiles(total);
+      if ($('stat-km-total'))     $('stat-km-total').textContent     = fmtMiles(Math.round(km)) + ' km';
+      if ($('stat-facturado'))    $('stat-facturado').textContent    = fmtMoney(facturado);
+      if ($('stat-peso'))         $('stat-peso').textContent         = fmtTon(pesoKg);
+      if ($('stat-co2'))          $('stat-co2').textContent          = fmtTon(co2Kg);
+    } catch (e) {
+      console.warn('Stats transportador:', e);
     }
   }
 
@@ -2100,8 +2180,9 @@
   // Exponemos la promise para que activarSesion() pueda encadenar el deep-link
   // recién cuando tanto los viajes como misOfertas estén listos.
   window.__viajesReady = cargarViajes().then(() => {
-    // Actualizar hero counter
-    document.getElementById('hero-count').textContent = viajesDisp.length;
+    // Actualizar hero counter (solo si existe — se removió en el rediseño portal)
+    const hc = document.getElementById('hero-count');
+    if (hc) hc.textContent = viajesDisp.length;
     // Inicializar mapa despues de que Leaflet cargue
     if (typeof initMapaTransportador === 'function') {
       setTimeout(initMapaTransportador, 300);

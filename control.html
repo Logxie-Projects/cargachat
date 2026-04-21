@@ -2518,7 +2518,7 @@
                   <div style="color:var(--gray-600)">${i.fecha ? fmtFechaHora(i.fecha) : '—'}</div>
                   ${i.novedad ? `<div style="margin-top:4px"><strong>Novedad:</strong> ${i.novedad}</div>` : ''}
                   ${i.comentario ? `<div style="margin-top:4px;white-space:pre-wrap">${i.comentario}</div>` : ''}
-                  ${i.foto_url ? `<div style="margin-top:6px"><a href="${i.foto_url}" target="_blank" style="color:var(--blue);font-size:11px">📷 Ver foto cumplido</a></div>` : ''}
+                  ${i.foto_url ? `<div style="margin-top:6px"><a href="${resolverFotoUrl(i.foto_url)}" target="_blank" style="color:var(--blue);font-size:11px">📷 Ver foto cumplido</a> <span style="color:var(--gray-400);font-size:10px">(abre Drive)</span></div>` : ''}
                 </div>
               </div>
             `).join('')}
@@ -2532,6 +2532,26 @@
         `;
       })()}
     `;
+  }
+
+  // Carpetas públicas de Drive donde AppSheet guarda los archivos subidos
+  // (FOTO CUMPLIDO, Soportes). Se usa para construir URLs de búsqueda
+  // cuando el Sheet solo tiene el filename relativo.
+  const DRIVE_FOLDERS_FOTOS = [
+    '192ritQ72WChqjWwOvO2TTlOvqmbwa8uq',
+    '17QmlbCaMhlbgYO88G9mLDQ9R4rv1Gm3Y',
+  ];
+
+  // Convierte 'Datos desde Unificada_Images/3610.FOTO CUMPLIDO.151444.jpg'
+  // → URL clickeable que abre el buscador de Drive con ese filename.
+  // Si ya es http(s) la deja igual.
+  function resolverFotoUrl(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    if (/^https?:\/\//i.test(s)) return s;
+    const filename = s.split('/').pop();
+    return `https://drive.google.com/drive/search?q=${encodeURIComponent(filename)}`;
   }
 
   async function reintentarEntrega(pedidoId) {

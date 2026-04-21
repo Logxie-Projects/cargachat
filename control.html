@@ -551,6 +551,7 @@
       </div>
 
       <div class="filtros" style="margin-bottom:1rem">
+        <input class="filtro-input" id="flt-sub-pedido" placeholder="🔍 Pedido (ref, RT-xxxx, o substring)…" style="min-width:260px" oninput="renderSubasta()">
         <button class="filtro-btn" id="btn-incluir-migrados" onclick="toggleIncluirMigrados()"
           title="Incluye los 1281 viajes migrados desde Google Sheet ASIGNADOS (pre-Netfleet)">
           🗂 Incluir migrados del Sheet ASIGNADOS
@@ -574,6 +575,7 @@
 
       <div class="filtros">
         <input class="filtro-input" id="flt-act-prov" placeholder="Proveedor…" oninput="renderActivos()">
+        <input class="filtro-input" id="flt-act-pedido" placeholder="🔍 Pedido…" style="min-width:200px" oninput="renderActivos()">
         <label style="font-size:11px;color:var(--gray-400);font-weight:600">cargue antes de:</label>
         <input class="filtro-input" id="flt-act-cargue-antes" type="date" style="min-width:140px" oninput="renderActivos()">
         <button class="filtro-btn" onclick="presetActCargue(30)">30d</button>
@@ -607,6 +609,7 @@
       <div class="filtros">
         <input class="filtro-input" id="flt-hist-ref" placeholder="Ref viaje…" oninput="renderHistorial()">
         <input class="filtro-input" id="flt-hist-prov" placeholder="Proveedor…" oninput="renderHistorial()">
+        <input class="filtro-input" id="flt-hist-pedido" placeholder="🔍 Pedido…" style="min-width:200px" oninput="renderHistorial()">
         <button class="filtro-btn active" data-hist="todos" onclick="setFiltroHistorial('todos',this)">Todos</button>
         <button class="filtro-btn" data-hist="finalizado" onclick="setFiltroHistorial('finalizado',this)">Finalizados</button>
         <button class="filtro-btn" data-hist="cancelado" onclick="setFiltroHistorial('cancelado',this)">Cancelados</button>
@@ -1603,7 +1606,10 @@
   // ═════════════ TAB SUBASTA ═════════════
   function renderSubasta() {
     // Solo viajes de Netfleet o ya publicados (filtra históricos migrados del Sheet)
-    const pendientes = state.viajes.filter(esViajeSubasta);
+    let pendientes = state.viajes.filter(esViajeSubasta);
+    const fPedido = document.getElementById('flt-sub-pedido')?.value || '';
+    const idsOk = viajesIdsByPedido(fPedido);
+    if (idsOk) pendientes = pendientes.filter(v => idsOk.has(v.id));
     // Ordenar: borradores primero (sin publicar → acción requerida), luego publicados por fecha
     pendientes.sort((a, b) => {
       const aBorrador = !a.publicado_at, bBorrador = !b.publicado_at;
@@ -2038,9 +2044,35 @@
   }
 
   // ═════════════ TAB ACTIVOS ═════════════
+  // Devuelve Set<viaje_id> cuyos pedidos (linkeados) O cuyo consecutivos/PEDIDOS_INCLUIDOS
+  // contienen el término. Catchea tanto viajes con pedidos vinculados como viajes cuyo
+  // campo de refs tiene el número como substring sin linker aún.
+  function viajesIdsByPedido(term) {
+    if (!term) return null;  // sin filtro
+    const t = term.trim().toLowerCase();
+    if (!t) return null;
+    const ids = new Set();
+    for (const p of state.pedidos) {
+      if (!p.viaje_id) continue;
+      if ((p.pedido_ref || '').toLowerCase().includes(t)
+       || (p.id_consecutivo || '').toLowerCase().includes(t)) {
+        ids.add(p.viaje_id);
+      }
+    }
+    for (const v of state.viajes) {
+      const cons = (v.consecutivos || '').toLowerCase();
+      let pi = '';
+      try { pi = (JSON.parse(v.raw_payload || '{}').PEDIDOS_INCLUIDOS || '').toLowerCase(); } catch {}
+      if (cons.includes(t) || pi.includes(t)) ids.add(v.id);
+    }
+    return ids;
+  }
+
   function activosFiltrados() {
     const fProv = (document.getElementById('flt-act-prov')?.value || '').toLowerCase();
     const fAntes = document.getElementById('flt-act-cargue-antes')?.value || '';
+    const fPedido = document.getElementById('flt-act-pedido')?.value || '';
+    const idsOk = viajesIdsByPedido(fPedido);
     return state.viajes
       .filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado))
       .filter(v => {
@@ -2049,6 +2081,7 @@
           const fc = v.fecha_cargue.substring(0, 10);
           if (fc >= fAntes) return false;
         }
+        if (idsOk && !idsOk.has(v.id)) return false;
         return true;
       });
   }
@@ -2147,8 +2180,11 @@
 
     const fRef = (document.getElementById('flt-hist-ref')?.value || '').toLowerCase();
     const fProv = (document.getElementById('flt-hist-prov')?.value || '').toLowerCase();
+    const fPedido = document.getElementById('flt-hist-pedido')?.value || '';
+    const idsOk = viajesIdsByPedido(fPedido);
     if (fRef) hist = hist.filter(v => (v.viaje_ref || '').toLowerCase().includes(fRef));
     if (fProv) hist = hist.filter(v => (v.proveedor || '').toLowerCase().includes(fProv));
+    if (idsOk) hist = hist.filter(v => idsOk.has(v.id));
 
     const lista = document.getElementById('historial-lista');
     if (!hist.length) {

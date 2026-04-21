@@ -1179,6 +1179,17 @@
       renderSubasta();
       renderActivos();
       renderHistorial();
+
+      // Resolver cumplidos (filename Drive → URL directa) en background.
+      // Primero se renderiza con Drive search legacy; cuando termine el
+      // lookup, re-render de Activos e Historial para que los links
+      // apunten al archivo directo.
+      resolverCumplidosAsync(state.intentos).then(n => {
+        if (n > 0) {
+          renderActivos();
+          renderHistorial();
+        }
+      });
     } catch (e) {
       console.error(e);
       toast('Error cargando: ' + e.message, 'error');
@@ -2825,17 +2836,66 @@
     '192ritQ72WChqjWwOvO2TTlOvqmbwa8uq',
     '17QmlbCaMhlbgYO88G9mLDQ9R4rv1Gm3Y',
   ];
+  // API key del proyecto Maps (reusa el mismo key; Drive API debe estar habilitada).
+  const GOOGLE_API_KEY_CUMPLIDOS = 'AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
 
-  // Convierte 'Datos desde Unificada_Images/3610.FOTO CUMPLIDO.151444.jpg'
-  // → URL clickeable que abre el buscador de Drive con ese filename.
-  // Si ya es http(s) la deja igual.
+  // Cache filename → URL directa (se pobla async al cargar intentos)
+  const _fileIdCache = new Map();
+
+  // Resolver SÍNCRONO usado por los templates. Primero mira cache; si no
+  // hay, devuelve el Drive search legacy (abre buscador). Después que
+  // resolverCumplidosAsync termina, re-renderiza con URL directa.
   function resolverFotoUrl(raw) {
     if (!raw) return null;
     const s = String(raw).trim();
     if (!s) return null;
     if (/^https?:\/\//i.test(s)) return s;
+    if (_fileIdCache.has(s)) return _fileIdCache.get(s);
     const filename = s.split('/').pop();
     return `https://drive.google.com/drive/search?q=${encodeURIComponent(filename)}`;
+  }
+
+  // Resolver ASINCRÓNICO: para cada intento con foto_url filename (no http),
+  // busca en Drive API el archivo por nombre dentro de las 2 folders
+  // compartidas públicamente y guarda la URL directa en _fileIdCache.
+  // Requiere Drive API habilitada en Cloud Console y el key con Drive permitido.
+  async function resolverCumplidosAsync(intentos) {
+    const filenamesPendientes = new Set();
+    for (const i of intentos || []) {
+      const u = (i.foto_url || '').trim();
+      if (!u) continue;
+      if (/^https?:\/\//i.test(u)) continue;
+      if (_fileIdCache.has(u)) continue;
+      filenamesPendientes.add(u);
+    }
+    if (!filenamesPendientes.size) return 0;
+
+    const folderQuery = DRIVE_FOLDERS_FOTOS.map(f => `'${f}' in parents`).join(' or ');
+    let resueltos = 0;
+    // Paralelo con concurrencia limitada a 6 para no gatillar rate limits.
+    const lista = Array.from(filenamesPendientes);
+    const BATCH = 6;
+    for (let i = 0; i < lista.length; i += BATCH) {
+      const group = lista.slice(i, i + BATCH);
+      await Promise.all(group.map(async fullPath => {
+        try {
+          const filename = fullPath.split('/').pop();
+          // Escape para query Drive API (comillas simples requieren \')
+          const fnEscaped = filename.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          const q = `name = '${fnEscaped}' and (${folderQuery}) and trashed = false`;
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType)&pageSize=5&key=${GOOGLE_API_KEY_CUMPLIDOS}`;
+          const r = await fetch(url);
+          if (!r.ok) return;
+          const data = await r.json();
+          const match = data.files?.[0];
+          if (match?.id) {
+            _fileIdCache.set(fullPath, `https://drive.google.com/file/d/${match.id}/view`);
+            resueltos++;
+          }
+        } catch {}
+      }));
+    }
+    return resueltos;
   }
 
   async function reintentarEntrega(pedidoId) {

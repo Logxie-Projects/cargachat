@@ -2819,6 +2819,12 @@
   const SEGUIMIENTO_COLS = {
     'ID_Inicio':             'id_inicio',
     'ESTADO':                'seguimiento_estado',
+    // Timestamps a nivel viaje (todos los pedidos del mismo viaje comparten valor)
+    'LLEGADA A CARGUE':      'llegada_cargue',
+    'SALIDA DE CARGUE':      'salida_cargue',
+    'LLEGADA A DESCARGUE':   'llegada_descargue',
+    'SALIDA DE DESCARGUE':   'salida_descargue',
+    // Intentos por pedido
     'ENTREGA A CLIENTE':     'intento_1_fecha',
     'NOVEDAD':               'intento_1_novedad',
     'Comentario Novedad':    'intento_1_comentario',
@@ -2830,7 +2836,8 @@
   };
 
   const DATE_KEYS = new Set(['fecha_cargue','fecha_entrega','fecha_consolidacion',
-                             'intento_1_fecha','intento_2_fecha','intento_3_fecha']);
+                             'intento_1_fecha','intento_2_fecha','intento_3_fecha',
+                             'llegada_cargue','salida_cargue','llegada_descargue','salida_descargue']);
   const NUM_KEYS  = new Set(['km_total','flete_total','peso_kg','valor_mercancia','valor_factura',
                              'cantidad_pedidos','contenedores','cajas','bidones','canecas',
                              'unidades_sueltas','flete','standby','candado','escolta','itr','otros']);

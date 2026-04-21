@@ -800,15 +800,13 @@
     const errEl = document.getElementById('login-error');
     errEl.textContent = '';
 
-    const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-      body: JSON.stringify({ email, password: pass })
-    });
-    const data = await resp.json();
-    if (!resp.ok) { errEl.textContent = 'Email o contrasena incorrectos.'; return; }
+    // Login vía sb client — guarda sesión en localStorage del navegador
+    // (antes usábamos fetch directo que NO persistía la sesión — al redirigir
+    // a mi-netfleet.html el gate perdía el token y volvía a transportador)
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = 'Email o contrasena incorrectos.'; return; }
 
-    tokenActual   = data.access_token;
+    tokenActual   = data.session.access_token;
     usuarioActual = data.user;
 
     const perfil = await fetchPerfil(data.user.id);

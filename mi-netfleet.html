@@ -1635,7 +1635,10 @@
       console.warn('Error al cargar viajes:', e);
       viajesDisp = [];
     }
-    document.getElementById('stat-disponibles').textContent = viajesDisp.length;
+    // stat-disponibles fue removido en el rediseño del portal (ahora hay
+    // stat-viajes-total que mide viajes asignados, no disponibles).
+    const elDisp = document.getElementById('stat-disponibles');
+    if (elDisp) elDisp.textContent = viajesDisp.length;
     renderViajes();
   }
 
@@ -1697,8 +1700,11 @@
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` }
     });
     misOfertas = await r.json() || [];
-    document.getElementById('stat-mis-activas').textContent = misOfertas.filter(o => o.estado === 'activa').length;
-    document.getElementById('stat-ganadas').textContent     = misOfertas.filter(o => o.estado === 'aceptada').length;
+    // stat-mis-activas y stat-ganadas fueron removidos en el rediseño del portal.
+    const elAct = document.getElementById('stat-mis-activas');
+    if (elAct) elAct.textContent = misOfertas.filter(o => o.estado === 'activa').length;
+    const elGan = document.getElementById('stat-ganadas');
+    if (elGan) elGan.textContent = misOfertas.filter(o => o.estado === 'aceptada').length;
   }
 
   function renderMisOfertas() {

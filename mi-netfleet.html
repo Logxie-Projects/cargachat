@@ -71,6 +71,10 @@
     .tabs-nav { display: flex; gap: 4px; margin-bottom: 1.75rem; background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 4px; width: fit-content; }
     .tab-btn  { padding: 8px 20px; border-radius: 9px; border: none; background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--gray-400); transition: all .2s; position: relative; }
     .tab-btn.active { background: var(--navy); color: white; }
+    .tab-count { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:var(--gray-100); font-size:10px; font-weight:700; color:var(--gray-600); }
+    .tab-btn.active .tab-count { background:rgba(255,255,255,0.2); color:white; }
+    .btn-mv { padding:8px 14px; border-radius:8px; border:1px solid var(--navy); background:var(--navy); color:white; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; }
+    .btn-mv:hover { background:white; color:var(--navy); }
     .tab-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; background: var(--orange); border-radius: 50%; display: none; }
     .tab-dot.show { display: block; }
     .tab-section { display: none; }
@@ -386,12 +390,14 @@
       </div>
     </div>
 
-    <!-- Tabs (solo con login) -->
-    <div class="tabs-nav" id="tabs-nav" style="display:none">
-      <button class="tab-btn active" onclick="cambiarTab('viajes', this)">Viajes disponibles</button>
-      <button class="tab-btn" onclick="cambiarTab('ofertas', this)">Mis ofertas</button>
+    <!-- Tabs (siempre visibles en mi-netfleet — ya está logueado y aprobado) -->
+    <div class="tabs-nav" id="tabs-nav">
+      <button class="tab-btn active" onclick="cambiarTab('viajes', this)">🤝 Ofertar</button>
+      <button class="tab-btn" onclick="cambiarTab('misviajes', this)">🚚 Mis viajes <span class="tab-count" id="count-misviajes">0</span></button>
+      <button class="tab-btn" onclick="cambiarTab('facturar', this)">💰 Facturar <span class="tab-count" id="count-facturar">0</span></button>
+      <button class="tab-btn" onclick="cambiarTab('ofertas', this)">📋 Mis ofertas</button>
       <button class="tab-btn" onclick="cambiarTab('documentos', this)">
-        Documentos
+        📄 Documentos
         <span class="tab-dot" id="dot-documentos"></span>
       </button>
     </div>
@@ -558,6 +564,26 @@
         <h3>Listo para llenar tu flota?</h3>
         <p>Registrate gratis y empieza a recibir carga hoy</p>
         <button onclick="abrirModalAuth('registro')" class="btn-cta-final">Crear cuenta gratis &rarr;</button>
+      </div>
+    </div>
+
+    <!-- ══ TAB MIS VIAJES (confirmado/en_ruta/entregado asignados a mi empresa) ══ -->
+    <div class="tab-section" id="tab-misviajes">
+      <div style="padding:1rem 0;color:var(--gray-600);font-size:13px">
+        Viajes donde el proveedor sos <strong id="mv-empresa-label">tu empresa</strong>. Actualizá el estado conforme avanza el viaje: cargué → salí a ruta → llegué al destino → entregué.
+      </div>
+      <div id="misviajes-lista">
+        <div class="loading-msg">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ══ TAB FACTURAR (entregados/finalizados sin factura) ══ -->
+    <div class="tab-section" id="tab-facturar">
+      <div style="padding:1rem 0;color:var(--gray-600);font-size:13px">
+        Viajes ya entregados listos para facturar. Subí el PDF de tu factura emitida en tu sistema para que quede registrada.
+      </div>
+      <div id="facturar-lista">
+        <div class="loading-msg">Cargando...</div>
       </div>
     </div>
 
@@ -957,6 +983,169 @@
     document.getElementById('tab-' + nombre).classList.add('active');
     if (nombre === 'documentos') cargarDocumentos();
     if (nombre === 'ofertas')    renderMisOfertas();
+    if (nombre === 'misviajes')  cargarMisViajes();
+    if (nombre === 'facturar')   cargarParaFacturar();
+  }
+
+  // ═════════════ MIS VIAJES (confirmado/en_ruta/entregado de mi empresa) ═════════════
+  let misViajes = [];
+
+  async function cargarMisViajes() {
+    if (!perfilActual?.empresa) return;
+    const lbl = document.getElementById('mv-empresa-label');
+    if (lbl) lbl.textContent = perfilActual.empresa;
+    try {
+      const cols = 'id,viaje_ref,origen,destino,km_total,flete_total,peso_kg,valor_mercancia,fecha_cargue,cantidad_pedidos,zona,empresa,estado,proveedor,fuente,publicado_at,llegada_cargue,salida_cargue,llegada_descargue,salida_descargue,adjudicado_at';
+      // Match por proveedor ILIKE mi empresa (Sheet-source) OR transportadora_id = mia (Netfleet-native)
+      const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
+                + `&estado=in.(confirmado,en_ruta,entregado)`
+                + `&proveedor=ilike.${encodeURIComponent('%' + perfilActual.empresa + '%')}`
+                + `&order=fecha_cargue.desc.nullslast&limit=200`;
+      const r = await fetch(url, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } });
+      misViajes = r.ok ? await r.json() : [];
+    } catch (e) {
+      console.error(e);
+      misViajes = [];
+    }
+    const cnt = document.getElementById('count-misviajes');
+    if (cnt) cnt.textContent = misViajes.length;
+    renderMisViajes();
+  }
+
+  function renderMisViajes() {
+    const el = document.getElementById('misviajes-lista');
+    if (!misViajes.length) {
+      el.innerHTML = '<div class="empty-msg">No tenés viajes asignados. Ofertá en la tab "Ofertar".</div>';
+      return;
+    }
+    el.innerHTML = misViajes.map(v => {
+      const d = v.fecha_cargue ? new Date(v.fecha_cargue).toLocaleDateString('es-CO', {day:'2-digit', month:'short', year:'2-digit', timeZone:'UTC'}) : '—';
+      const destinos = (v.destino || '').split(',').map(x => x.trim()).filter(Boolean);
+      const destRes = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
+      const badgeColor = v.estado === 'entregado' ? '#16a34a' : v.estado === 'en_ruta' ? '#1d4ed8' : '#b45309';
+
+      // Acciones disponibles según estado y timestamps seteados
+      let acciones = [];
+      if (!v.llegada_cargue) acciones.push(`<button class="btn-mv" onclick="accionViaje('${v.id}','llegada_cargue')">🚛 Llegué al origen</button>`);
+      else if (!v.salida_cargue) acciones.push(`<button class="btn-mv" onclick="accionViaje('${v.id}','salida_cargue')">✓ Salí cargado</button>`);
+      else if (!v.llegada_descargue) acciones.push(`<button class="btn-mv" onclick="accionViaje('${v.id}','llegada_descargue')">📍 Llegué al destino</button>`);
+      else if (!v.salida_descargue) acciones.push(`<button class="btn-mv" onclick="accionViaje('${v.id}','salida_descargue')">✓ Descargué</button>`);
+
+      const ts = (label, val) => val ? `<div style="font-size:11px;color:var(--gray-600)">${label}: <strong>${new Date(val).toLocaleString('es-CO', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})}</strong></div>` : '';
+
+      return `
+        <div class="viaje-card" style="padding:1rem 1.25rem;margin-bottom:10px;background:white;border-radius:12px;border:1px solid var(--gray-100)">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:11px;font-family:monospace;color:var(--gray-600);font-weight:700">${v.viaje_ref}</div>
+              <div style="font-weight:700;color:var(--gray-800);margin-top:2px">${v.origen || '—'} → ${destRes}</div>
+              <div style="font-size:12px;color:var(--gray-600);margin-top:2px">📅 ${d} · ${(+v.peso_kg||0).toLocaleString('es-CO')} kg · ${v.cantidad_pedidos||0} pedidos · ${(+v.km_total||0).toLocaleString('es-CO')} km</div>
+            </div>
+            <div style="text-align:right">
+              <div style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase;background:${badgeColor}1a;color:${badgeColor}">${v.estado}</div>
+              <div style="font-size:16px;font-weight:800;color:var(--navy);margin-top:4px">${v.flete_total ? '$'+(+v.flete_total).toLocaleString('es-CO') : '—'}</div>
+              <div style="font-size:10px;color:var(--gray-400);text-transform:uppercase">flete</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px">
+            ${ts('Llegada cargue', v.llegada_cargue)}
+            ${ts('Salida cargue', v.salida_cargue)}
+            ${ts('Llegada descargue', v.llegada_descargue)}
+            ${ts('Salida descargue', v.salida_descargue)}
+          </div>
+          ${acciones.length ? `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${acciones.join('')}</div>` : '<div style="margin-top:10px;font-size:12px;color:var(--green);font-weight:600">✓ Todos los timestamps completos</div>'}
+        </div>`;
+    }).join('');
+  }
+
+  async function accionViaje(viajeId, accion) {
+    const fnMap = {
+      'llegada_cargue':    'fn_marcar_llegada_cargue',
+      'salida_cargue':     'fn_marcar_salida_cargue',
+      'llegada_descargue': 'fn_marcar_llegada_descargue',
+      'salida_descargue':  'fn_marcar_salida_descargue',
+    };
+    const rpc = fnMap[accion];
+    if (!rpc) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpc}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_viaje_id: viajeId })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await cargarMisViajes();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // ═════════════ FACTURAR (entregados/finalizados sin factura) ═════════════
+  let viajesFacturar = [];
+  let misFacturas = [];
+
+  async function cargarParaFacturar() {
+    if (!perfilActual?.empresa) return;
+    try {
+      // Viajes entregados/finalizados de mi empresa
+      const colsV = 'id,viaje_ref,origen,destino,flete_total,peso_kg,fecha_cargue,cantidad_pedidos,estado,proveedor';
+      const urlV = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${colsV}`
+                 + `&estado=in.(entregado,finalizado)`
+                 + `&proveedor=ilike.${encodeURIComponent('%' + perfilActual.empresa + '%')}`
+                 + `&order=fecha_cargue.desc.nullslast&limit=200`;
+      // Mis facturas ya emitidas
+      const urlF = `${SUPABASE_URL}/rest/v1/facturas?select=*&order=fecha_emision.desc&limit=200`;
+      const [rv, rf] = await Promise.all([
+        fetch(urlV, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } }),
+        fetch(urlF, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}` } }),
+      ]);
+      viajesFacturar = rv.ok ? await rv.json() : [];
+      misFacturas    = rf.ok ? await rf.json() : [];
+    } catch (e) {
+      console.error(e);
+    }
+    const sinFact = viajesFacturar.filter(v => !misFacturas.some(f => f.viaje_id === v.id));
+    const cnt = document.getElementById('count-facturar');
+    if (cnt) cnt.textContent = sinFact.length;
+    renderFacturar();
+  }
+
+  function renderFacturar() {
+    const el = document.getElementById('facturar-lista');
+    if (!viajesFacturar.length) {
+      el.innerHTML = '<div class="empty-msg">No hay viajes entregados para facturar.</div>';
+      return;
+    }
+    el.innerHTML = viajesFacturar.map(v => {
+      const fact = misFacturas.find(f => f.viaje_id === v.id);
+      const d = v.fecha_cargue ? new Date(v.fecha_cargue).toLocaleDateString('es-CO', {day:'2-digit', month:'short', year:'2-digit', timeZone:'UTC'}) : '—';
+      const destinos = (v.destino || '').split(',').map(x => x.trim()).filter(Boolean);
+      const destRes = destinos.length > 1 ? `${destinos[0]} +${destinos.length - 1}` : (destinos[0] || '—');
+
+      return `
+        <div class="viaje-card" style="padding:1rem 1.25rem;margin-bottom:10px;background:white;border-radius:12px;border:1px solid var(--gray-100);display:grid;grid-template-columns:1fr 180px 160px;gap:12px;align-items:center">
+          <div>
+            <div style="font-size:11px;font-family:monospace;color:var(--gray-600);font-weight:700">${v.viaje_ref}</div>
+            <div style="font-weight:700;color:var(--gray-800);margin-top:2px">${v.origen || '—'} → ${destRes}</div>
+            <div style="font-size:12px;color:var(--gray-600);margin-top:2px">📅 ${d} · ${(+v.peso_kg||0).toLocaleString('es-CO')} kg · ${v.cantidad_pedidos||0} pedidos</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:800;color:var(--navy)">${v.flete_total ? '$'+(+v.flete_total).toLocaleString('es-CO') : '—'}</div>
+            <div style="font-size:10px;color:var(--gray-400);text-transform:uppercase">flete</div>
+          </div>
+          <div>
+            ${fact
+              ? `<div style="padding:6px 12px;background:#dcfce7;color:#16a34a;border-radius:8px;text-align:center;font-weight:700;font-size:12px">✓ Facturada<br><span style="font-size:10px;font-weight:500">#${fact.numero}</span></div>`
+              : `<button class="btn-mv" onclick="abrirModalFactura('${v.id}', ${v.flete_total||0})" style="width:100%">💰 Subir factura</button>`
+            }
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function abrirModalFactura(viajeId, monto) {
+    // Placeholder — implementado en Paso 3 con upload real
+    alert('Upload de factura: próximo commit (Paso 3). Viaje: ' + viajeId);
   }
 
   // ── VIAJES (desde Google Sheet CSV) ───────────────────────────

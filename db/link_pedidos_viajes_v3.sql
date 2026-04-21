@@ -47,6 +47,8 @@ BEGIN
     -- Normalizar espacios alrededor de dashes: "TI -00001968" → "TI-00001968"
     -- (preserva espacios entre refs distintas: "RM-6070 RM-6071")
     token := regexp_replace(token, '\s*-\s*', '-', 'g');
+    -- Normalizar espacio entre prefijo y número: "RM 67705" → "RM-67705"
+    token := regexp_replace(token, '([A-Z]+)\s+(\d)', '\1-\2', 'g');
     current_prefix := NULL;
 
     -- Extrae TODAS las refs (prefijo-número o número suelto) del token

@@ -105,6 +105,9 @@
     /* ── STATS ── */
     .stats-bar  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
     .stat-card  { background: white; border-radius: 14px; padding: 1rem 1.25rem; border: 1px solid var(--gray-100); }
+    .stat-card.clickable { cursor: pointer; transition: all .15s; }
+    .stat-card.clickable:hover { border-color: var(--blue); background: #eff6ff; }
+    .stat-card.clickable.active { border-color: var(--navy); background: #dbeafe; border-width: 2px; padding: calc(1rem - 1px) calc(1.25rem - 1px); }
     .stat-num   { font-size: 1.75rem; font-weight: 800; color: var(--navy); letter-spacing: -1px; }
     .stat-lbl   { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin-top: 2px; }
 
@@ -623,10 +626,10 @@
     <!-- ═══ TAB: ACTIVOS ═══ -->
     <div class="tab-section" id="tab-activos">
       <div class="stats-bar">
-        <div class="stat-card"><div class="stat-num" id="st-act-conf">—</div><div class="stat-lbl">confirmados</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-act-ruta">—</div><div class="stat-lbl">en ruta</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-act-entr">—</div><div class="stat-lbl">entregados</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-act-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
+        <div class="stat-card clickable" id="sc-act-conf"  onclick="filtrarActivosPorEstado('confirmado')" title="Ver solo confirmados"><div class="stat-num" id="st-act-conf">—</div><div class="stat-lbl">confirmados</div></div>
+        <div class="stat-card clickable" id="sc-act-ruta"  onclick="filtrarActivosPorEstado('en_ruta')" title="Ver solo en ruta"><div class="stat-num" id="st-act-ruta">—</div><div class="stat-lbl">en ruta</div></div>
+        <div class="stat-card clickable" id="sc-act-entr"  onclick="filtrarActivosPorEstado('entregado')" title="Ver solo entregados"><div class="stat-num" id="st-act-entr">—</div><div class="stat-lbl">entregados</div></div>
+        <div class="stat-card clickable" id="sc-act-flete" onclick="filtrarActivosPorEstado(null)" title="Ver todos"><div class="stat-num" id="st-act-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
       </div>
 
       <div class="filtros">
@@ -2351,14 +2354,28 @@
     return ids;
   }
 
+  function filtrarActivosPorEstado(estado) {
+    state.filtroActivosEstado = estado;  // null = todos
+    // Toggle active visual en cards
+    document.querySelectorAll('#tab-activos .stat-card.clickable').forEach(c => c.classList.remove('active'));
+    if (estado === 'confirmado') document.getElementById('sc-act-conf')?.classList.add('active');
+    else if (estado === 'en_ruta') document.getElementById('sc-act-ruta')?.classList.add('active');
+    else if (estado === 'entregado') document.getElementById('sc-act-entr')?.classList.add('active');
+    else document.getElementById('sc-act-flete')?.classList.add('active');
+    state.seleccionadosActivos?.clear();
+    renderActivos();
+  }
+
   function activosFiltrados() {
     const fProv   = (document.getElementById('flt-act-prov')?.value || '').toLowerCase();
     const fDesde  = document.getElementById('flt-act-cargue-desde')?.value || '';
     const fHasta  = document.getElementById('flt-act-cargue-hasta')?.value || '';
     const fPedido = document.getElementById('flt-act-pedido')?.value || '';
+    const fEstado = state.filtroActivosEstado || null;
     const idsOk  = viajesIdsByPedido(fPedido);
     return state.viajes
       .filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado))
+      .filter(v => fEstado ? v.estado === fEstado : true)
       .filter(v => {
         // Proveedor: dropdown = match exacto (case insensitive)
         if (fProv && (v.proveedor || '').toLowerCase() !== fProv) return false;

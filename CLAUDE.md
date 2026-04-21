@@ -68,6 +68,34 @@ LOGXIE CONNECT S.A.S.
 | Google Maps API Key | `AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo` |
 | Screenshotone Access Key | `GXbCQqwCqsYR6A` |
 
+### DATABASE_URL para scripts SQL (db/run_migration.py, db/sync_from_csv.py)
+
+**Pooler** (recomendada — funciona en bash y PowerShell, URL-encoded):
+```
+postgresql://postgres.pzouapqnvllaaqnmnlbs:Bjar1978%2AABC@aws-1-us-east-1.pooler.supabase.com:5432/postgres
+```
+
+**Direct** (backup — sin URL-encoding, PowerShell la tolera):
+```
+postgresql://postgres:Bjar1978*ABC@db.pzouapqnvllaaqnmnlbs.supabase.co:5432/postgres
+```
+
+**Para no pegarla en cada sesión nueva**, corre UNA vez en PowerShell:
+```powershell
+[System.Environment]::SetEnvironmentVariable('DATABASE_URL',
+  'postgresql://postgres.pzouapqnvllaaqnmnlbs:Bjar1978%2AABC@aws-1-us-east-1.pooler.supabase.com:5432/postgres',
+  'User')
+```
+Cerrá y reabrí la terminal — queda persistente en Windows.
+
+**Uso típico** (Git Bash desde Claude Code):
+```bash
+export DATABASE_URL="postgresql://postgres.pzouapqnvllaaqnmnlbs:Bjar1978%2AABC@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
+export PYTHONIOENCODING=utf-8
+PYTHON="$LOCALAPPDATA/Programs/Python/Python313/python.exe"
+"$PYTHON" db/run_migration.py --file db/<archivo>.sql
+```
+
 **Deploy:** `git add archivo && git commit -m "descripción" && git push origin main`
 Cloudflare despliega automáticamente en ~1-2 minutos.
 

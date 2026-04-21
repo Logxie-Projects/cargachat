@@ -125,10 +125,14 @@ DATE_FORMATS = [
     '%Y-%m-%dT%H:%M:%S',    # ISO
     '%Y-%m-%d %H:%M:%S',
     '%Y-%m-%d',
-    '%m/%d/%Y %H:%M:%S',    # US con hora
-    '%m/%d/%Y',             # US sin hora
+    # LATAM primero — el Sheet de Bernardo usa dd/mm/yyyy. Si US va primero,
+    # fechas como "9/4/2026" se parsean como "4 septiembre 2026" (futuro) en vez
+    # de "9 abril 2026". Para pares donde día y mes son ambiguos (ambos ≤12),
+    # LATAM primero evita swap silencioso.
     '%d/%m/%Y %H:%M:%S',    # LATAM con hora
     '%d/%m/%Y',             # LATAM sin hora
+    '%m/%d/%Y %H:%M:%S',    # US con hora (fallback)
+    '%m/%d/%Y',             # US sin hora (fallback)
 ]
 
 DATE_KEYS = ('fecha_cargue','fecha_entrega','fecha_consolidacion')

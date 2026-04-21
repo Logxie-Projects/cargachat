@@ -149,16 +149,27 @@
     }
     .pedidos-table td, .viajes-table td { padding: 11px 14px; font-size: 12px; border-bottom: 1px solid var(--gray-100); }
     /* Modo compacto: para cuando agrupamos por origen→destino en Sin consolidar */
-    .pedidos-table.compact td { padding: 4px 10px; font-size: 12px; line-height: 1.25; }
-    .pedidos-table.compact tr.group-row td { padding: 7px 10px; }
+    .pedidos-table.compact td { padding: 2px 10px; font-size: 12px; line-height: 1.2; vertical-align: middle; white-space: nowrap; }
+    .pedidos-table.compact tr.group-row td { padding: 6px 10px; }
     .pedidos-table.compact .pedido-ref { font-size: 12px; display: inline; }
     .pedidos-table.compact .pedido-cliente { font-size: 11px; display: inline; color: var(--gray-600); margin-left: 6px; }
-    .pedidos-table.compact .pedido-ruta { font-size: 11px; color: var(--gray-600); }
+    .pedidos-table.compact .pedido-ruta { font-size: 11px; color: var(--gray-800); display: inline; }
     .pedidos-table.compact .pedido-prioridad {
       display: inline-block; margin-top: 0; margin-left: 8px;
-      padding: 1px 6px; font-size: 9px;
+      padding: 0 5px; font-size: 9px; line-height: 1.4;
     }
-    .pedidos-table.compact .btn-info { padding: 2px 6px; font-size: 11px; }
+    /* Botones acción más chicos en compact — antes fijaban height de la fila */
+    .pedidos-table.compact .btn-info {
+      width: 18px; height: 18px; font-size: 11px; border-width: 1px;
+    }
+    /* Ensanchar columna de acciones para que 4+ botones quepan en 1 fila */
+    .pedidos-table.compact th:nth-child(9),
+    .pedidos-table.compact td:nth-child(9) {
+      width: auto !important; min-width: 130px; white-space: nowrap;
+    }
+    .pedidos-table.compact td:nth-child(9) {
+      flex-wrap: nowrap !important;
+    }
     /* En compact solo zona se oculta; destino sigue visible (varía dentro del grupo) */
     .pedidos-table.compact th:nth-child(5),
     .pedidos-table.compact td:nth-child(5) { display: none; }

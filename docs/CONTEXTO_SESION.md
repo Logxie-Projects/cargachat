@@ -578,3 +578,44 @@ Los pendientes concretos están en CLAUDE.md sección Pendientes. En orden de im
 2. **Seguimiento Proactivo mails** (1-2 días) → requiere directorio nombre→email Avgust
 3. **Drive API link directo fotos** → habilitar en Cloud Console + resolver filename→fileId
 4. **n8n cron 15min auto-sync** → dejar de depender de clic manual
+
+---
+
+## Sesión 2026-04-21 — CONTINUACIÓN tarde/noche (mi-netfleet panel)
+
+Después de cerrar docs, retomamos con el split transportador/panel:
+
+### Hitos
+- `606956c` split `transportador.html` (landing) / `mi-netfleet.html` (panel). Redirects automáticos.
+- `f7cd103` **Paso 1**: SQL backbone — tabla `facturas`, 6 fn tracking, 2 Storage buckets + policies.
+- `63cdce8` **Paso 2**: mi-netfleet 5 tabs (Ofertar/Mis viajes/Facturar/Mis ofertas/Documentos). Tab Mis viajes funcional con botones tracking.
+- `cf2d3ec` **Paso 3**: uploads end-to-end. Modal cumplido (foto → bucket cumplidos → fn_subir_cumplido). Modal factura (PDF → bucket facturas → fn_crear_factura).
+- `edd4081` docs DATABASE_URL Pooler + Direct + setx permanente.
+
+### Decisiones
+
+- **Nombre del panel**: `mi-netfleet.html` (elegido por el usuario).
+- **Subtipo transportador**: preparado (`perfiles.subtipo_transportador` empresa|independiente) para cuando aparezcan independientes. Hoy todo empresa.
+- **Storage**: `cumplidos` public (cualquiera con URL ve), `facturas` privado (signed URLs).
+- **Deep-linking**: pendiente, próximo Paso.
+
+### Estado al cierre
+
+Las 3 operaciones del transportador funcionan end-to-end:
+1. Ofertar viajes pendientes sin proveedor
+2. Mis viajes con tracking (salida/llegada timestamps) + cumplido foto por pedido
+3. Facturar con upload PDF + crear row en tabla facturas
+
+Trigger en Postgres auto-deriva estado del viaje (salida_cargue → en_ruta; todos pedidos entregados → entregado).
+
+### Para arrancar nueva sesión
+
+Prompt:
+> "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. Seguimos con deep-linking (?viaje_ref=) en mi-netfleet.html + modificar mail AppSheet apuntando a Netfleet."
+
+Backlog en CLAUDE.md Pendientes:
+1. Deep-linking + mail AppSheet → apagar Google Form bidding
+2. Seguimiento Proactivo mails (requiere directorio nombre→email Avgust)
+3. Signed URL viewer para bucket facturas (mientras private)
+4. Drive API link directo fotos cumplido
+5. rastrear.html para clientes (tracking público por pedido_ref)

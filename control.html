@@ -497,6 +497,7 @@
         <button class="filtro-btn" data-est="todos"          onclick="toggleFiltroEstado('todos', this)" title="Toda la base, ignora otros pills de estado">📂 Todos</button>
         <button class="filtro-btn" data-est="nuevo"          onclick="toggleFiltroEstado('nuevo', this)">Nuevos</button>
         <button class="filtro-btn active" data-est="sin_consolidar" onclick="toggleFiltroEstado('sin_consolidar', this)">Sin consolidar</button>
+        <button class="filtro-btn" data-est="por_revisar"    onclick="toggleFiltroEstado('por_revisar', this)" title="Parkeados para revisar después — no aparecen en Sin consolidar (área activa)">🔍 Por revisar</button>
         <button class="filtro-btn" data-est="consolidado"    onclick="toggleFiltroEstado('consolidado', this)">Consolidados</button>
         <button class="filtro-btn" data-est="asignado"       onclick="toggleFiltroEstado('asignado', this)">Asignados</button>
         <button class="filtro-btn" data-est="entregado"      onclick="toggleFiltroEstado('entregado', this)">Entregados</button>
@@ -1410,7 +1411,7 @@
     if (!ids.length) return;
     const nuevo = prompt(
       `Nuevo estado para ${ids.length} pedido${ids.length!==1?'s':''}?\n\n` +
-      'Opciones: sin_consolidar · consolidado · asignado · en_ruta · entregado · entregado_novedad · rechazado · cancelado'
+      'Opciones: sin_consolidar · por_revisar · consolidado · asignado · en_ruta · entregado · entregado_novedad · rechazado · cancelado'
     );
     if (!nuevo || !nuevo.trim()) return;
     const razon = prompt('Razón del cambio de estado (obligatoria):');

@@ -250,19 +250,25 @@ BEGIN
           WHERE id = v_pedido_id AND estado IN ('consolidado','asignado');
       END IF;
 
-      -- Encontrar el max intento_num con timestamp
+      -- Encontrar el max intento_num CON DATOS (fecha O comentario O (num=1 Y (foto O novedad)))
       v_max_ok := 0;
       FOR v_num IN 1..3 LOOP
-        IF (v_row->>('intento_'||v_num||'_fecha')) IS NOT NULL
-           AND trim(v_row->>('intento_'||v_num||'_fecha')) <> ''
+        IF NULLIF(trim(coalesce(v_row->>('intento_'||v_num||'_fecha'), '')), '') IS NOT NULL
+           OR NULLIF(trim(coalesce(v_row->>('intento_'||v_num||'_comentario'), '')), '') IS NOT NULL
+           OR (v_num = 1 AND (v_foto IS NOT NULL
+               OR NULLIF(trim(coalesce(v_row->>'intento_1_novedad', '')), '') IS NOT NULL))
         THEN v_max_ok := v_num;
         END IF;
       END LOOP;
 
-      -- Si no hay timestamps no creamos intentos (el estado ya se actualizó arriba)
+      -- Si el estado es terminal (entregado/rechazado) pero no hay ningún dato de intento,
+      -- crear igual un intento 1 sintético (para registrar el evento sin fecha).
+      IF v_max_ok = 0 AND v_seg_est IN ('ENTREGADO OK','ENTREGADO CON NOVEDAD','RECHAZADO POR CLIENTE')
+      THEN v_max_ok := 1; END IF;
+
       IF v_max_ok = 0 THEN CONTINUE; END IF;
 
-      -- Upsert cada intento que tenga fecha
+      -- Upsert cada intento (fecha puede ser NULL — Sheet a veces no tiene timestamp)
       FOR v_num IN 1..v_max_ok LOOP
         v_fecha  := NULLIF(trim(coalesce(v_row->>('intento_'||v_num||'_fecha'), '')), '')::timestamptz;
         v_coment := NULLIF(trim(coalesce(v_row->>('intento_'||v_num||'_comentario'), '')), '');
@@ -271,9 +277,6 @@ BEGIN
           ELSE NULL
         END;
 
-        -- El intento exitoso es el último (v_max_ok) si el estado lo indica
-        IF v_fecha IS NULL THEN CONTINUE; END IF;
-
         INSERT INTO intentos_entrega (
           pedido_id, intento_num, fecha, exitoso,
           novedad, comentario, foto_url, fuente
@@ -281,11 +284,11 @@ BEGIN
           v_pedido_id, v_num, v_fecha,
           (v_num = v_max_ok AND v_exitoso),
           v_novedad, v_coment,
-          CASE WHEN v_num = v_max_ok AND v_exitoso THEN v_foto ELSE NULL END,
+          CASE WHEN v_num = v_max_ok THEN v_foto ELSE NULL END,
           'sheet'
         )
         ON CONFLICT (pedido_id, intento_num) DO UPDATE
-        SET fecha       = EXCLUDED.fecha,
+        SET fecha       = COALESCE(EXCLUDED.fecha,      intentos_entrega.fecha),
             exitoso     = EXCLUDED.exitoso,
             novedad     = COALESCE(EXCLUDED.novedad,    intentos_entrega.novedad),
             comentario  = COALESCE(EXCLUDED.comentario, intentos_entrega.comentario),

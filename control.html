@@ -446,7 +446,7 @@
         🤝 Por asignar <span class="tab-count" id="count-subasta">0</span>
       </button>
       <button class="subtab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
-        🚛 En ruta / seguimiento <span class="tab-count" id="count-activos">0</span>
+        🚛 Asignados <span class="tab-count" id="count-activos">0</span>
       </button>
       <button class="subtab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
         📚 Archivo (finalizados/cancelados) <span class="tab-count" id="count-historial">0</span>
@@ -597,10 +597,10 @@
     <!-- ═══ TAB: SUBASTA ═══ -->
     <div class="tab-section" id="tab-subasta">
       <div class="stats-bar">
-        <div class="stat-card"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">total consolidados</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">ofertas activas</div></div>
-        <div class="stat-card"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
+        <div class="stat-card clickable" id="sc-sub-total" onclick="filtrarSubastaPor(null)" title="Ver todos"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">total consolidados</div></div>
+        <div class="stat-card clickable" id="sc-sub-borr"  onclick="filtrarSubastaPor('borrador')" title="Solo borradores — falta publicar"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
+        <div class="stat-card clickable" id="sc-sub-ofer"  onclick="filtrarSubastaPor('con_ofertas')" title="Solo con ofertas — listos para adjudicar"><div class="stat-num" id="st-sub-ofertas">—</div><div class="stat-lbl">con ofertas</div></div>
+        <div class="stat-card clickable" id="sc-sub-flete" onclick="filtrarSubastaPor(null)" title="Ver todos"><div class="stat-num" id="st-sub-flete">—</div><div class="stat-lbl">flete total (M)</div></div>
       </div>
       <div class="stats-bar">
         <div class="stat-card"><div class="stat-num" id="st-sub-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
@@ -1853,12 +1853,28 @@
   }
 
   // ═════════════ TAB SUBASTA ═════════════
+  function filtrarSubastaPor(tipo) {
+    state.filtroSubasta = tipo;  // null | 'borrador' | 'con_ofertas'
+    document.querySelectorAll('#tab-subasta .stat-card.clickable').forEach(c => c.classList.remove('active'));
+    if (tipo === 'borrador') document.getElementById('sc-sub-borr')?.classList.add('active');
+    else if (tipo === 'con_ofertas') document.getElementById('sc-sub-ofer')?.classList.add('active');
+    else document.getElementById('sc-sub-total')?.classList.add('active');
+    renderSubasta();
+  }
+
   function renderSubasta() {
     // Solo viajes de Netfleet o ya publicados (filtra históricos migrados del Sheet)
     let pendientes = state.viajes.filter(esViajeSubasta);
     const fPedido = document.getElementById('flt-sub-pedido')?.value || '';
     const idsOk = viajesIdsByPedido(fPedido);
     if (idsOk) pendientes = pendientes.filter(v => idsOk.has(v.id));
+    // Filtro de stats clickeables
+    if (state.filtroSubasta === 'borrador') {
+      pendientes = pendientes.filter(v => !v.publicado_at);
+    } else if (state.filtroSubasta === 'con_ofertas') {
+      const idsConOfertas = new Set(state.ofertas.filter(o => o.estado === 'activa').map(o => o.viaje_id));
+      pendientes = pendientes.filter(v => idsConOfertas.has(v.id));
+    }
     // Ordenar: borradores primero (sin publicar → acción requerida), luego por fecha de cargue desc
     pendientes.sort((a, b) => {
       const aBorrador = !a.publicado_at, bBorrador = !b.publicado_at;
@@ -2230,7 +2246,7 @@
     if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
     try {
       await rpc('fn_reabrir_finalizado', { p_viaje_id: viajeId, p_razon: razon });
-      toast('Cierre deshecho → viaje vuelve a En seguimiento', 'success');
+      toast('Cierre deshecho → viaje vuelve a Asignados', 'success');
       irATab('activos');
       recargarTodo();
     } catch (e) {
@@ -2514,7 +2530,7 @@
 
     const lista = document.getElementById('activos-lista');
     if (!activos.length) {
-      lista.innerHTML = '<div class="empty-msg">No hay viajes activos con estos filtros.</div>';
+      lista.innerHTML = '<div class="empty-msg">No hay viajes asignados con estos filtros.</div>';
       return;
     }
     lista.innerHTML = activos.map(v => renderViajeCard(v, 'activos')).join('');

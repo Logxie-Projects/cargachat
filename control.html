@@ -960,9 +960,9 @@
   function renderDashboard() {
     // KPIs — count real basado en state
     const pedNuevos = state.pedidos.filter(esNuevo).length;
-    // "Listos para consolidar" excluye Especiales (ref no estándar + sin viaje — están en parking lot)
+    // "Listos para consolidar" — incluye Especiales (también son parte del flujo)
     const pedListos = state.pedidos.filter(p =>
-      p.estado === 'sin_consolidar' && p.revisado_at && !esEspecial(p)
+      p.estado === 'sin_consolidar' && p.revisado_at
     ).length;
     const vBorrador = state.viajes.filter(v => v.estado === 'pendiente' && !v.publicado_at && v.fuente === 'netfleet').length;
     const vAsignar = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at).length;
@@ -1183,11 +1183,11 @@
     return p.estado === 'sin_consolidar' && !p.revisado_at;
   }
 
-  // pedido_ref estándar: RM/TI/TIT/SA/RT/OUT/FF seguido de dígitos,
-  // o BL (Bill of Lading para importaciones) seguido de cualquier cosa.
-  // BL. EGLV142600832922 1*40 AVGUST → estándar (importación marítima).
-  // ULTIMA MILLA, DEVOLUCIÓN, RUTA AGROMARK, etc → descriptivos (no estándar).
-  const RE_REF_ESTANDAR = /^(?:(?:RM|TI|TIT|SA|RT|OUT|FF)[-\s]?\d+|BL\b)/i;
+  // pedido_ref estándar: RM/TI/TIT/SA/RT/OUT/FF seguido de dígitos
+  // (permite cualquier cantidad de espacios/dashes entre prefijo y número:
+  // 'TI-2253', 'TI 2253', 'TI -00002253' todos son estándar).
+  // BL (Bill of Lading para importaciones) seguido de cualquier cosa.
+  const RE_REF_ESTANDAR = /^(?:(?:RM|TI|TIT|SA|RT|OUT|FF)[\s-]*\d+|BL\b)/i;
   function esRefNoEstandar(p) {
     const ref = (p.pedido_ref || '').trim();
     if (!ref) return true;
@@ -1210,9 +1210,9 @@
         // Si estoy filtrando sin_consolidar pero el pedido es "nuevo",
         // lo muestro SOLO si el filtro 'nuevo' también está activo — evita dobles
         if (p.estado === 'sin_consolidar' && !p.revisado_at) return false;
-        // Sin consolidar es área de trabajo: excluir refs no estándar sin viaje
-        // (esos viven en el pill ⚠ Especiales)
-        if (p.estado === 'sin_consolidar' && esEspecial(p)) return false;
+        // Nota: Especiales SÍ aparecen en Sin consolidar (son parte del flujo
+        // de trabajo). El pill Especiales es un lente adicional para
+        // identificarlos, no un bucket exclusivo.
         return true;
       }
       return false;

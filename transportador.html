@@ -954,27 +954,41 @@
   // ── VIAJES (desde Google Sheet CSV) ───────────────────────────
   async function cargarViajes() {
     // Fetch desde Supabase viajes_consolidados (single source of truth).
-    // Reemplaza el CSV legacy de VIAJES_LANDING. Incluye tanto viajes
-    // sincronizados del Sheet (RT-TOTAL-xxx) como los consolidados en
-    // Netfleet (NF-xxx). La RLS 'anon_select_publicos' permite el read.
+    //
+    // Filtro "disponibles para ofertar":
+    //   1. estado = 'pendiente' (aún no adjudicado)
+    //   2. proveedor IS NULL (nadie asignado aún)
+    //   3. Si fuente='netfleet' → publicado_at IS NOT NULL (no borradores)
+    //      Si fuente='sheet_asignados' → aparece directo (llegó al sync sin proveedor)
+    //   4. fecha_cargue >= hoy-7d (viajes recientes/futuros)
+    //
+    // Cuando Bernardo adjudica, el viaje pasa a estado=confirmado +
+    // proveedor=X → automáticamente sale de esta vista.
     try {
       const cols = [
         'id','viaje_ref','origen','destino','km_total','flete_total',
         'fecha_cargue','peso_kg','valor_mercancia','cantidad_pedidos',
-        'zona','empresa','estado','proveedor','fuente'
+        'zona','empresa','estado','proveedor','fuente','publicado_at'
       ].join(',');
-      // Solo viajes recientes — 7 días atrás hasta futuro (cargue próximo)
       const minFecha = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
-                + `&estado=in.(pendiente,confirmado)`
+                + `&estado=eq.pendiente`
                 + `&fecha_cargue=gte.${minFecha}`
                 + `&order=fecha_cargue.asc.nullslast`
-                + `&limit=200`;
+                + `&limit=300`;
       const resp = await fetch(url, {
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
       });
       if (!resp.ok) throw new Error(`Fetch ${resp.status}`);
-      const rows = await resp.json();
+      let rows = await resp.json();
+      // Filtros client-side para combinaciones que PostgREST hace complejas
+      rows = rows.filter(v => {
+        // proveedor vacío o null (aún sin adjudicar)
+        if (v.proveedor && String(v.proveedor).trim() !== '') return false;
+        // Si es Netfleet-native, tiene que estar publicado
+        if (v.fuente === 'netfleet' && !v.publicado_at) return false;
+        return true;
+      });
       viajesDisp = rows.map(v => ({
         rt_total:         v.viaje_ref,
         origen:           v.origen,

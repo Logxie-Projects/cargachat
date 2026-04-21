@@ -619,3 +619,32 @@ Backlog en CLAUDE.md Pendientes:
 3. Signed URL viewer para bucket facturas (mientras private)
 4. Drive API link directo fotos cumplido
 5. rastrear.html para clientes (tracking público por pedido_ref)
+
+---
+
+## Sesión 2026-04-21 — CIERRE FINAL (mi-netfleet operativo + bug fixes)
+
+Extensión post-update docs. Testeo end-to-end y 2 bugs encontrados al intentar entrar al panel:
+
+### Commits finales
+- `77ecc7b` **fix crítico login**: `transportador.html` y `mi-netfleet.html` usaban `fetch` directo a `/auth/v1/token` → el token quedaba solo en JS variable, no en localStorage del sb client. Al redirigir a mi-netfleet.html, el gate llamaba `sb.auth.getSession()` → null → redirect de vuelta a transportador (loop). Fix: usar `sb.auth.signInWithPassword()` que persiste la sesión.
+- `0e52ad1` docs: agregado pendiente rediseño `transportador.html` marketing-first con 2 CTAs (Empresa / Independiente) y modal auth diferenciado por `subtipo_transportador`.
+
+### Cuenta de prueba creada (LIVE en prod)
+- Email: `bernardojaristizabal@gmail.com`
+- Password: `123ABC`
+- tipo: `transportador`, estado: `aprobado`, empresa: `LOGISTICA Y SERVICIOS JR S.A.S`
+- Permite ver: 3 ofertar + 11 mis viajes (8 confirmados + 1 en_ruta + 2 entregados) + 2 para facturar
+
+### Bugs corregidos durante testing
+1. **Cloudflare 308 redirect**: `/mi-netfleet.html` → `/mi-netfleet` (sin extension). Funcional, documentado en diagnosis.
+2. **Login no persistía sesión** (el crítico arriba). Fix aplicado.
+
+### Estado final
+- `mi-netfleet.html` funcional end-to-end con cuenta de prueba
+- Los 3 tabs operativos: Ofertar / Mis viajes con tracking + cumplidos / Facturar con upload PDF
+- Bernardo confirmó que entró a mi-netfleet tras el fix
+
+### Próxima sesión — Prompt listo
+
+> "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. El panel mi-netfleet está funcional end-to-end (login + 3 tabs + uploads). Seguimos con: (1) deep-linking ?viaje_ref= en mi-netfleet para que el mail de AppSheet apunte directo al viaje; (2) modificar el Apps Script del mail SOLICITUD DE SERVICIOS para apuntar a Netfleet en vez de Google Form; (3) cuando eso esté probado, apagar el Form. Cuenta test: bernardojaristizabal@gmail.com / 123ABC (transportadora LOGISTICA Y SERVICIOS JR)."

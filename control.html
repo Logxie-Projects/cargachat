@@ -463,6 +463,7 @@
 
       <div class="filtros">
         <label style="font-size:11px;color:var(--gray-400);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">estado:</label>
+        <button class="filtro-btn" data-est="todos"          onclick="toggleFiltroEstado('todos', this)" title="Toda la base, ignora otros pills de estado">📂 Todos</button>
         <button class="filtro-btn" data-est="nuevo"          onclick="toggleFiltroEstado('nuevo', this)">Nuevos</button>
         <button class="filtro-btn active" data-est="sin_consolidar" onclick="toggleFiltroEstado('sin_consolidar', this)">Sin consolidar</button>
         <button class="filtro-btn" data-est="consolidado"    onclick="toggleFiltroEstado('consolidado', this)">Consolidados</button>
@@ -470,6 +471,8 @@
         <button class="filtro-btn" data-est="entregado"      onclick="toggleFiltroEstado('entregado', this)">Entregados</button>
         <button class="filtro-btn" data-est="cancelado"      onclick="toggleFiltroEstado('cancelado', this)">Cancelados</button>
         <button class="filtro-btn" data-est="rechazado"      onclick="toggleFiltroEstado('rechazado', this)">Rechazados</button>
+        <div class="filtros-sep"></div>
+        <button class="filtro-btn" data-est="especial"       onclick="toggleFiltroEstado('especial', this)" title="pedido_ref no estándar (no es RM-/TI-/TIT-): DEVOLUCIÓN, ULTIMA MILLA, BL., etc.">⚠ Especiales</button>
       </div>
       <div class="filtros">
         <input class="filtro-input" id="flt-cliente" placeholder="Cliente…" oninput="renderPedidos()">
@@ -758,6 +761,31 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-pedido-editar')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarEdicion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: ASOCIAR VIAJE ══════════════════════ -->
+<div class="modal-overlay" id="modal-asociar-viaje">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-title">🔗 Asociar pedido a viaje</div>
+    <div class="modal-sub" id="mod-asoc-sub">—</div>
+
+    <div id="mod-asoc-actual" style="display:none;background:#fef3c7;padding:10px 14px;border-radius:8px;margin:0.75rem 0;font-size:13px">
+      <strong>Actualmente vinculado a:</strong> <span id="mod-asoc-actual-ref">—</span>
+      <button class="btn btn-ghost" style="margin-left:12px;color:#dc2626" onclick="desasociarViajeFromModal()">✕ Desasociar</button>
+    </div>
+
+    <label class="modal-label">Buscar viaje (ref, proveedor, origen, destino)</label>
+    <input class="modal-input" id="mod-asoc-search" placeholder="ej: RT-TOTAL-1776, ENTRAPETROL, YUMBO…" oninput="renderAsocViajeList()">
+
+    <div id="mod-asoc-list" style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;margin-top:0.5rem"></div>
+
+    <label class="modal-label" style="margin-top:1rem">Razón / nota (opcional)</label>
+    <input class="modal-input" id="mod-asoc-razon" placeholder="ej: ref descriptiva, lo asocio manual">
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-asociar-viaje')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1120,10 +1148,23 @@
     return p.estado === 'sin_consolidar' && !p.revisado_at;
   }
 
+  // pedido_ref no estándar (descriptivo): DEVOLUCION, ULTIMA MILLA, BL., RUTA, tests, etc.
+  // No matchea ^(RM|TI|TIT)-\d+ o longitud excesiva
+  const RE_REF_ESTANDAR = /^(RM|TI|TIT|SA|RT|OUT|BL|FF)[-\s]?\d+/i;
+  function esEspecial(p) {
+    const ref = (p.pedido_ref || '').trim();
+    if (!ref) return true;  // sin ref = especial
+    if (ref.length > 60) return true;  // descriptivos largos
+    return !RE_REF_ESTANDAR.test(ref);
+  }
+
   function pedidosDelEstadoActual() {
     if (!state.filtroEstados || state.filtroEstados.size === 0) return state.pedidos;
+    // "todos" bypass: muestra TODA la base sin importar otros filtros de estado
+    if (state.filtroEstados.has('todos')) return state.pedidos;
     return state.pedidos.filter(p => {
       if (state.filtroEstados.has('nuevo') && esNuevo(p)) return true;
+      if (state.filtroEstados.has('especial') && esEspecial(p)) return true;
       if (state.filtroEstados.has(p.estado)) {
         // Si estoy filtrando sin_consolidar pero el pedido es "nuevo",
         // lo muestro SOLO si el filtro 'nuevo' también está activo — evita dobles
@@ -1326,6 +1367,101 @@
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
+  // ═════════════ ASOCIAR / DESASOCIAR VIAJE MANUAL ═════════════
+  // Estado interno del modal de asociar
+  let _asocPedidoId = null;
+
+  function abrirAsociarViaje(pedidoId) {
+    const p = getPedido(pedidoId);
+    if (!p) { toast('Pedido no encontrado', 'error'); return; }
+    _asocPedidoId = pedidoId;
+
+    document.getElementById('mod-asoc-sub').innerHTML =
+      `<strong>${p.pedido_ref || '—'}</strong> · ${p.empresa || '—'} · ${p.origen || '—'} → ${p.destino || '—'} · ${fmtNum(p.peso_kg)} kg`;
+
+    // Si ya tiene viaje, mostrar el actual + botón desasociar
+    const v = p.viaje_id ? state.viajes.find(x => x.id === p.viaje_id) : null;
+    document.getElementById('mod-asoc-actual').style.display = v ? 'block' : 'none';
+    document.getElementById('mod-asoc-actual-ref').textContent = v ? `${v.viaje_ref} · ${v.proveedor || 'sin proveedor'} · ${v.origen || '—'} → ${v.destino || '—'}` : '—';
+
+    document.getElementById('mod-asoc-search').value = '';
+    document.getElementById('mod-asoc-razon').value = '';
+    renderAsocViajeList();
+    abrirModal('modal-asociar-viaje');
+  }
+
+  function renderAsocViajeList() {
+    const term = (document.getElementById('mod-asoc-search')?.value || '').trim().toLowerCase();
+    let lista = state.viajes
+      .filter(v => v.estado !== 'cancelado')
+      .slice(0, 9999);
+    if (term) {
+      lista = lista.filter(v => {
+        const hay = [v.viaje_ref, v.proveedor, v.origen, v.destino, v.empresa, v.consecutivos]
+          .map(x => (x || '').toLowerCase()).join(' ');
+        return hay.includes(term);
+      });
+    }
+    lista.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    lista = lista.slice(0, 50);
+    const el = document.getElementById('mod-asoc-list');
+    if (!lista.length) {
+      el.innerHTML = '<div class="empty-msg" style="padding:1rem">Sin resultados.</div>';
+      return;
+    }
+    el.innerHTML = lista.map(v => `
+      <div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px">${v.viaje_ref}</div>
+          <div style="font-size:12px;color:var(--gray-600)">${v.proveedor || '—'} · ${v.origen || '—'} → ${v.destino || '—'} · ${fmtFecha(v.fecha_cargue)}</div>
+        </div>
+        <button class="btn btn-primary" style="font-size:12px;padding:4px 10px" onclick="confirmarAsociacion('${v.id}')">Asociar →</button>
+      </div>
+    `).join('');
+  }
+
+  async function confirmarAsociacion(viajeId) {
+    if (!_asocPedidoId) return;
+    const razon = document.getElementById('mod-asoc-razon').value.trim();
+    try {
+      const res = await rpc('fn_pedido_asociar_viaje', {
+        p_pedido_id: _asocPedidoId,
+        p_viaje_id:  viajeId,
+        p_razon:     razon || null,
+      });
+      toast(`Asociado a ${res.viaje_ref}`, 'success');
+      cerrarModal('modal-asociar-viaje');
+      _asocPedidoId = null;
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function desasociarViajeFromModal() {
+    if (!_asocPedidoId) return;
+    const razon = prompt('Razón para desasociar (obligatoria):');
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      const res = await rpc('fn_pedido_desasociar_viaje', {
+        p_pedido_id: _asocPedidoId,
+        p_razon:     razon,
+      });
+      toast(`Desasociado · estado: ${res.estado}`, 'success');
+      cerrarModal('modal-asociar-viaje');
+      _asocPedidoId = null;
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════ MARCAR REVISADO (Nuevos → Sin consolidar) ═════════════
+  async function marcarRevisado(pedidoId) {
+    try {
+      await rpc('fn_marcar_revisado', { p_pedido_id: pedidoId, p_notas: null });
+      toast('Pasado a Sin consolidar', 'success');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
   // ═════════════ ELIMINAR (bulk, hard delete) ═════════════
   async function bulkEliminar() {
     const ids = [...state.seleccionados];
@@ -1437,10 +1573,12 @@
           <td>${fmtNum(p.peso_kg)} kg</td>
           <td>${fmtFecha(p.fecha_cargue)}</td>
           <td>${fmtCOP(p.valor_mercancia)}</td>
-          <td style="display:flex;gap:4px">
+          <td style="display:flex;gap:4px;flex-wrap:wrap">
             <button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button>
             <button class="btn-info" onclick="abrirModalEditar('${p.id}')" title="Editar">✎</button>
             <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento" style="font-size:11px">⎘</button>
+            <button class="btn-info" onclick="abrirAsociarViaje('${p.id}')" title="${p.viaje_id ? 'Cambiar/desasociar viaje' : 'Asociar a un viaje manualmente'}" style="font-size:11px">${p.viaje_id ? '🔗✓' : '🔗'}</button>
+            ${esN ? `<button class="btn-info" onclick="marcarRevisado('${p.id}')" title="Marcar como revisado → pasa a Sin consolidar" style="font-size:11px;color:#16a34a">✓</button>` : ''}
           </td>
         </tr>`);
       });

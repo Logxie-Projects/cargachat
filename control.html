@@ -3029,6 +3029,21 @@
 
       await syncBatchRun('fn_sync_viajes_batch',  viajesRows,  'Viajes');
       syncLog('');
+
+      // Cleanup viajes fantasma (presentes en BD pero ya no en CSV)
+      syncSub('Limpiando viajes fantasma…');
+      syncLog('▸ Cleanup viajes eliminados del Sheet');
+      try {
+        const refsActuales = viajesRows.map(r => r.viaje_ref).filter(Boolean);
+        const cg = await rpc('fn_viajes_cleanup_ghosts', { refs_actuales: refsActuales });
+        syncLog(`  ✓ ${cg.cancelados} viajes cancelados (eliminados del Sheet)`);
+        if (cg.cancelados > 0 && Array.isArray(cg.viaje_refs)) {
+          cg.viaje_refs.slice(0, 3).forEach(r => syncLog(`    - ${r}`));
+          if (cg.viaje_refs.length > 3) syncLog(`    ... y ${cg.viaje_refs.length - 3} más`);
+        }
+      } catch (e) { syncLog(`  ⚠ cleanup falló: ${e.message}`); }
+      syncLog('');
+
       await syncBatchRun('fn_sync_pedidos_batch', pedidosRows, 'Pedidos');
       syncLog('');
 

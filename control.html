@@ -2168,6 +2168,10 @@
             <div class="hint">Cerrado como finalizado. Si fue un error, podés reabrir el cierre.</div>
             <button class="btn btn-warning" onclick="reabrirCierre('${v.id}')">↩ Deshacer cierre</button>
           ` : ''}
+          ${esHist && v.estado === 'cancelado' ? `
+            <div class="hint">Viaje cancelado. Si se reactivó, podés resucitarlo.</div>
+            <button class="btn btn-warning" onclick="resucitarCancelado('${v.id}')">↩ Resucitar</button>
+          ` : ''}
         </div>
       </div>
     </div>`;
@@ -2186,6 +2190,27 @@
     try {
       await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipo });
       toast(`Publicado (${tipo}) — esperando ofertas`, 'success');
+      recargarTodo();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ───────── RESUCITAR CANCELADO (desde Historial, cancelado → pendiente) ─────────
+  async function resucitarCancelado(viajeId) {
+    const v = state.viajes.find(x => x.id === viajeId);
+    const razon = prompt(
+      `Resucitar ${v ? v.viaje_ref : 'viaje'}?\n\n` +
+      'El viaje vuelve a "Por asignar" como pendiente.\n' +
+      'Los pedidos cancelados vuelven a consolidado.\n\n' +
+      'Razón (obligatoria):'
+    );
+    if (razon === null) return;
+    if (!razon.trim()) { toast('Razón requerida', 'error'); return; }
+    try {
+      await rpc('fn_reabrir_cancelado', { p_viaje_id: viajeId, p_razon: razon });
+      toast('Viaje resucitado → vuelve a Por asignar', 'success');
+      irATab('subasta');
       recargarTodo();
     } catch (e) {
       toast('Error: ' + e.message, 'error');

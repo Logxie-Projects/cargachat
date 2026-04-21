@@ -615,14 +615,18 @@
       </div>
 
       <div class="filtros">
-        <input class="filtro-input" id="flt-act-prov" placeholder="Proveedor…" oninput="renderActivos()">
+        <select class="filtro-input" id="flt-act-prov" onchange="renderActivos()">
+          <option value="">Todos los proveedores</option>
+        </select>
         <input class="filtro-input" id="flt-act-pedido" placeholder="🔍 Pedido…" style="min-width:200px" oninput="renderActivos()">
-        <label style="font-size:11px;color:var(--gray-400);font-weight:600">cargue antes de:</label>
-        <input class="filtro-input" id="flt-act-cargue-antes" type="date" style="min-width:140px" oninput="renderActivos()">
-        <button class="filtro-btn" onclick="presetActCargue(30)">30d</button>
-        <button class="filtro-btn" onclick="presetActCargue(60)">60d</button>
-        <button class="filtro-btn" onclick="presetActCargue(90)">90d</button>
-        <button class="filtro-btn" onclick="presetActCargue(180)">6m</button>
+        <label style="font-size:11px;color:var(--gray-400);font-weight:600">cargue desde:</label>
+        <input class="filtro-input" id="flt-act-cargue-desde" type="date" style="min-width:140px" oninput="renderActivos()">
+        <label style="font-size:11px;color:var(--gray-400);font-weight:600">hasta:</label>
+        <input class="filtro-input" id="flt-act-cargue-hasta" type="date" style="min-width:140px" oninput="renderActivos()">
+        <button class="filtro-btn" onclick="presetActCargue(7)" title="Últimos 7 días">7d</button>
+        <button class="filtro-btn" onclick="presetActCargue(30)" title="Últimos 30 días">30d</button>
+        <button class="filtro-btn" onclick="presetActCargue(90)" title="Últimos 90 días">90d</button>
+        <button class="filtro-btn" onclick="presetActCargue(180)" title="Últimos 6 meses">6m</button>
         <div class="filtros-sep"></div>
         <button class="filtro-btn" onclick="toggleSelectAllActivos()">Sel. todos visibles</button>
         <button class="filtro-btn" onclick="limpiarSeleccionActivos()">Limpiar selección</button>
@@ -1117,6 +1121,7 @@
         `<option value="${t.id}">${t.nombre}</option>`).join('');
 
       updateCounts();
+      poblarFiltroProveedores();
       renderDashboard();
       renderPedidos();
       renderSubasta();
@@ -2321,17 +2326,22 @@
   }
 
   function activosFiltrados() {
-    const fProv = (document.getElementById('flt-act-prov')?.value || '').toLowerCase();
-    const fAntes = document.getElementById('flt-act-cargue-antes')?.value || '';
+    const fProv   = (document.getElementById('flt-act-prov')?.value || '').toLowerCase();
+    const fDesde  = document.getElementById('flt-act-cargue-desde')?.value || '';
+    const fHasta  = document.getElementById('flt-act-cargue-hasta')?.value || '';
     const fPedido = document.getElementById('flt-act-pedido')?.value || '';
-    const idsOk = viajesIdsByPedido(fPedido);
+    const idsOk  = viajesIdsByPedido(fPedido);
     return state.viajes
       .filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado))
       .filter(v => {
-        if (fProv && !((v.proveedor || '').toLowerCase().includes(fProv))) return false;
-        if (fAntes && v.fecha_cargue) {
-          const fc = v.fecha_cargue.substring(0, 10);
-          if (fc >= fAntes) return false;
+        // Proveedor: dropdown = match exacto (case insensitive)
+        if (fProv && (v.proveedor || '').toLowerCase() !== fProv) return false;
+        // Rango fecha_cargue
+        if (fDesde || fHasta) {
+          const fc = (v.fecha_cargue || '').substring(0, 10);
+          if (!fc) return false;  // sin fecha → excluir si hay filtro
+          if (fDesde && fc < fDesde) return false;
+          if (fHasta && fc > fHasta) return false;
         }
         if (idsOk && !idsOk.has(v.id)) return false;
         return true;
@@ -2339,16 +2349,32 @@
   }
 
   function presetActCargue(dias) {
+    // "Últimos N días" = cargue entre (hoy-N) y hoy+30 (para incluir futuros cargues)
     const hoy = new Date();
-    hoy.setDate(hoy.getDate() - dias);
-    document.getElementById('flt-act-cargue-antes').value = hoy.toISOString().substring(0, 10);
+    const desde = new Date(hoy); desde.setDate(desde.getDate() - dias);
+    const hasta = new Date(hoy); hasta.setDate(hasta.getDate() + 30);
+    document.getElementById('flt-act-cargue-desde').value = desde.toISOString().substring(0, 10);
+    document.getElementById('flt-act-cargue-hasta').value = hasta.toISOString().substring(0, 10);
     renderActivos();
   }
 
   function limpiarFiltrosActivos() {
-    const ids = ['flt-act-prov', 'flt-act-cargue-antes'];
+    const ids = ['flt-act-prov', 'flt-act-cargue-desde', 'flt-act-cargue-hasta', 'flt-act-pedido'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     renderActivos();
+  }
+
+  function poblarFiltroProveedores() {
+    const sel = document.getElementById('flt-act-prov');
+    if (!sel) return;
+    const prev = sel.value;
+    const provs = [...new Set(state.viajes
+      .filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado))
+      .map(v => (v.proveedor || '').trim())
+      .filter(Boolean)
+    )].sort((a,b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">Todos los proveedores</option>'
+      + provs.map(p => `<option value="${p.toLowerCase()}" ${prev === p.toLowerCase() ? 'selected' : ''}>${p}</option>`).join('');
   }
 
   function toggleActivo(viajeId) {

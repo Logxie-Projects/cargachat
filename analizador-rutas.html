@@ -349,6 +349,33 @@ const CIUDADES = {
   'san bernardo':[4.1833,-74.4333],'usme':[4.4367,-74.1322],
   'subachoque':[4.9167,-74.2667],'fomeque':[4.4833,-73.9000],'fómeque':[4.4833,-73.9000],
   'ortigal':[3.2798,-76.3449],'tenjo':[4.8714,-74.1436],
+  // Municipios rurales Cundinamarca (añadidos 2026-04-22 — faltaban para scenarios de Bernardo)
+  'choconta':[5.1436,-73.6853],'chocontá':[5.1436,-73.6853],
+  'villapinzon':[5.2167,-73.5833],'villapinzón':[5.2167,-73.5833],
+  'cogua':[5.0611,-73.9794],'sasaima':[4.9667,-74.4333],
+  'susa':[5.4500,-73.8167],'nocaima':[5.0667,-74.3833],
+  'quipile':[4.7458,-74.5311],'cachipay':[4.7333,-74.4333],
+  'la mesa':[4.6333,-74.4667],'sopo':[4.9137,-73.9411],'sopó':[4.9137,-73.9411],
+  'guasca':[4.8683,-73.8767],'ubate':[5.3150,-73.8169],'ubaté':[5.3150,-73.8169],
+  'simijaca':[5.5022,-73.8508],'guatavita':[4.9358,-73.8319],
+  'junin':[4.7889,-73.6667],'junín':[4.7889,-73.6667],
+  'tausa':[5.1972,-73.8903],'pacho':[5.1333,-74.1667],
+  'caqueza':[4.4053,-73.9406],'cáqueza':[4.4053,-73.9406],
+  'une':[4.4028,-73.9922],'choachi':[4.5289,-73.9228],'choachí':[4.5289,-73.9228],
+  'ubaque':[4.4833,-73.9333],'fosca':[4.3411,-73.9403],
+  'nemocon':[5.0711,-73.8778],'nemocón':[5.0711,-73.8778],
+  'lenguazaque':[5.3072,-73.7114],'machetá':[5.0850,-73.6103],'macheta':[5.0850,-73.6103],
+  // Municipios rurales Boyacá
+  'samaca':[5.4925,-73.4856],'samacá':[5.4925,-73.4856],
+  'ventaquemada':[5.3681,-73.5194],
+  'garagoa':[5.0833,-73.3500],'moniquira':[5.8775,-73.5728],'moniquirá':[5.8775,-73.5728],
+  'puerto boyaca':[5.9753,-74.5875],'puerto boyacá':[5.9753,-74.5875],
+  'tenza':[5.0792,-73.4244],'guateque':[5.0025,-73.4711],
+  'ramiriqui':[5.4000,-73.3333],'ramiriquí':[5.4000,-73.3333],
+  'santa rosa de viterbo':[5.8742,-72.9814],'saboya':[5.6975,-73.7633],'saboyá':[5.6975,-73.7633],
+  'otanche':[5.6556,-74.1833],'jenesano':[5.3850,-73.3694],
+  'tibasosa':[5.7447,-72.9983],'nobsa':[5.7689,-72.9397],
+  'ciénega':[5.4111,-73.2889],'cienega':[5.4111,-73.2889],
   'zipaquira':[5.0228,-74.0061],'zipaquirá':[5.0228,-74.0061],
   'facatativa':[4.8142,-74.3597],'facatativá':[4.8142,-74.3597],
   'mosquera':[4.7066,-74.2303],'madrid':[4.7339,-74.2644],
@@ -1339,8 +1366,15 @@ async function runAnalysis(){
     // Always use OSRM /route with our fixed order (nearest-neighbor or user-defined)
     const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
     console.log('[analizador] OSRM request:', osrmStops.length, 'stops');
-    const ctrl=new AbortController(); const tmo=setTimeout(()=>ctrl.abort(), 20000); // 20s timeout
-    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, {signal:ctrl.signal});
+    const ctrl=new AbortController(); const tmo=setTimeout(()=>ctrl.abort(), 45000); // 45s timeout (el público a veces es lento)
+    let r;
+    try{
+      r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, {signal:ctrl.signal});
+    }catch(fe){
+      clearTimeout(tmo);
+      if(fe.name==='AbortError') throw new Error('OSRM tardó >45s (servidor público saturado). Reintentá.');
+      throw fe;
+    }
     clearTimeout(tmo);
     const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
     tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
@@ -1538,8 +1572,14 @@ async function runAnalysis(){
       renderMap(tripData,ordered,'usr');
     }
     
-  }catch(err){alert('Error: '+err.message);console.error(err)}
-  btn.disabled=false;btn.textContent='Calcular ruta sugerida';
+  }catch(err){
+    alert('Error: '+err.message);
+    console.error('[analizador] runAnalysis error:',err);
+  }finally{
+    // Siempre restaurar el botón, incluso si falló el await (abort, etc.)
+    btn.disabled=false;
+    btn.textContent='Calcular ruta sugerida';
+  }
 }
 
 function parseFecha(str){const parts=str.split('/');if(parts.length===3)return new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));return new Date()}

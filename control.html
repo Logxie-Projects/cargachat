@@ -126,6 +126,43 @@
     .tab-section.active { display: block; }
 
     /* Sub-nav (sub-tabs dentro de Viajes) */
+    /* ── PISTAS DE LOGXIA (tira compacta arriba de Pedidos) ── */
+    .pistas-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; background: white; border: 1px solid var(--gray-100); border-radius: 10px; }
+    .pista-chip { font-size: 12px; color: var(--gray-600); padding: 6px 12px; border-radius: 100px; border: 1px solid var(--gray-100); cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .pista-chip:hover { background: var(--gray-50); border-color: var(--gray-400); }
+    .pista-chip strong { color: var(--navy); font-weight: 800; margin: 0 2px; }
+    .pista-chip.hot { background: #fef9c3; border-color: #fde68a; }
+    .pista-chip.hot strong { color: #b45309; }
+    .pista-chip.pista-lis.hot { background: #dcfce7; border-color: #bbf7d0; }
+    .pista-chip.pista-lis.hot strong { color: #15803d; }
+    .pista-chip.pista-nov.hot { background: #fef2f2; border-color: #fecaca; }
+    .pista-chip.pista-nov.hot strong { color: #b91c1c; }
+    .pista-hint { font-size: 10px; color: var(--gray-400); font-style: italic; margin-left: auto; }
+
+    /* ── SELECTOR "Agrupar por" ── */
+    .tabla-header { display: flex; align-items: center; gap: 12px; }
+    .agrup-switch { margin-left: auto; display: flex; align-items: center; gap: 4px; background: var(--gray-50); padding: 3px; border-radius: 10px; border: 1px solid var(--gray-100); }
+    .agrup-lbl { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; padding: 0 8px; }
+    .agrup-btn { padding: 5px 12px; border: none; background: transparent; font-size: 12px; font-weight: 600; color: var(--gray-600); cursor: pointer; border-radius: 7px; font-family: inherit; transition: all .15s; }
+    .agrup-btn.active { background: var(--navy); color: white; }
+    .agrup-btn:not(.active):hover { background: white; color: var(--navy); }
+
+    /* ── SUB-TOTALES POR ESTADO EN GROUP ROW ── */
+    .group-row-inner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .g-subst { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+    .st-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .st-pill.st-nuevo { background: #fef3c7; color: #92400e; }
+    .st-pill.st-listo { background: #dcfce7; color: #166534; }
+    .st-pill.st-asig  { background: #dbeafe; color: #1e40af; }
+    .st-pill.st-ruta  { background: #e0e7ff; color: #4338ca; }
+    .st-pill.st-ent   { background: #d1fae5; color: #065f46; }
+    .st-pill.st-nov   { background: #fee2e2; color: #991b1b; }
+
+    /* ── HINT DE LOGXIA POR GRUPO ── */
+    .grp-hint { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+    .grp-hint.hint-ok   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .grp-hint.hint-wait { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
     /* ── CATÁLOGO (clientes / transportadoras / usuarios) ── */
     .cat-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap; }
     .cat-title { font-size: 18px; font-weight: 800; color: var(--navy); letter-spacing: -0.3px; }
@@ -698,6 +735,11 @@
     <!-- ═══ TAB: PEDIDOS (vista unificada — todos los estados + bulk actions) ═══ -->
     <div class="tab-section" id="tab-pedidos">
 
+      <!-- Pistas de LogxIA — tira compacta, cada chip es clickable y filtra la tabla -->
+      <div class="pistas-bar" id="pistas-logxia">
+        <span class="pista-chip">cargando…</span>
+      </div>
+
       <div class="stats-bar">
         <div class="stat-card"><div class="stat-num" id="st-ped-total">—</div><div class="stat-lbl">pedidos visibles</div></div>
         <div class="stat-card"><div class="stat-num" id="st-ped-kg">—</div><div class="stat-lbl">peso total (kg)</div></div>
@@ -759,8 +801,14 @@
 
       <div class="tabla-wrap">
         <div class="tabla-header">
-          <div class="tabla-title">Pedidos sin consolidar</div>
+          <div class="tabla-title">Pedidos</div>
           <div class="tabla-count" id="tabla-ped-count"></div>
+          <div class="agrup-switch">
+            <label class="agrup-lbl">Agrupar por</label>
+            <button class="agrup-btn active" data-agrup="ruta"    onclick="cambiarAgrupPedidos('ruta')"   title="Agrupa por ruta origen → destino — ideal para detectar consolidaciones">Ruta</button>
+            <button class="agrup-btn"        data-agrup="origen"  onclick="cambiarAgrupPedidos('origen')" title="Agrupa solo por origen">Origen</button>
+            <button class="agrup-btn"        data-agrup="destino" onclick="cambiarAgrupPedidos('destino')" title="Agrupa solo por destino">Destino</button>
+          </div>
         </div>
         <div style="overflow-x:auto; max-height: 70vh; overflow-y: auto">
           <table class="pedidos-table">
@@ -2016,6 +2064,38 @@
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
 
+    // ───── PISTAS DE LOGXIA (tira compacta arriba) ─────
+    // Counts globales (todos los pedidos), no los filtrados.
+    // Para que siempre sepas qué hay por hacer aunque estés filtrando.
+    const pistaEl = document.getElementById('pistas-logxia');
+    if (pistaEl) {
+      const todoPed = state.pedidos || [];
+      const todoInt = state.intentos || [];
+      const cntNuevos = todoPed.filter(esNuevo).length;
+      const cntListos = todoPed.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
+      // Novedad: mismo cálculo del dashboard
+      const fallidos = new Set(todoInt.filter(i => i.exitoso === false).map(i => i.pedido_id));
+      const exitosos = new Set(todoInt.filter(i => i.exitoso === true).map(i => i.pedido_id));
+      const cntNovedad = todoPed.filter(p => {
+        if (p.estado === 'devuelto_bodega') return true;
+        if (p.estado === 'entregado_novedad') return true;
+        if (fallidos.has(p.id) && !exitosos.has(p.id) && p.estado !== 'cancelado') return true;
+        return false;
+      }).length;
+      pistaEl.innerHTML = `
+        <span class="pista-chip pista-rev ${cntNuevos > 0 ? 'hot' : ''}" onclick="irADashboard('pedidos-nuevos')">
+          🟡 <strong>${cntNuevos}</strong> para revisar
+        </span>
+        <span class="pista-chip pista-lis ${cntListos > 0 ? 'hot' : ''}" onclick="irADashboard('pedidos-listos')">
+          🟢 <strong>${cntListos}</strong> listos para consolidar
+        </span>
+        <span class="pista-chip pista-nov ${cntNovedad > 0 ? 'hot' : ''}" onclick="irADashboard('pedidos-novedad')">
+          🔴 <strong>${cntNovedad}</strong> con novedad
+        </span>
+        <span class="pista-hint">clic en una pista = filtra la tabla a ese bucket</span>
+      `;
+    }
+
     // Stats sobre los pedidos EFECTIVAMENTE VISIBLES en la tabla (post-todos los filtros)
     document.getElementById('st-ped-total').textContent = filtrados.length;
     document.getElementById('st-ped-kg').textContent = fmtNum(filtrados.reduce((s,p) => s + (+p.peso_kg||0), 0));
@@ -2030,36 +2110,52 @@
       return;
     }
 
-    // Agrupar siempre por origen. En Sin consolidar mode, además ordena pedidos
-    // dentro del grupo por destino alfa + fecha, para que destinos iguales queden
-    // consecutivos y los patrones de consolidación salten a la vista.
+    // ───── AGRUPACIÓN (nuevo: selector Ruta / Origen / Destino) ─────
+    const modoAgrup = state.agruparPedidosPor || 'ruta'; // 'ruta' | 'origen' | 'destino'
     const sinConMode = state.filtroEstados?.size === 1 && state.filtroEstados.has('sin_consolidar');
     const tablaEl = document.querySelector('.pedidos-table');
     if (tablaEl) tablaEl.classList.toggle('compact', sinConMode);
+
     const grupos = new Map();
+    const keyFor = p => {
+      const o = (p.origen || '(sin origen)').trim();
+      const d = (p.destino || '(sin destino)').trim();
+      if (modoAgrup === 'origen')  return { key: o.toUpperCase(),           label: o,                   origen: o, destino: null };
+      if (modoAgrup === 'destino') return { key: d.toUpperCase(),           label: d,                   origen: null, destino: d };
+      // ruta (default): origen → destino
+      return { key: `${o.toUpperCase()}|${d.toUpperCase()}`, label: `${o} → ${d}`, origen: o, destino: d };
+    };
     filtrados.forEach(p => {
-      const origen = (p.origen || '(sin origen)').trim();
-      const key = origen.toUpperCase();
-      if (!grupos.has(key)) grupos.set(key, { label: origen, pedidos: [] });
-      grupos.get(key).pedidos.push(p);
+      const k = keyFor(p);
+      if (!grupos.has(k.key)) grupos.set(k.key, { label: k.label, origen: k.origen, destino: k.destino, pedidos: [] });
+      grupos.get(k.key).pedidos.push(p);
     });
-    // Orden de pedidos dentro del grupo:
-    //   - sinConMode: destino alfa, luego fecha → filas consecutivas con mismo destino = consolidar
-    //   - otros: solo por fecha asc
+    // Orden interno de pedidos
     grupos.forEach(g => g.pedidos.sort((a, b) => {
-      if (sinConMode) {
+      if (sinConMode && modoAgrup === 'origen') {
+        // En agrupado por origen + filtro Sin consolidar, orden secundario por destino
         const da = (a.destino || '').toUpperCase();
         const db = (b.destino || '').toUpperCase();
         if (da !== db) return da.localeCompare(db);
       }
       return (a.fecha_cargue || '').localeCompare(b.fecha_cargue || '');
     }));
-    // Grupos ordenados: más pedidos primero (más chance consolidar)
-    const gruposOrdenados = [...grupos.entries()].sort((a,b) => b[1].pedidos.length - a[1].pedidos.length);
+
+    // Ordenar grupos: primero los que tienen pedidos "listos" (más valor de consolidar)
+    // y empatar con # total de pedidos. Así los grupos accionables quedan arriba.
+    function pedsListosDelGrupo(pedidos) {
+      return pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
+    }
+    const gruposOrdenados = [...grupos.entries()].sort((a, b) => {
+      const lA = pedsListosDelGrupo(a[1].pedidos);
+      const lB = pedsListosDelGrupo(b[1].pedidos);
+      if (lA !== lB) return lB - lA;
+      return b[1].pedidos.length - a[1].pedidos.length;
+    });
 
     const html = [];
     for (const [key, grupo] of gruposOrdenados) {
-      const { label, pedidos } = grupo;
+      const { label, pedidos, origen, destino } = grupo;
       const kg = pedidos.reduce((s,p) => s + (+p.peso_kg||0), 0);
       const val = pedidos.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
       const fechas = pedidos.map(p => p.fecha_cargue).filter(Boolean).sort();
@@ -2067,6 +2163,36 @@
       const ids = pedidos.map(p => p.id);
       const selectedCount = ids.filter(id => state.seleccionados.has(id)).length;
       const checkState = selectedCount === 0 ? 'unchecked' : selectedCount === pedidos.length ? 'checked' : 'indeterminate';
+
+      // Sub-totales por estado (para la vista de patrón)
+      const st = {
+        listos:   pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length,
+        nuevos:   pedidos.filter(p => esNuevo(p)).length,
+        asignado: pedidos.filter(p => ['consolidado','asignado'].includes(p.estado)).length,
+        enRuta:   pedidos.filter(p => p.estado === 'en_ruta').length,
+        entreg:   pedidos.filter(p => p.estado === 'entregado').length,
+        novedad:  pedidos.filter(p => ['entregado_novedad','devuelto_bodega'].includes(p.estado)).length,
+      };
+      const subTot = [
+        st.nuevos   ? `<span class="st-pill st-nuevo">${st.nuevos} nuevos</span>`       : '',
+        st.listos   ? `<span class="st-pill st-listo">${st.listos} listos</span>`       : '',
+        st.asignado ? `<span class="st-pill st-asig">${st.asignado} asignados</span>`   : '',
+        st.enRuta   ? `<span class="st-pill st-ruta">${st.enRuta} en ruta</span>`       : '',
+        st.entreg   ? `<span class="st-pill st-ent">${st.entreg} entregados</span>`     : '',
+        st.novedad  ? `<span class="st-pill st-nov">${st.novedad} novedad</span>`       : '',
+      ].filter(Boolean).join(' ');
+
+      // Hint de LogxIA por grupo (sugerencia, no ejecuta)
+      let hint = '';
+      if (modoAgrup === 'ruta' || modoAgrup === 'origen') {
+        if (st.listos >= 3 && kg >= 500) {
+          hint = `<span class="grp-hint hint-ok">💡 ${st.listos} listos — buen candidato para consolidar</span>`;
+        } else if (st.listos >= 2) {
+          hint = `<span class="grp-hint hint-ok">💡 ${st.listos} listos — se puede armar viaje</span>`;
+        } else if (st.listos === 1) {
+          hint = `<span class="grp-hint hint-wait">⏳ 1 listo — esperar más para consolidar</span>`;
+        }
+      }
 
       html.push(`
         <tr class="group-row">
@@ -2077,7 +2203,9 @@
                 data-state="${checkState}"
                 onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">
               <div class="g-name">${label}</div>
-              <div class="g-stats"><strong>${pedidos.length}</strong> pedido${pedidos.length!==1?'s':''} · <strong>${fmtNum(kg)} kg</strong> · ${fmtCOP(val)}${rango ? ' · '+rango : ''}</div>
+              <div class="g-stats"><strong>${pedidos.length}</strong> · <strong>${fmtNum(kg)} kg</strong> · ${fmtCOP(val)}${rango ? ' · '+rango : ''}</div>
+              ${subTot ? `<div class="g-subst">${subTot}</div>` : ''}
+              ${hint}
               <button class="g-action" onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">Seleccionar grupo</button>
             </div>
           </td>
@@ -2124,17 +2252,31 @@
     document.querySelectorAll('.g-chk[data-state="indeterminate"]').forEach(chk => chk.indeterminate = true);
   }
 
-  function toggleGrupo(origenKey) {
-    // Matchea el group key de renderPedidos: siempre solo el origen (uppercased, trimmed)
-    const del = pedidosFiltrados().filter(p =>
-      (p.origen || '(sin origen)').trim().toUpperCase() === origenKey
-    );
+  function toggleGrupo(grupoKey) {
+    // Matchea el group key según el modo de agrupación actual (ruta | origen | destino).
+    // En ruta la key es "ORIGEN|DESTINO".
+    const modo = state.agruparPedidosPor || 'ruta';
+    const del = pedidosFiltrados().filter(p => {
+      const o = (p.origen  || '(sin origen)').trim().toUpperCase();
+      const d = (p.destino || '(sin destino)').trim().toUpperCase();
+      if (modo === 'origen')  return o === grupoKey;
+      if (modo === 'destino') return d === grupoKey;
+      return `${o}|${d}` === grupoKey;
+    });
     const todosSeleccionados = del.every(p => state.seleccionados.has(p.id));
     del.forEach(p => {
       if (todosSeleccionados) state.seleccionados.delete(p.id);
       else state.seleccionados.add(p.id);
     });
     actualizarSeleccion();
+    renderPedidos();
+  }
+
+  function cambiarAgrupPedidos(modo) {
+    state.agruparPedidosPor = modo;
+    document.querySelectorAll('.agrup-btn').forEach(b =>
+      b.classList.toggle('active', b.getAttribute('data-agrup') === modo)
+    );
     renderPedidos();
   }
 

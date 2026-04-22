@@ -11,6 +11,69 @@
 ### ✅ Sesión A — COMPLETADA (2026-04-23): Sub-tab 👥 Usuarios en Catálogo
 Ver TL;DR abajo.
 
+---
+
+### 🎯 Sesión C — **Auditoría funcional Pedidos + Viajes (control.html)** — sin estimado, termina cuando ambos tabs queden claros
+
+**Objetivo**: revisar con Bernardo, tab por tab, qué de lo que existe hoy se usa en la operación real, qué falta, y qué es candidato a eliminar. La base del panel creció mucho en los últimos días (pistas LogxIA, agrupar por ruta, sub-totales, hints, Scenarios, bloque tracking, Drive API para cumplidos) — hay que hacer un pase de consolidación antes de seguir construyendo arriba.
+
+**Scope cerrado**: solo tabs `📥 Pedidos` y `🚚 Viajes` de `control.html`. NO tocamos mi-netfleet, NO tocamos Catálogo, NO features nuevos.
+
+**Orden**:
+1. Pedidos primero (tira de pistas · filtros · agrupaciones · sub-totales · hints · bulk actions · columnas · modales).
+2. Cuando Pedidos quede aprobado end-to-end, pasamos a Viajes (Subasta · Activos · Archivo · Scenarios).
+3. No se pasa a código hasta tener la lista de cambios confirmada.
+
+**Criterios de done**:
+- [ ] Tab Pedidos: tabla `✅ funciona como está · 🔧 falta o ajustar · 🗑 candidato eliminar` revisada ítem por ítem con Bernardo
+- [ ] Tab Viajes: misma tabla para Subasta + Activos + Archivo + Scenarios
+- [ ] Commits atómicos con SOLO los cambios confirmados — uno al cerrar Pedidos, otro al cerrar Viajes
+- [ ] Nada eliminado sin confirmación explícita de Bernardo (regla dura de la sesión)
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md (obligatorios).
+Si en algún punto tocamos schema/DB, sumá docs/ARQUITECTURA.md.
+Si surgen dudas de autopilot o reglas LogxIA, leé docs/LOGXIA_JOURNEY.md.
+
+OBJETIVO DE LA SESIÓN: auditoría funcional del panel control
+(netfleet.app/control.html), específicamente tabs Pedidos y Viajes.
+Garantizar que la UI refleja la operación real y sacar lo que sobra.
+
+ORDEN:
+1. 📥 PEDIDOS primero. Revisamos juntos qué está, qué falta, qué sobra.
+2. Después 🚚 VIAJES (Subasta + Activos + Archivo + Scenarios).
+3. No pasamos a código hasta que el tab en curso esté completamente claro.
+
+REGLAS DURAS:
+- NO borrar ningún campo, columna, filtro, función, botón, tile, hint o
+  lógica sin pedir permiso EXPLÍCITO. Si sospechás que algo no se usa,
+  preguntá con evidencia antes de proponer eliminación.
+- Ante duda entre "sobra" vs "se usa rara vez", default = CONSERVAR.
+- Cada cambio con mi OK item por item. No bloques grandes.
+- Si proponés eliminar, mostrame: (1) qué es, (2) dónde se usa hoy, (3)
+  por qué creés que sobra, (4) qué se pierde si se va.
+
+MODO DE TRABAJO:
+- Arranco describiéndote qué veo en pantalla o pasando screenshots.
+- Vos me hacés preguntas para entender el uso real antes de opinar.
+- Vamos armando 3 columnas por tab:
+    ✅ funciona bien como está
+    🔧 falta algo o se debe ajustar
+    🗑 candidato a eliminar (requiere mi OK)
+- Cuando cerremos Pedidos, commit atómico con SOLO los cambios
+  confirmados. Después pasamos a Viajes.
+
+ESTE ES EL ALCANCE — NO se atacan B (Asignar recursos al viaje) ni D
+(LogxIA Fase 1) en esta sesión. Ver "Próximas sesiones" en
+CONTEXTO_OPERATIVO.md para ese orden.
+
+Cuenta test transportadora: bernardojaristizabal@gmail.com / 123ABC
+Cuenta staff: bernardoaristizabal@logxie.com
+```
+
+---
+
 ### 🎯 Sesión siguiente (A-OLD, reemplazada): **Sub-tab 👥 Usuarios en Catálogo** — ~1h 50min
 
 **Objetivo**: Bernardo crea y administra cuentas de transportadoras y staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios (hoy placeholder). Edge Function con `service_role` + UI inline. Cierra el onboarding — a partir de acá el link `netfleet.app/mi-netfleet.html` se puede compartir por WhatsApp con credenciales.

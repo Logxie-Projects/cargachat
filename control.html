@@ -4564,11 +4564,16 @@
       const actions = [];
       if (isBorr) {
         actions.push(`<button class="scen-action ok" onclick="accionScenarioPromover('${s.id}')"><span class="ico">✓</span> Promover a viaje</button>`);
+        actions.push(`<button class="scen-action" onclick="abrirAnalizadorScenario('${s.id}')"><span class="ico">🗺</span> Analizar ruta</button>`);
         actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Descartar</button>`);
       }
       if (isConf) {
         actions.push(`<button class="scen-action primary" onclick="accionScenarioLimpiar('${s.id}')"><span class="ico">🧹</span> Limpiar consumidos</button>`);
+        actions.push(`<button class="scen-action" onclick="abrirAnalizadorScenario('${s.id}')"><span class="ico">🗺</span> Analizar ruta</button>`);
         actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Descartar</button>`);
+      }
+      if (isProm && s.promovido_a_viaje_id) {
+        actions.push(`<button class="scen-action" onclick="abrirAnalizadorViaje('${s.promovido_a_viaje_id}')"><span class="ico">🗺</span> Ver ruta del viaje</button>`);
       }
       if (isInv) {
         actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Archivar</button>`);
@@ -4646,6 +4651,13 @@
       toast('Pedido quitado del scenario', 'success');
       recargarTodo();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  function abrirAnalizadorScenario(scenarioId) {
+    window.open(`analizador-rutas.html?scenario=${encodeURIComponent(scenarioId)}`, '_blank');
+  }
+  function abrirAnalizadorViaje(viajeId) {
+    window.open(`analizador-rutas.html?viaje=${encodeURIComponent(viajeId)}`, '_blank');
   }
 </script>
 </body>

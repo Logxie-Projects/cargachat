@@ -57,6 +57,10 @@ input[type="number"]{font-family:var(--mono)}
 .btn-run:active{transform:scale(.98)}
 .btn-run:disabled{opacity:.3;cursor:not-allowed}
 .trip-meta{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px;padding:6px 8px;background:var(--bg3);border-radius:var(--r);font-size:10px}
+.modo-switch{display:flex;gap:3px;background:var(--bg3);padding:3px;border-radius:6px;border:1px solid var(--border)}
+.modo-btn{flex:1;padding:5px 8px;border:none;background:transparent;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;border-radius:4px;font-family:inherit;transition:all .15s}
+.modo-btn.active{background:var(--cyan);color:var(--bg2)}
+.modo-btn:not(.active):hover{background:var(--bg2);color:var(--text)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
@@ -181,15 +185,25 @@ input[type="number"]{font-family:var(--mono)}
   </div>
   <div class="hdr-r">
     <span id="sheetStatus">Conectando...</span>
-    <button onclick="loadSheet()">Recargar</button>
+    <button onclick="loadFromSupabase()">Recargar</button>
   </div>
 </div>
 <div class="app">
   <!-- LEFT SIDEBAR -->
   <div class="sb">
     <div class="sb-s">
-      <div class="sb-t">Viaje</div>
-      <div class="sb-row"><div class="sb-lbl">Seleccionar viaje</div><select id="tripSelect"><option value="">Cargando...</option></select></div>
+      <div class="sb-t">Fuente de datos</div>
+      <div class="sb-row">
+        <div class="sb-lbl">Modo</div>
+        <div class="modo-switch">
+          <button id="modo-viaje-btn" type="button" class="modo-btn active" onclick="setModoFuente('viaje')">🚚 Viaje</button>
+          <button id="modo-scenario-btn" type="button" class="modo-btn" onclick="setModoFuente('scenario')">🧪 Scenario</button>
+        </div>
+      </div>
+      <div class="sb-row">
+        <div class="sb-lbl" id="trip-selector-lbl">Seleccionar viaje</div>
+        <select id="tripSelect"><option value="">Cargando...</option></select>
+      </div>
       <div class="trip-meta" id="tripMeta" style="display:none">
         <span>Fecha:</span><strong id="tmFecha">—</strong>
         <span>Peso:</span><strong id="tmPeso">—</strong>
@@ -287,6 +301,7 @@ input[type="number"]{font-family:var(--mono)}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="supabase.min.js"></script>
 <script>
 // ================================================================
 // NETFLEET CORE — Diccionario, Geocoding, Pricing (idéntico a index.html)
@@ -515,12 +530,285 @@ function parseDetalle(text){
 }
 
 // ================================================================
+// SUPABASE LOADER — fuente Netfleet (viajes + scenarios)
+// ================================================================
+const SUPA_URL='https://pzouapqnvllaaqnmnlbs.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
+const sbAnal = window.supabase && window.supabase.createClient
+  ? window.supabase.createClient(SUPA_URL, SUPA_KEY)
+  : null;
+let MODO_FUENTE='viaje'; // 'viaje' | 'scenario'
+let PEDIDOS_INDEX=new Map(); // id → pedido row (para adaptador)
+let SCENARIOS_ROWS=[];
+let SCEN_PEDIDOS_ROWS=[];
+let VIAJES_ROWS=[];
+
+function setModoFuente(m){
+  MODO_FUENTE=m;
+  document.getElementById('modo-viaje-btn').classList.toggle('active', m==='viaje');
+  document.getElementById('modo-scenario-btn').classList.toggle('active', m==='scenario');
+  const lbl=document.getElementById('trip-selector-lbl');
+  if(lbl) lbl.textContent = m==='scenario' ? 'Seleccionar scenario' : 'Seleccionar viaje';
+  // Reconstruir TRIPS según modo
+  buildTripsFromCurrentData();
+  populateSelect();
+  // Limpiar selección actual
+  clearDestPanel();
+  document.getElementById('tripMeta').style.display='none';
+}
+
+// Parser best-effort del campo horario (texto libre → v1/v2 desde/hasta).
+// Acepta patrones como "L-V 8:00-17:00", "L-S 7:30 a 15:00", "8-17", "08:00-12:00, 14:00-17:00".
+// Si no logra parsear, devuelve ventana 24h como fallback inocuo.
+function parseHorarioLibre(txt){
+  const out={v1Desde:'08:00',v1Hasta:'17:00',v2Desde:'',v2Hasta:''};
+  if(!txt) return out;
+  const s=String(txt).trim();
+  // Extraer todas las ventanas HH:MM-HH:MM o HH-HH
+  const regexVen=/(\d{1,2})(?::(\d{2}))?\s*(?:a|-|\s-\s|hasta)\s*(\d{1,2})(?::(\d{2}))?/gi;
+  const vents=[];
+  let m; while((m=regexVen.exec(s))!==null){
+    const h1=('0'+m[1]).slice(-2), m1=m[2]||'00';
+    const h2=('0'+m[3]).slice(-2), m2=m[4]||'00';
+    vents.push([`${h1}:${m1}`,`${h2}:${m2}`]);
+  }
+  if(vents.length>=1){out.v1Desde=vents[0][0];out.v1Hasta=vents[0][1];}
+  if(vents.length>=2){out.v2Desde=vents[1][0];out.v2Hasta=vents[1][1];}
+  return out;
+}
+
+// Adaptador: row de pedidos (Supabase) → objeto pedido del analizador
+function pedidoSupabaseAAnalizador(p, meta={}){
+  const hr=parseHorarioLibre(p.horario);
+  // diasAtencion: heurística desde texto — LV default, LS si menciona "sab", LDFS si "dom"/"festivo"
+  const hs=(p.horario||'').toLowerCase();
+  let diasAtencion='LV';
+  if(hs.includes('sab')||hs.includes('sáb')) diasAtencion='LS';
+  if(hs.includes('dom')||hs.includes('fest')||hs.includes('ldfs')) diasAtencion='LDFS';
+  return {
+    viajeId: meta.viajeId||'',
+    numero: meta.numero||0,
+    remision: p.pedido_ref||'',
+    fecha: p.fecha_cargue ? String(p.fecha_cargue).slice(0,10) : '',
+    empresa: p.empresa||'',
+    zona: p.zona||'',
+    origen: p.origen||'',
+    destino: p.destino||'',
+    peso: parseFloat(p.peso_kg)||0,
+    valor: parseFloat(p.valor_mercancia)||0,
+    esDevolucion: /devolucion|devoluc/i.test((p.observaciones||'')+' '+(p.motivo_viaje||'')),
+    diasAtencion,
+    horarioRaw: p.horario||'',
+    v1Desde: hr.v1Desde, v1Hasta: hr.v1Hasta,
+    v2Desde: hr.v2Desde, v2Hasta: hr.v2Hasta,
+    horarioSabado:'',
+    cliente: p.cliente_nombre||'',
+    contacto: p.contacto_nombre||'',
+    telefono: p.contacto_tel||'',
+    direccion: p.direccion||'',
+    notas: p.observaciones||'',
+    llamarAntes: !!p.llamar_antes,
+    viajeEmpresas: meta.viajeEmpresas||'',
+    viajeZonas: meta.viajeZonas||'',
+    viajeFechaCargue: meta.viajeFechaCargue||'',
+    viajePesoTotal: meta.viajePesoTotal||'',
+    viajeValorTotal: meta.viajeValorTotal||'',
+    viajeCantPedidos: meta.viajeCantPedidos||0,
+  };
+}
+
+async function loadFromSupabase(){
+  const st=document.getElementById('sheetStatus');
+  if(!sbAnal){ st.textContent='Supabase SDK no cargó'; st.style.color='var(--danger)'; return; }
+  st.textContent='Conectando a Netfleet…'; st.style.color='';
+  try{
+    const {data:sess} = await sbAnal.auth.getSession();
+    if(!sess?.session){
+      st.innerHTML='Iniciá sesión en <a href="control.html" style="color:var(--cyan)">control.html</a> primero'; st.style.color='var(--danger)'; return;
+    }
+
+    // Viajes consolidados activos (para modo viaje)
+    const {data:viajes,error:eV}=await sbAnal.from('viajes_consolidados')
+      .select('*')
+      .in('estado',['pendiente','confirmado','en_ruta','entregado','finalizado'])
+      .order('fecha_cargue',{ascending:false})
+      .limit(300);
+    if(eV) throw eV;
+    VIAJES_ROWS=viajes||[];
+
+    // Scenarios (para modo scenario)
+    const {data:scen,error:eS}=await sbAnal.from('scenarios_viaje')
+      .select('*')
+      .in('estado',['borrador','conflictivo','promovido'])
+      .order('created_at',{ascending:false})
+      .limit(200);
+    if(eS) throw eS;
+    SCENARIOS_ROWS=scen||[];
+
+    // Pedidos vinculados: (a) pedidos de los viajes, (b) pedidos de los scenarios
+    const viajeIds=(VIAJES_ROWS||[]).map(v=>v.id);
+    const scenIds=(SCENARIOS_ROWS||[]).map(s=>s.id);
+
+    const fetches=[];
+    if(viajeIds.length){
+      fetches.push(
+        sbAnal.from('pedidos').select('*').in('viaje_id',viajeIds).limit(5000)
+          .then(({data,error})=>{if(error)throw error; return data||[];})
+      );
+    }else fetches.push(Promise.resolve([]));
+    if(scenIds.length){
+      fetches.push(
+        sbAnal.from('scenarios_viaje_pedidos').select('*').in('scenario_id',scenIds).limit(5000)
+          .then(({data,error})=>{if(error)throw error; return data||[];})
+      );
+    }else fetches.push(Promise.resolve([]));
+
+    const [pedsViajes, scenPeds] = await Promise.all(fetches);
+    SCEN_PEDIDOS_ROWS=scenPeds;
+
+    // Pedidos de scenarios: fetch por ids si no están ya en pedsViajes
+    const pedIdSet=new Set(pedsViajes.map(p=>p.id));
+    const pedsFaltantes=[...new Set(scenPeds.map(sp=>sp.pedido_id))].filter(id=>!pedIdSet.has(id));
+    let pedsScenariosExtra=[];
+    if(pedsFaltantes.length){
+      const {data,error}=await sbAnal.from('pedidos').select('*').in('id',pedsFaltantes).limit(5000);
+      if(error) throw error;
+      pedsScenariosExtra=data||[];
+    }
+    const allPedidos=[...pedsViajes, ...pedsScenariosExtra];
+    PEDIDOS_INDEX=new Map(allPedidos.map(p=>[p.id,p]));
+
+    // Construir TRIPS según MODO_FUENTE
+    buildTripsFromCurrentData();
+    populateSelect();
+
+    const msg = MODO_FUENTE==='scenario'
+      ? `${SCENARIOS_ROWS.length} scenario${SCENARIOS_ROWS.length!==1?'s':''} · ${allPedidos.length} pedidos en vivo`
+      : `${VIAJES_ROWS.length} viaje${VIAJES_ROWS.length!==1?'s':''} · ${allPedidos.length} pedidos en vivo`;
+    st.textContent=msg; st.style.color='var(--green)';
+
+    // Deep-link: ?scenario=<id> o ?viaje=<id>
+    handleDeepLinkAnalizador();
+  }catch(e){
+    console.error(e);
+    st.textContent='Error: '+(e.message||e);
+    st.style.color='var(--danger)';
+  }
+}
+
+function buildTripsFromCurrentData(){
+  TRIPS=[];
+  ALL_PEDIDOS=[];
+
+  if(MODO_FUENTE==='scenario'){
+    // Un trip por scenario
+    SCENARIOS_ROWS.forEach(sc=>{
+      const pedIds=SCEN_PEDIDOS_ROWS
+        .filter(sp=>sp.scenario_id===sc.id)
+        .sort((a,b)=>(a.orden||999)-(b.orden||999))
+        .map(sp=>sp.pedido_id);
+      const peds=pedIds.map(id=>PEDIDOS_INDEX.get(id)).filter(Boolean);
+      if(!peds.length) return;
+      const pedidos=peds.map((p,i)=>pedidoSupabaseAAnalizador(p,{
+        viajeId:sc.id, numero:i+1,
+        viajeEmpresas:(sc.zonas||[]).join(','),
+        viajeZonas:(sc.zonas||[]).join(','),
+        viajeFechaCargue: sc.created_at ? String(sc.created_at).slice(0,10):'',
+        viajePesoTotal: sc.peso_kg_total, viajeValorTotal: sc.valor_mercancia_total,
+        viajeCantPedidos: sc.cantidad_pedidos||peds.length,
+      }));
+      ALL_PEDIDOS.push(...pedidos);
+      const origenes=[...new Set(pedidos.map(p=>p.origen).filter(Boolean))];
+      const destinos=[...new Set(pedidos.map(p=>p.destino).filter(Boolean))];
+      TRIPS.push({
+        id:sc.id, _sourceType:'scenario', _sourceEstado:sc.estado, _sourceName:sc.nombre,
+        pedidos,
+        origenes, destinos,
+        origenStr:origenes.join(', '), destinoStr:destinos.join(', '),
+        fecha: sc.created_at ? String(sc.created_at).slice(0,10):'',
+        peso: parseFloat(sc.peso_kg_total)||0,
+        valor: parseFloat(sc.valor_mercancia_total)||0,
+        empresa:(sc.zonas||[]).join(', '),
+        zona:(sc.zonas||[]).join(', '),
+        cantPedidos: sc.cantidad_pedidos||pedidos.length,
+        km:0, precio:0,
+      });
+    });
+  }else{
+    // Modo viaje: un trip por viaje_consolidado
+    const pedsPorViaje=new Map();
+    PEDIDOS_INDEX.forEach(p=>{
+      if(!p.viaje_id) return;
+      if(!pedsPorViaje.has(p.viaje_id)) pedsPorViaje.set(p.viaje_id,[]);
+      pedsPorViaje.get(p.viaje_id).push(p);
+    });
+    VIAJES_ROWS.forEach(v=>{
+      const rawPeds=pedsPorViaje.get(v.id)||[];
+      if(!rawPeds.length) return;
+      const pedidos=rawPeds.map((p,i)=>pedidoSupabaseAAnalizador(p,{
+        viajeId:v.id, numero:i+1,
+        viajeEmpresas:v.empresa||'',
+        viajeZonas:v.zona||'',
+        viajeFechaCargue: v.fecha_cargue ? String(v.fecha_cargue).slice(0,10):'',
+        viajePesoTotal: v.peso_kg, viajeValorTotal: v.valor_mercancia,
+        viajeCantPedidos: v.cantidad_pedidos||rawPeds.length,
+      }));
+      ALL_PEDIDOS.push(...pedidos);
+      const origenes=[...new Set(pedidos.map(p=>p.origen).filter(Boolean))];
+      const destinos=[...new Set(pedidos.map(p=>p.destino).filter(Boolean))];
+      TRIPS.push({
+        id:v.id, _sourceType:'viaje', _sourceEstado:v.estado, _sourceName:v.viaje_ref,
+        pedidos,
+        origenes, destinos,
+        origenStr:origenes.join(', '), destinoStr:destinos.join(', '),
+        fecha: v.fecha_cargue ? String(v.fecha_cargue).slice(0,10) : '',
+        peso: parseFloat(v.peso_kg)||0,
+        valor: parseFloat(v.valor_mercancia)||0,
+        empresa:v.empresa||'',
+        zona:v.zona||'',
+        cantPedidos: v.cantidad_pedidos||pedidos.length,
+        km:0, precio:0,
+      });
+    });
+  }
+}
+
+function handleDeepLinkAnalizador(){
+  const qs=new URLSearchParams(location.search);
+  const scenId=qs.get('scenario');
+  const viajeId=qs.get('viaje');
+  const sel=document.getElementById('tripSelect');
+  if(scenId){
+    if(MODO_FUENTE!=='scenario'){ setModoFuente('scenario'); }
+    const idx=TRIPS.findIndex(t=>t.id===scenId);
+    if(idx>=0){ sel.value=idx; sel.onchange && sel.onchange(); }
+  }else if(viajeId){
+    if(MODO_FUENTE!=='viaje'){ setModoFuente('viaje'); }
+    const idx=TRIPS.findIndex(t=>t.id===viajeId);
+    if(idx>=0){ sel.value=idx; sel.onchange && sel.onchange(); }
+  }
+}
+
+// ================================================================
 // UI — Select, Windows, Meta
 // ================================================================
 function populateSelect(){
-  const sel=document.getElementById('tripSelect');sel.innerHTML='<option value="">— Seleccionar viaje —</option>';
-  TRIPS.forEach((t,i)=>{const o=document.createElement('option');
-    o.value=i;o.textContent=`${t.origenes[0]} → ${t.destinos.slice(0,2).join(', ')}${t.destinos.length>2?' +'+String(t.destinos.length-2):''} (${t.cantPedidos} ped, ${fmt(t.peso)}kg)`;sel.appendChild(o)});
+  const sel=document.getElementById('tripSelect');
+  const placeholder = MODO_FUENTE==='scenario' ? '— Seleccionar scenario —' : '— Seleccionar viaje —';
+  sel.innerHTML=`<option value="">${placeholder}</option>`;
+  TRIPS.forEach((t,i)=>{
+    const o=document.createElement('option'); o.value=i;
+    const ruta=`${t.origenes[0]||'?'} → ${t.destinos.slice(0,2).join(', ')||'?'}${t.destinos.length>2?' +'+(t.destinos.length-2):''}`;
+    if(MODO_FUENTE==='scenario' && t._sourceName){
+      const est = t._sourceEstado ? ` [${t._sourceEstado}]` : '';
+      o.textContent=`${t._sourceName}${est} — ${t.cantPedidos} ped · ${fmt(t.peso)}kg`;
+    }else if(t._sourceType==='viaje' && t._sourceName){
+      o.textContent=`${t._sourceName} · ${ruta} (${t.cantPedidos} ped, ${fmt(t.peso)}kg)`;
+    }else{
+      o.textContent=`${ruta} (${t.cantPedidos} ped, ${fmt(t.peso)}kg)`;
+    }
+    sel.appendChild(o);
+  });
   sel.onchange=onTripChange;
 }
 function onTripChange(){
@@ -1616,7 +1904,12 @@ function openCheckRuta(){
 // ================================================================
 // INIT
 // ================================================================
-loadSheet();
+// Fuente default: Supabase (Netfleet). Si ?legacy=1 usa el CSV DETALLE_PEDIDOS como fallback.
+if(new URLSearchParams(location.search).get('legacy')==='1'){
+  loadSheet();
+}else{
+  loadFromSupabase();
+}
 // Force maps to render correctly after layout settles
 setTimeout(()=>{mapSug.invalidateSize();mapUsr.invalidateSize();},300);
 </script>

@@ -617,80 +617,138 @@ function pedidoSupabaseAAnalizador(p, meta={}){
   };
 }
 
+// Helper: fetch `.in('<col>', [ids])` en batches para no exceder el límite
+// de URL de PostgREST (~8KB). Con UUIDs de 36 chars, ~200 ids/batch es seguro.
+async function fetchInBatches(table, selectCols, inCol, ids, batchSize=80){
+  if(!ids || !ids.length) return [];
+  const out=[];
+  for(let i=0;i<ids.length;i+=batchSize){
+    const chunk=ids.slice(i,i+batchSize);
+    const {data,error}=await sbAnal.from(table).select(selectCols).in(inCol,chunk).limit(5000);
+    if(error) throw error;
+    if(data) out.push(...data);
+  }
+  return out;
+}
+
 async function loadFromSupabase(){
   const st=document.getElementById('sheetStatus');
   if(!sbAnal){ st.textContent='Supabase SDK no cargó'; st.style.color='var(--danger)'; return; }
   st.textContent='Conectando a Netfleet…'; st.style.color='';
+  console.log('[analizador] loadFromSupabase iniciado');
+
   try{
     const {data:sess} = await sbAnal.auth.getSession();
     if(!sess?.session){
       st.innerHTML='Iniciá sesión en <a href="control.html" style="color:var(--cyan)">control.html</a> primero'; st.style.color='var(--danger)'; return;
     }
+    console.log('[analizador] sesión OK, user=', sess.session.user?.email);
 
-    // Viajes consolidados activos (para modo viaje)
+    // Deep-link: ?scenario=<id> o ?viaje=<id> → fetch SELECTIVO (solo ese item + sus pedidos)
+    const qs=new URLSearchParams(location.search);
+    const scenIdParam=qs.get('scenario');
+    const viajeIdParam=qs.get('viaje');
+
+    if(scenIdParam){
+      console.log('[analizador] deep-link scenario=', scenIdParam);
+      st.textContent='Cargando scenario…';
+      const {data:sc,error:eSc}=await sbAnal.from('scenarios_viaje').select('*').eq('id',scenIdParam).limit(1);
+      if(eSc) throw eSc;
+      if(!sc?.length){ st.textContent='Scenario no encontrado'; st.style.color='var(--danger)'; return; }
+      SCENARIOS_ROWS=sc;
+      const {data:sp,error:eSp}=await sbAnal.from('scenarios_viaje_pedidos').select('*').eq('scenario_id',scenIdParam);
+      if(eSp) throw eSp;
+      SCEN_PEDIDOS_ROWS=sp||[];
+      const pedIds=[...new Set((SCEN_PEDIDOS_ROWS||[]).map(x=>x.pedido_id))];
+      const peds=await fetchInBatches('pedidos','*','id',pedIds);
+      PEDIDOS_INDEX=new Map(peds.map(p=>[p.id,p]));
+      VIAJES_ROWS=[];
+      // También cargamos TODOS los scenarios activos en background para que el toggle funcione
+      sbAnal.from('scenarios_viaje').select('*').in('estado',['borrador','conflictivo','promovido']).order('created_at',{ascending:false}).limit(100)
+        .then(({data})=>{
+          if(data && data.length){ SCENARIOS_ROWS=data; if(MODO_FUENTE==='scenario'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); } }
+        }).catch(e=>console.warn('[analizador] fetch scenarios extra falló:',e));
+
+      setModoFuente('scenario');  // esto llama buildTrips + populateSelect
+      st.textContent=`Scenario "${sc[0].nombre}" · ${peds.length} pedidos`; st.style.color='var(--green)';
+      handleDeepLinkAnalizador();
+      return;
+    }
+
+    if(viajeIdParam){
+      console.log('[analizador] deep-link viaje=', viajeIdParam);
+      st.textContent='Cargando viaje…';
+      const {data:v,error:eV}=await sbAnal.from('viajes_consolidados').select('*').eq('id',viajeIdParam).limit(1);
+      if(eV) throw eV;
+      if(!v?.length){ st.textContent='Viaje no encontrado'; st.style.color='var(--danger)'; return; }
+      VIAJES_ROWS=v;
+      const {data:peds,error:eP}=await sbAnal.from('pedidos').select('*').eq('viaje_id',viajeIdParam).limit(500);
+      if(eP) throw eP;
+      PEDIDOS_INDEX=new Map((peds||[]).map(p=>[p.id,p]));
+      SCENARIOS_ROWS=[]; SCEN_PEDIDOS_ROWS=[];
+      // Background: los 50 viajes recientes para el toggle
+      sbAnal.from('viajes_consolidados').select('*').in('estado',['pendiente','confirmado','en_ruta','entregado']).order('fecha_cargue',{ascending:false}).limit(50)
+        .then(({data})=>{
+          if(data && data.length){
+            // merge sin duplicar
+            const ids=new Set(VIAJES_ROWS.map(x=>x.id));
+            VIAJES_ROWS=[...VIAJES_ROWS, ...data.filter(x=>!ids.has(x.id))];
+            if(MODO_FUENTE==='viaje'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); }
+          }
+        }).catch(e=>console.warn('[analizador] fetch viajes extra falló:',e));
+
+      buildTripsFromCurrentData();
+      populateSelect();
+      st.textContent=`Viaje ${v[0].viaje_ref} · ${(peds||[]).length} pedidos`; st.style.color='var(--green)';
+      handleDeepLinkAnalizador();
+      return;
+    }
+
+    // Sin deep-link: fetch SCOPED (50 viajes recientes activos + 50 scenarios)
+    console.log('[analizador] sin deep-link, fetch scoped recientes');
+    st.textContent='Cargando recientes…';
     const {data:viajes,error:eV}=await sbAnal.from('viajes_consolidados')
       .select('*')
-      .in('estado',['pendiente','confirmado','en_ruta','entregado','finalizado'])
-      .order('fecha_cargue',{ascending:false})
-      .limit(300);
+      .in('estado',['pendiente','confirmado','en_ruta','entregado'])
+      .order('fecha_cargue',{ascending:false,nullsFirst:false})
+      .limit(50);
     if(eV) throw eV;
     VIAJES_ROWS=viajes||[];
 
-    // Scenarios (para modo scenario)
     const {data:scen,error:eS}=await sbAnal.from('scenarios_viaje')
       .select('*')
       .in('estado',['borrador','conflictivo','promovido'])
       .order('created_at',{ascending:false})
-      .limit(200);
+      .limit(50);
     if(eS) throw eS;
     SCENARIOS_ROWS=scen||[];
 
-    // Pedidos vinculados: (a) pedidos de los viajes, (b) pedidos de los scenarios
-    const viajeIds=(VIAJES_ROWS||[]).map(v=>v.id);
-    const scenIds=(SCENARIOS_ROWS||[]).map(s=>s.id);
-
-    const fetches=[];
-    if(viajeIds.length){
-      fetches.push(
-        sbAnal.from('pedidos').select('*').in('viaje_id',viajeIds).limit(5000)
-          .then(({data,error})=>{if(error)throw error; return data||[];})
-      );
-    }else fetches.push(Promise.resolve([]));
-    if(scenIds.length){
-      fetches.push(
-        sbAnal.from('scenarios_viaje_pedidos').select('*').in('scenario_id',scenIds).limit(5000)
-          .then(({data,error})=>{if(error)throw error; return data||[];})
-      );
-    }else fetches.push(Promise.resolve([]));
-
-    const [pedsViajes, scenPeds] = await Promise.all(fetches);
+    // Batches para .in() con los ids
+    const viajeIds=VIAJES_ROWS.map(v=>v.id);
+    const scenIds=SCENARIOS_ROWS.map(s=>s.id);
+    const [pedsViajes, scenPeds] = await Promise.all([
+      fetchInBatches('pedidos','*','viaje_id',viajeIds),
+      fetchInBatches('scenarios_viaje_pedidos','*','scenario_id',scenIds),
+    ]);
     SCEN_PEDIDOS_ROWS=scenPeds;
-
-    // Pedidos de scenarios: fetch por ids si no están ya en pedsViajes
     const pedIdSet=new Set(pedsViajes.map(p=>p.id));
     const pedsFaltantes=[...new Set(scenPeds.map(sp=>sp.pedido_id))].filter(id=>!pedIdSet.has(id));
-    let pedsScenariosExtra=[];
-    if(pedsFaltantes.length){
-      const {data,error}=await sbAnal.from('pedidos').select('*').in('id',pedsFaltantes).limit(5000);
-      if(error) throw error;
-      pedsScenariosExtra=data||[];
-    }
+    const pedsScenariosExtra=pedsFaltantes.length ? await fetchInBatches('pedidos','*','id',pedsFaltantes) : [];
     const allPedidos=[...pedsViajes, ...pedsScenariosExtra];
     PEDIDOS_INDEX=new Map(allPedidos.map(p=>[p.id,p]));
+    console.log('[analizador] fetch completo:',{viajes:VIAJES_ROWS.length, scenarios:SCENARIOS_ROWS.length, pedidos:allPedidos.length});
 
-    // Construir TRIPS según MODO_FUENTE
     buildTripsFromCurrentData();
     populateSelect();
 
     const msg = MODO_FUENTE==='scenario'
-      ? `${SCENARIOS_ROWS.length} scenario${SCENARIOS_ROWS.length!==1?'s':''} · ${allPedidos.length} pedidos en vivo`
-      : `${VIAJES_ROWS.length} viaje${VIAJES_ROWS.length!==1?'s':''} · ${allPedidos.length} pedidos en vivo`;
+      ? `${SCENARIOS_ROWS.length} scenario${SCENARIOS_ROWS.length!==1?'s':''} · ${allPedidos.length} pedidos`
+      : `${VIAJES_ROWS.length} viaje${VIAJES_ROWS.length!==1?'s':''} recientes · ${allPedidos.length} pedidos`;
     st.textContent=msg; st.style.color='var(--green)';
 
-    // Deep-link: ?scenario=<id> o ?viaje=<id>
     handleDeepLinkAnalizador();
   }catch(e){
-    console.error(e);
+    console.error('[analizador] error loadFromSupabase:',e);
     st.textContent='Error: '+(e.message||e);
     st.style.color='var(--danger)';
   }

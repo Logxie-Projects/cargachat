@@ -458,6 +458,7 @@
     <button class="nav-login-btn" id="nav-login-btn" onclick="abrirModalAuth()">Ingresar</button>
     <!-- Estado: con login (oculto por defecto) -->
     <span class="nav-user" id="nav-nombre" style="display:none"></span>
+    <button class="nav-out" id="nav-pass" onclick="abrirCambiarPass()" style="display:none" title="Cambiar contraseña">🔑 Contraseña</button>
     <button class="nav-out" id="nav-salir" onclick="cerrarSesion()" style="display:none">Salir</button>
   </div>
 </nav>
@@ -977,6 +978,26 @@
   </div>
 </div>
 
+<!-- MODAL: CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="modal-pass">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title">🔑 Cambiar contraseña</div>
+      <button class="modal-close" onclick="cerrarModalPass()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <label class="login-label">Nueva contraseña</label>
+      <input class="login-input" id="pass-nueva" type="password" placeholder="Mínimo 8 caracteres">
+      <label class="login-label">Repetir nueva contraseña</label>
+      <input class="login-input" id="pass-nueva-conf" type="password" placeholder="Repetir"
+        onkeydown="if(event.key==='Enter') cambiarPass()">
+      <button class="login-btn" id="btn-pass-guardar" onclick="cambiarPass()">Guardar contraseña nueva</button>
+      <div class="login-error" id="pass-error"></div>
+      <div class="login-success" id="pass-success" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://pzouapqnvllaaqnmnlbs.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b3VhcHFudmxsYWFxbm1ubGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzYwMTksImV4cCI6MjA5MTExMjAxOX0.lj6Hx3sr9K8afvX5cDDE0pZJx5OfI1twVC9VJ1JieaU';
@@ -1161,6 +1182,7 @@
     // Restaurar UI a estado sin login
     document.getElementById('nav-login-btn').style.display = '';
     document.getElementById('nav-nombre').style.display    = 'none';
+    document.getElementById('nav-pass').style.display      = 'none';
     document.getElementById('nav-salir').style.display     = 'none';
     document.getElementById('stats-bar').style.display     = 'none';
     document.getElementById('tabs-nav').style.display      = 'none';
@@ -1172,6 +1194,48 @@
     document.getElementById('tab-viajes').classList.add('active');
 
     renderViajes(); // Re-render sin "ya ofertaste"
+  }
+
+  // ── CAMBIAR CONTRASEÑA ────────────────────────────────────────
+  function abrirCambiarPass() {
+    document.getElementById('pass-nueva').value = '';
+    document.getElementById('pass-nueva-conf').value = '';
+    document.getElementById('pass-error').textContent = '';
+    document.getElementById('pass-success').style.display = 'none';
+    document.getElementById('modal-pass').classList.add('open');
+    setTimeout(() => document.getElementById('pass-nueva').focus(), 100);
+  }
+
+  function cerrarModalPass() {
+    document.getElementById('modal-pass').classList.remove('open');
+  }
+
+  async function cambiarPass() {
+    const nueva = document.getElementById('pass-nueva').value;
+    const conf  = document.getElementById('pass-nueva-conf').value;
+    const errEl = document.getElementById('pass-error');
+    const okEl  = document.getElementById('pass-success');
+    errEl.textContent = '';
+    okEl.style.display = 'none';
+
+    if (nueva.length < 8) { errEl.textContent = 'La contraseña debe tener mínimo 8 caracteres.'; return; }
+    if (nueva !== conf)   { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
+
+    const btn = document.getElementById('btn-pass-guardar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const { error } = await sb.auth.updateUser({ password: nueva });
+      if (error) throw error;
+      okEl.textContent = '✓ Contraseña actualizada. Vas a usar la nueva la próxima vez que ingreses.';
+      okEl.style.display = '';
+      document.getElementById('pass-nueva').value = '';
+      document.getElementById('pass-nueva-conf').value = '';
+      setTimeout(cerrarModalPass, 2000);
+    } catch (e) {
+      errEl.textContent = 'Error: ' + (e.message || 'no se pudo actualizar');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar contraseña nueva';
+    }
   }
 
   async function fetchPerfil(userId) {
@@ -1189,6 +1253,7 @@
     document.getElementById('nav-login-btn').style.display = 'none';
     document.getElementById('nav-nombre').style.display    = '';
     document.getElementById('nav-nombre').textContent      = perfilActual?.empresa || perfilActual?.nombre || '';
+    document.getElementById('nav-pass').style.display      = '';
     document.getElementById('nav-salir').style.display     = '';
 
     // Mostrar stats y tabs

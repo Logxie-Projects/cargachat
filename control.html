@@ -2871,9 +2871,11 @@
     }
     if (!filenamesPendientes.size) return 0;
 
-    const folderQuery = DRIVE_FOLDERS_FOTOS.map(f => `'${f}' in parents`).join(' or ');
+    // NOTA: Drive API con un API key (sin OAuth) rechaza queries con
+    // 'folder_a' in parents OR 'folder_b' in parents devolviendo 403
+    // insufficientFilePermissions. Hay que consultar cada folder en una
+    // request separada.
     let resueltos = 0;
-    // Paralelo con concurrencia limitada a 6 para no gatillar rate limits.
     const lista = Array.from(filenamesPendientes);
     const BATCH = 6;
     for (let i = 0; i < lista.length; i += BATCH) {
@@ -2881,16 +2883,20 @@
       await Promise.all(group.map(async fullPath => {
         try {
           const filename = fullPath.split('/').pop();
-          // Escape para query Drive API (comillas simples requieren \')
           const fnEscaped = filename.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-          const q = `name = '${fnEscaped}' and (${folderQuery}) and trashed = false`;
-          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType)&pageSize=5&key=${GOOGLE_API_KEY_CUMPLIDOS}`;
-          const r = await fetch(url);
-          if (!r.ok) return;
-          const data = await r.json();
-          const match = data.files?.[0];
-          if (match?.id) {
-            _fileIdCache.set(fullPath, `https://drive.google.com/file/d/${match.id}/view`);
+          // Probar cada folder en paralelo; quedarse con el primer match.
+          const queries = DRIVE_FOLDERS_FOTOS.map(async folderId => {
+            const q = `name = '${fnEscaped}' and '${folderId}' in parents and trashed = false`;
+            const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType)&pageSize=1&key=${GOOGLE_API_KEY_CUMPLIDOS}`;
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const data = await r.json();
+            return data.files?.[0]?.id || null;
+          });
+          const results = await Promise.all(queries);
+          const fileId = results.find(Boolean);
+          if (fileId) {
+            _fileIdCache.set(fullPath, `https://drive.google.com/file/d/${fileId}/view`);
             resueltos++;
           }
         } catch {}

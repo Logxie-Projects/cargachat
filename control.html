@@ -835,6 +835,10 @@
 
     <!-- ═══ TAB: SUBASTA ═══ -->
     <div class="tab-section" id="tab-subasta">
+      <!-- Pistas LogxIA: qué hay que hacer en este workspace (tira compacta) -->
+      <div class="pistas-bar" id="pistas-subasta">
+        <span class="pista-chip">cargando…</span>
+      </div>
       <div class="stats-bar">
         <div class="stat-card clickable" id="sc-sub-total" onclick="filtrarSubastaPor(null)" title="Ver todos"><div class="stat-num" id="st-sub-total">—</div><div class="stat-lbl">total consolidados</div></div>
         <div class="stat-card clickable" id="sc-sub-borr"  onclick="filtrarSubastaPor('borrador')" title="Solo borradores — falta publicar"><div class="stat-num" id="st-sub-sin-ofertas">—</div><div class="stat-lbl">borradores sin publicar</div></div>
@@ -864,6 +868,10 @@
 
     <!-- ═══ TAB: ACTIVOS ═══ -->
     <div class="tab-section" id="tab-activos">
+      <!-- Pistas LogxIA para activos (en ruta / cargue pendiente / listos para cerrar) -->
+      <div class="pistas-bar" id="pistas-activos">
+        <span class="pista-chip">cargando…</span>
+      </div>
       <div class="stats-bar">
         <div class="stat-card clickable" id="sc-act-conf"  onclick="filtrarActivosPorEstado('confirmado')" title="Ver solo confirmados"><div class="stat-num" id="st-act-conf">—</div><div class="stat-lbl">confirmados</div></div>
         <div class="stat-card clickable" id="sc-act-ruta"  onclick="filtrarActivosPorEstado('en_ruta')" title="Ver solo en ruta"><div class="stat-num" id="st-act-ruta">—</div><div class="stat-lbl">en ruta</div></div>
@@ -2431,6 +2439,33 @@
   }
 
   function renderSubasta() {
+    // ───── PISTAS LOGXIA (tira compacta arriba) ─────
+    // Counts globales sobre TODOS los viajes en el workspace (no los filtrados)
+    const pistaEl = document.getElementById('pistas-subasta');
+    if (pistaEl) {
+      const todos = state.viajes.filter(esViajeSubasta);
+      const borrs = todos.filter(v => !v.publicado_at).length;
+      const idsOf = new Set(state.ofertas.filter(o => o.estado === 'activa').map(o => o.viaje_id));
+      const conOf = todos.filter(v => v.publicado_at && idsOf.has(v.id)).length;
+      const sinOf = todos.filter(v => v.publicado_at && !idsOf.has(v.id)).length;
+      // Publicados hace >2 días sin ofertas (candidatos a revisar precio o asignar directo)
+      const dosDias = Date.now() - 2 * 24 * 60 * 60 * 1000;
+      const stale = todos.filter(v => v.publicado_at && !idsOf.has(v.id) && new Date(v.publicado_at).getTime() < dosDias).length;
+      pistaEl.innerHTML = `
+        <span class="pista-chip ${borrs > 0 ? 'hot' : ''}" onclick="filtrarSubastaPor('borrador')">
+          ✏️ <strong>${borrs}</strong> borradores sin publicar
+        </span>
+        <span class="pista-chip pista-lis ${conOf > 0 ? 'hot' : ''}" onclick="filtrarSubastaPor('con_ofertas')">
+          💰 <strong>${conOf}</strong> con ofertas pendientes
+        </span>
+        <span class="pista-chip">
+          🤝 <strong>${sinOf}</strong> publicados sin ofertas
+        </span>
+        ${stale > 0 ? `<span class="pista-chip pista-nov hot">⏳ <strong>${stale}</strong> sin ofertas +2 días</span>` : ''}
+        <span class="pista-hint">clic filtra la vista</span>
+      `;
+    }
+
     // Solo viajes de Netfleet o ya publicados (filtra históricos migrados del Sheet)
     let pendientes = state.viajes.filter(esViajeSubasta);
     const fPedido = document.getElementById('flt-sub-pedido')?.value || '';
@@ -2513,6 +2548,27 @@
     // pendientes de adjudicar — highlight verde + banner arriba.
     const tieneOfertasPendientes = esSubasta && activas.length > 0;
 
+    // ── HINT CONTEXTUAL DEL VIAJE (próxima acción sugerida al operador) ──
+    // Aparece en la cabecera de la card sin expandir. Cuando LogxIA esté en
+    // autopilot, muchos de estos se convierten en acciones ejecutables.
+    let hintViaje = '';
+    if (esSubasta) {
+      if (!v.publicado_at) {
+        hintViaje = `<span class="grp-hint hint-wait">✏️ Borrador — falta publicar</span>`;
+      } else if (activas.length === 0) {
+        const horas = (Date.now() - new Date(v.publicado_at).getTime()) / (1000 * 60 * 60);
+        hintViaje = horas > 48
+          ? `<span class="grp-hint hint-wait">⏳ +${Math.round(horas/24)}d sin ofertas — revisar precio o asignar directo</span>`
+          : `<span class="grp-hint hint-wait">🤝 Publicado hace ${Math.round(horas)}h — esperando ofertas</span>`;
+      } else {
+        hintViaje = `<span class="grp-hint hint-ok">💰 ${activas.length} oferta${activas.length > 1 ? 's' : ''} — mejor ${fmtCOP(minPrecio)} · adjudicar</span>`;
+      }
+    } else if (esActivo) {
+      if (v.estado === 'confirmado' && !v.llegada_cargue) hintViaje = `<span class="grp-hint hint-wait">📍 Esperando que el conductor llegue al cargue</span>`;
+      else if (v.estado === 'en_ruta')                     hintViaje = `<span class="grp-hint hint-ok">🚛 En ruta</span>`;
+      else if (v.estado === 'entregado')                   hintViaje = `<span class="grp-hint hint-ok">📬 Listo para cerrar — todos los pedidos entregados</span>`;
+    }
+
     // Stats para línea resumen (visibles sin expandir)
     const _flete = +v.flete_total || 0;
     const _kg    = +v.peso_kg || 0;
@@ -2570,6 +2626,7 @@
           ${(_ckg || _ckm || _pct) ? `<div class="metric-line" style="margin-top:2px">${[_ckg, _ckm, (_pct ? `<span style="${_pctRojo?'color:var(--red);font-weight:700':''}">${_pct}</span>` : '')].filter(Boolean).join(' · ')}</div>` : ''}
           ${esSubasta ? `<div class="metric-line" style="margin-top:4px">${activas.length} ofer${activas.length !== 1 ? 'tas' : 'ta'} · mejor: ${activas.length ? `<strong style="color:var(--green)">${fmtCOP(minPrecio)}</strong>` : '—'}</div>` : ''}
           ${(esActivo || esHist) && ganadora ? `<div class="metric-line" style="margin-top:4px">ganó <strong style="color:var(--green)">${fmtCOP(ganadora.precio_oferta)}</strong></div>` : ''}
+          ${hintViaje ? `<div style="margin-top:6px">${hintViaje}</div>` : ''}
         </div>
 
         <!-- Col 3: Pedidos incluidos como chips con estado -->
@@ -3158,6 +3215,39 @@
   function renderActivos() {
     const todos = state.viajes.filter(v => ['confirmado','en_ruta','entregado'].includes(v.estado));
     const activos = activosFiltrados();
+
+    // ───── PISTAS LOGXIA (tira compacta arriba del tab Activos) ─────
+    const pistaEl = document.getElementById('pistas-activos');
+    if (pistaEl) {
+      // Confirmado pero sin llegada_cargue marcada → esperando que el camión arranque
+      const esperandoCargue = todos.filter(v => v.estado === 'confirmado' && !v.llegada_cargue).length;
+      const enRuta = todos.filter(v => v.estado === 'en_ruta').length;
+      const listosCerrar = todos.filter(v => v.estado === 'entregado').length;
+      // Pedidos con intento fallido dentro de viajes activos → alertas que requieren decisión
+      const viajesIds = new Set(todos.map(v => v.id));
+      const idsFallidosSinExito = new Set();
+      const exitosos = new Set((state.intentos || []).filter(i => i.exitoso === true).map(i => i.pedido_id));
+      (state.intentos || []).forEach(i => {
+        if (i.exitoso === false && !exitosos.has(i.pedido_id)) idsFallidosSinExito.add(i.pedido_id);
+      });
+      const conNovedad = new Set();
+      (state.pedidos || []).forEach(p => {
+        if (p.viaje_id && viajesIds.has(p.viaje_id) && idsFallidosSinExito.has(p.id)) conNovedad.add(p.viaje_id);
+      });
+      pistaEl.innerHTML = `
+        <span class="pista-chip ${esperandoCargue > 0 ? 'hot' : ''}" onclick="filtrarActivosPorEstado('confirmado')">
+          📍 <strong>${esperandoCargue}</strong> esperando cargue
+        </span>
+        <span class="pista-chip pista-lis ${enRuta > 0 ? 'hot' : ''}" onclick="filtrarActivosPorEstado('en_ruta')">
+          🚛 <strong>${enRuta}</strong> en ruta
+        </span>
+        <span class="pista-chip pista-lis ${listosCerrar > 0 ? 'hot' : ''}" onclick="filtrarActivosPorEstado('entregado')">
+          📬 <strong>${listosCerrar}</strong> listos para cerrar
+        </span>
+        ${conNovedad.size > 0 ? `<span class="pista-chip pista-nov hot">⚠️ <strong>${conNovedad.size}</strong> viaje${conNovedad.size !== 1 ? 's' : ''} con pedidos en novedad</span>` : ''}
+        <span class="pista-hint">clic filtra la vista</span>
+      `;
+    }
 
     document.getElementById('st-act-conf').textContent = todos.filter(v => v.estado === 'confirmado').length;
     document.getElementById('st-act-ruta').textContent = todos.filter(v => v.estado === 'en_ruta').length;

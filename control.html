@@ -126,6 +126,30 @@
     .tab-section.active { display: block; }
 
     /* Sub-nav (sub-tabs dentro de Viajes) */
+    /* ── CATÁLOGO (clientes / transportadoras / usuarios) ── */
+    .cat-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .cat-title { font-size: 18px; font-weight: 800; color: var(--navy); letter-spacing: -0.3px; }
+    .cat-sub { font-size: 12px; color: var(--gray-600); margin-top: 4px; max-width: 600px; line-height: 1.45; }
+    .cat-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--gray-100); font-size: 13px; }
+    .cat-table thead th { background: var(--gray-50); padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--gray-100); }
+    .cat-table tbody td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-800); }
+    .cat-table tbody tr:last-child td { border-bottom: none; }
+    .cat-table tbody tr:hover { background: var(--gray-50); }
+    .cat-table tr.inactivo td { opacity: 0.5; }
+    .cat-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: var(--gray-100); color: var(--gray-600); text-transform: uppercase; }
+    .cat-pill.email       { background: #dbeafe; color: #1e40af; }
+    .cat-pill.sheet       { background: #fef3c7; color: #b45309; }
+    .cat-pill.formulario  { background: #dcfce7; color: #166534; }
+    .cat-pill.webhook     { background: #ede9fe; color: #6d28d9; }
+    .cat-estado { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .cat-estado.on  { background: #dcfce7; color: #166534; }
+    .cat-estado.off { background: var(--gray-100); color: var(--gray-400); }
+    .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+    .cat-placeholder { background: white; border: 1px dashed var(--gray-100); border-radius: 12px; padding: 3rem; text-align: center; color: var(--gray-600); }
+    .cat-placeholder p { font-size: 13px; max-width: 440px; margin: 8px auto 0; line-height: 1.5; }
+    .filtro-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-600); cursor: pointer; }
+    .modal-hint { font-size: 11px; font-weight: 400; color: var(--gray-400); margin-left: 4px; }
+
     .subtabs-nav {
       display: flex; gap: 6px; margin-bottom: 1.5rem;
       padding: 6px 10px; border-radius: 10px;
@@ -520,7 +544,7 @@
 
   <div class="app-body">
 
-    <!-- Tabs nav — 3 workspaces principales (Inicio / Pedidos / Viajes) -->
+    <!-- Tabs nav — 4 workspaces (Inicio / Pedidos / Viajes / Catálogo) -->
     <div class="tabs-nav">
       <button class="tab-btn active" data-tab="inicio" onclick="cambiarTab('inicio', this)">
         🏠 Inicio
@@ -530,6 +554,9 @@
       </button>
       <button class="tab-btn" data-group="viajes" data-tab="subasta" onclick="cambiarTab('subasta', this)">
         🚚 Viajes <span class="tab-count" id="count-viajes-total">0</span>
+      </button>
+      <button class="tab-btn" data-group="catalogo" data-tab="cat-clientes" onclick="cambiarTab('cat-clientes', this)">
+        🏢 Catálogo
       </button>
     </div>
 
@@ -543,6 +570,19 @@
       </button>
       <button class="subtab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
         📚 Archivo (finalizados/cancelados) <span class="tab-count" id="count-historial">0</span>
+      </button>
+    </div>
+
+    <!-- Sub-nav de Catálogo — 3 entidades: clientes generadores, transportadoras, usuarios staff -->
+    <div class="subtabs-nav" id="subnav-catalogo" style="display:none">
+      <button class="subtab-btn active" data-tab="cat-clientes" onclick="cambiarTab('cat-clientes', this)">
+        🏭 Clientes <span class="tab-count" id="count-clientes">0</span>
+      </button>
+      <button class="subtab-btn" data-tab="cat-transportadoras" onclick="cambiarTab('cat-transportadoras', this)">
+        🚛 Transportadoras <span class="tab-count" id="count-transportadoras">0</span>
+      </button>
+      <button class="subtab-btn" data-tab="cat-usuarios" onclick="cambiarTab('cat-usuarios', this)">
+        👥 Usuarios staff
       </button>
     </div>
 
@@ -833,6 +873,159 @@
       </div>
     </div>
 
+    <!-- ═══ TAB: CATÁLOGO — CLIENTES GENERADORES ═══ -->
+    <div class="tab-section" id="tab-cat-clientes">
+      <div class="cat-header">
+        <div>
+          <div class="cat-title">Clientes generadores de carga</div>
+          <div class="cat-sub">Empresas que publican pedidos en Netfleet. Avgust y Fateco son plan BPO (Logxie opera por ellos); los demás usan el portal directamente.</div>
+        </div>
+        <button class="btn btn-primary" onclick="abrirClienteModal()">➕ Nuevo cliente</button>
+      </div>
+      <div class="filtros">
+        <input class="filtro-input" id="flt-cat-cli" placeholder="🔍 Buscar por nombre, NIT, email…" oninput="renderClientes()">
+        <label class="filtro-check"><input type="checkbox" id="flt-cat-cli-inactivos" onchange="renderClientes()"> Mostrar inactivos</label>
+      </div>
+      <div id="clientes-lista">
+        <div class="loading-msg">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: CATÁLOGO — TRANSPORTADORAS ═══ -->
+    <div class="tab-section" id="tab-cat-transportadoras">
+      <div class="cat-header">
+        <div>
+          <div class="cat-title">Transportadoras</div>
+          <div class="cat-sub">Proveedores que ejecutan los viajes. Las cuentas de usuarios individuales (login en mi-netfleet) están en la tab "Usuarios staff".</div>
+        </div>
+        <button class="btn btn-primary" onclick="abrirTranspModal()">➕ Nueva transportadora</button>
+      </div>
+      <div class="filtros">
+        <input class="filtro-input" id="flt-cat-tra" placeholder="🔍 Buscar por nombre, NIT, contacto…" oninput="renderTransportadorasCat()">
+        <label class="filtro-check"><input type="checkbox" id="flt-cat-tra-inactivos" onchange="renderTransportadorasCat()"> Mostrar inactivos</label>
+      </div>
+      <div id="transportadoras-lista">
+        <div class="loading-msg">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: CATÁLOGO — USUARIOS STAFF (placeholder) ═══ -->
+    <div class="tab-section" id="tab-cat-usuarios">
+      <div class="cat-header">
+        <div>
+          <div class="cat-title">Usuarios staff Logxie</div>
+          <div class="cat-sub">Cuentas con acceso al panel de control. Crear/editar usuarios requiere service_role — se implementa con una Edge Function.</div>
+        </div>
+        <button class="btn btn-primary" disabled title="Próximamente">➕ Nuevo usuario</button>
+      </div>
+      <div class="cat-placeholder">
+        <div style="font-size:40px;margin-bottom:8px">👥</div>
+        <strong>Módulo en construcción</strong>
+        <p>Por ahora las cuentas staff se crean desde el dashboard de Supabase. Pronto vas a poder administrarlas desde acá.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: CLIENTE (crear/editar) ══════════════════════ -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-title" id="mod-cli-title">Nuevo cliente</div>
+    <input type="hidden" id="mod-cli-id">
+    <div class="modal-grid-2">
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Nombre *</label>
+        <input class="modal-input" id="mod-cli-nombre" placeholder="Ej: AVGUST">
+      </div>
+      <div>
+        <label class="modal-label">NIT</label>
+        <input class="modal-input" id="mod-cli-nit" placeholder="123456789-0">
+      </div>
+      <div>
+        <label class="modal-label">Email contacto</label>
+        <input class="modal-input" id="mod-cli-email" type="email" placeholder="proyectos@empresa.co">
+      </div>
+      <div>
+        <label class="modal-label">Nivel ingesta</label>
+        <select class="modal-select" id="mod-cli-nivel">
+          <option value="">(ninguno)</option>
+          <option value="email">Email texto libre</option>
+          <option value="sheet">Google Sheet pull</option>
+          <option value="formulario">Formulario Netfleet</option>
+          <option value="webhook">Webhook CRM</option>
+        </select>
+      </div>
+      <div>
+        <label class="modal-label"><input type="checkbox" id="mod-cli-plan-bpo" style="margin-right:6px">Plan BPO (Logxie opera por el cliente)</label>
+      </div>
+      <div>
+        <label class="modal-label">Google Sheet ID <span class="modal-hint">(si nivel=sheet)</span></label>
+        <input class="modal-input" id="mod-cli-sheet-id" placeholder="1rqCdVATX9cWQJ...">
+      </div>
+      <div>
+        <label class="modal-label">Pestaña del Sheet</label>
+        <input class="modal-input" id="mod-cli-sheet-tab" placeholder="Base_inicio-def">
+      </div>
+      <div>
+        <label class="modal-label">Email origen <span class="modal-hint">(si nivel=email)</span></label>
+        <input class="modal-input" id="mod-cli-email-origen" placeholder="ops@cliente.co">
+      </div>
+      <div>
+        <label class="modal-label">Webhook secret <span class="modal-hint">(si nivel=webhook)</span></label>
+        <input class="modal-input" id="mod-cli-webhook" placeholder="token seguro">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: TRANSPORTADORA (crear/editar) ══════════════════════ -->
+<div class="modal-overlay" id="modal-transp">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-title" id="mod-tra-title">Nueva transportadora</div>
+    <input type="hidden" id="mod-tra-id">
+    <div class="modal-grid-2">
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Nombre *</label>
+        <input class="modal-input" id="mod-tra-nombre" placeholder="Ej: ENTRAPETROL">
+      </div>
+      <div>
+        <label class="modal-label">NIT</label>
+        <input class="modal-input" id="mod-tra-nit">
+      </div>
+      <div>
+        <label class="modal-label">Email contacto</label>
+        <input class="modal-input" id="mod-tra-email" type="email">
+      </div>
+      <div>
+        <label class="modal-label">Teléfono</label>
+        <input class="modal-input" id="mod-tra-telefono">
+      </div>
+      <div>
+        <label class="modal-label">WhatsApp</label>
+        <input class="modal-input" id="mod-tra-whatsapp">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Zonas operadas <span class="modal-hint">(separadas por coma)</span></label>
+        <input class="modal-input" id="mod-tra-zonas" placeholder="ANTIOQUIA, VALLE, LLANOS">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Tipos de vehículos <span class="modal-hint">(separados por coma)</span></label>
+        <input class="modal-input" id="mod-tra-tipos" placeholder="Tractomula, NHR, Sencillo">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Notas</label>
+        <textarea class="modal-textarea" id="mod-tra-notas" placeholder="Contacto, condiciones particulares…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-transp')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTransp()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -1107,8 +1300,9 @@
   })();
 
   // ───────── TABS ─────────
-  // Tabs que pertenecen al workspace "Viajes" (sub-tabs)
-  const TABS_VIAJES = ['subasta', 'activos', 'historial'];
+  // Tabs que pertenecen a cada workspace con sub-nav
+  const TABS_VIAJES   = ['subasta', 'activos', 'historial'];
+  const TABS_CATALOGO = ['cat-clientes', 'cat-transportadoras', 'cat-usuarios'];
 
   function cambiarTab(nombre, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'group-active'));
@@ -1116,14 +1310,21 @@
     document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
     document.getElementById('tab-' + nombre).classList.add('active');
 
-    const esViaje = TABS_VIAJES.includes(nombre);
-    // Sub-nav de Viajes: visible solo cuando estás en uno de los sub-tabs
-    document.getElementById('subnav-viajes').style.display = esViaje ? 'flex' : 'none';
+    const esViaje   = TABS_VIAJES.includes(nombre);
+    const esCatalogo = TABS_CATALOGO.includes(nombre);
+    // Sub-navs visibles solo cuando estás en su workspace
+    document.getElementById('subnav-viajes').style.display    = esViaje    ? 'flex' : 'none';
+    document.getElementById('subnav-catalogo').style.display  = esCatalogo ? 'flex' : 'none';
 
     if (esViaje) {
-      // Highlight botón principal "Viajes" + sub-botón específico
       document.querySelector('.tab-btn[data-group="viajes"]')?.classList.add('group-active');
       document.querySelector(`.subtab-btn[data-tab="${nombre}"]`)?.classList.add('active');
+    } else if (esCatalogo) {
+      document.querySelector('.tab-btn[data-group="catalogo"]')?.classList.add('group-active');
+      document.querySelector(`.subtab-btn[data-tab="${nombre}"]`)?.classList.add('active');
+      // Render on-demand cuando entrás al sub-tab
+      if (nombre === 'cat-clientes')          renderClientes();
+      if (nombre === 'cat-transportadoras')   renderTransportadorasCat();
     } else {
       // Workspace principal (Inicio / Pedidos)
       btn.classList.add('active');
@@ -1322,8 +1523,8 @@
     try {
       const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,revisado_at,revisado_por,revision_notas,created_at';
       const [clientes, transp, pedidosAll, viajes, ofertas, intentos] = await Promise.all([
-        getJson('clientes?select=id,nombre&order=nombre.asc'),
-        getJson('transportadoras?select=id,nombre,activo&order=nombre.asc'),
+        getJson('clientes?select=*&order=nombre.asc'),
+        getJson('transportadoras?select=*&order=nombre.asc'),
         // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
         // ej. consolidado/cancelado con viaje_id NULL — 185 rows inconsistentes)
         // sort secundario por id para paginación estable (muchos pedidos tienen
@@ -1352,6 +1553,8 @@
       renderSubasta();
       renderActivos();
       renderHistorial();
+      renderClientes();
+      renderTransportadorasCat();
 
       // Resolver cumplidos (filename Drive → URL directa) en background.
       // Primero se renderiza con Drive search legacy; cuando termine el
@@ -3424,6 +3627,256 @@
       syncInFlight = false;
       document.getElementById('btn-sync').disabled = false;
     }
+  }
+
+  // ═════════════ CATÁLOGO — CLIENTES GENERADORES ═════════════
+  function renderClientes() {
+    const q = (document.getElementById('flt-cat-cli')?.value || '').trim().toLowerCase();
+    const mostrarInactivos = document.getElementById('flt-cat-cli-inactivos')?.checked;
+    let rows = state.clientes || [];
+    // Enriquecer con conteo de pedidos y viajes por cliente
+    const pedPorCliente = new Map();
+    for (const p of state.pedidos || []) {
+      if (p.cliente_id) pedPorCliente.set(p.cliente_id, (pedPorCliente.get(p.cliente_id) || 0) + 1);
+    }
+    rows = rows.filter(c => {
+      if (!mostrarInactivos && c.activo === false) return false;
+      if (!q) return true;
+      return [c.nombre, c.nit, c.email_contacto].some(v => (v || '').toLowerCase().includes(q));
+    });
+
+    const el = document.getElementById('count-clientes');
+    if (el) el.textContent = fmtNum((state.clientes || []).filter(c => c.activo !== false).length);
+
+    const lista = document.getElementById('clientes-lista');
+    if (!lista) return;
+    if (!rows.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay clientes. Clic en "Nuevo cliente" para agregar.</div>';
+      return;
+    }
+    lista.innerHTML = `
+      <table class="cat-table">
+        <thead><tr>
+          <th>Nombre</th><th>NIT</th><th>Email contacto</th><th>Nivel ingesta</th>
+          <th>Plan BPO</th><th>Pedidos</th><th>Estado</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(c => `
+            <tr class="${c.activo === false ? 'inactivo' : ''}">
+              <td><strong>${c.nombre || '—'}</strong></td>
+              <td>${c.nit || '—'}</td>
+              <td>${c.email_contacto || '—'}</td>
+              <td><span class="cat-pill ${c.nivel_ingesta || ''}">${c.nivel_ingesta || '—'}</span></td>
+              <td>${c.plan_bpo ? '✓' : '—'}</td>
+              <td>${fmtNum(pedPorCliente.get(c.id) || 0)}</td>
+              <td><span class="cat-estado ${c.activo === false ? 'off' : 'on'}">${c.activo === false ? 'Inactivo' : 'Activo'}</span></td>
+              <td>
+                <button class="btn btn-ghost btn-sm" onclick="abrirClienteModal('${c.id}')">Editar</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleActivoCliente('${c.id}', ${!(c.activo === false)})">${c.activo === false ? 'Reactivar' : 'Desactivar'}</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function abrirClienteModal(id) {
+    const c = id ? (state.clientes || []).find(x => x.id === id) : null;
+    document.getElementById('mod-cli-title').textContent = c ? 'Editar cliente' : 'Nuevo cliente';
+    document.getElementById('mod-cli-id').value = c?.id || '';
+    document.getElementById('mod-cli-nombre').value = c?.nombre || '';
+    document.getElementById('mod-cli-nit').value = c?.nit || '';
+    document.getElementById('mod-cli-email').value = c?.email_contacto || '';
+    document.getElementById('mod-cli-nivel').value = c?.nivel_ingesta || '';
+    document.getElementById('mod-cli-sheet-id').value = c?.sheet_id || '';
+    document.getElementById('mod-cli-sheet-tab').value = c?.sheet_tab || '';
+    document.getElementById('mod-cli-email-origen').value = c?.email_origen || '';
+    document.getElementById('mod-cli-webhook').value = c?.webhook_secret || '';
+    document.getElementById('mod-cli-plan-bpo').checked = !!c?.plan_bpo;
+    document.getElementById('modal-cliente').classList.add('open');
+  }
+
+  async function guardarCliente() {
+    const id = document.getElementById('mod-cli-id').value;
+    const payload = {
+      nombre:         document.getElementById('mod-cli-nombre').value.trim(),
+      nit:            document.getElementById('mod-cli-nit').value.trim() || null,
+      email_contacto: document.getElementById('mod-cli-email').value.trim() || null,
+      nivel_ingesta:  document.getElementById('mod-cli-nivel').value || null,
+      sheet_id:       document.getElementById('mod-cli-sheet-id').value.trim() || null,
+      sheet_tab:      document.getElementById('mod-cli-sheet-tab').value.trim() || null,
+      email_origen:   document.getElementById('mod-cli-email-origen').value.trim() || null,
+      webhook_secret: document.getElementById('mod-cli-webhook').value.trim() || null,
+      plan_bpo:       document.getElementById('mod-cli-plan-bpo').checked,
+      activo:         true,
+    };
+    if (!payload.nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    try {
+      const h = await authHeaders();
+      let r;
+      if (id) {
+        r = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        r = await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+          method: 'POST',
+          headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+      }
+      if (!r.ok) throw new Error(await r.text());
+      toast(id ? 'Cliente actualizado' : 'Cliente creado', 'success');
+      cerrarModal('modal-cliente');
+      await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function toggleActivoCliente(id, activarActual) {
+    // activarActual = estado actual (true si está activo). Toggle → !activarActual
+    try {
+      const h = await authHeaders();
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ activo: !activarActual }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      toast(!activarActual ? 'Cliente reactivado' : 'Cliente desactivado', 'success');
+      await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════ CATÁLOGO — TRANSPORTADORAS ═════════════
+  function renderTransportadorasCat() {
+    const q = (document.getElementById('flt-cat-tra')?.value || '').trim().toLowerCase();
+    const mostrarInactivos = document.getElementById('flt-cat-tra-inactivos')?.checked;
+    let rows = state.transportadoras || [];
+    // Conteos: viajes por transportadora (por nombre aprox y por FK)
+    const viajesPorId = new Map();
+    const viajesPorNombre = new Map();
+    for (const v of state.viajes || []) {
+      if (v.transportadora_id) viajesPorId.set(v.transportadora_id, (viajesPorId.get(v.transportadora_id) || 0) + 1);
+      else if (v.proveedor) {
+        const k = v.proveedor.toUpperCase();
+        viajesPorNombre.set(k, (viajesPorNombre.get(k) || 0) + 1);
+      }
+    }
+    rows = rows.filter(t => {
+      if (!mostrarInactivos && t.activo === false) return false;
+      if (!q) return true;
+      return [t.nombre, t.nit, t.email_contacto, t.telefono].some(v => (v || '').toLowerCase().includes(q));
+    });
+
+    const el = document.getElementById('count-transportadoras');
+    if (el) el.textContent = fmtNum((state.transportadoras || []).filter(t => t.activo !== false).length);
+
+    const lista = document.getElementById('transportadoras-lista');
+    if (!lista) return;
+    if (!rows.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay transportadoras. Clic en "Nueva transportadora" para agregar.</div>';
+      return;
+    }
+    lista.innerHTML = `
+      <table class="cat-table">
+        <thead><tr>
+          <th>Nombre</th><th>NIT</th><th>Email</th><th>Teléfono</th>
+          <th>Zonas</th><th>Viajes</th><th>Estado</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(t => {
+            const vPorId = viajesPorId.get(t.id) || 0;
+            const vPorNom = viajesPorNombre.get((t.nombre || '').toUpperCase()) || 0;
+            const vTot = vPorId + vPorNom;
+            return `
+            <tr class="${t.activo === false ? 'inactivo' : ''}">
+              <td><strong>${t.nombre || '—'}</strong></td>
+              <td>${t.nit || '—'}</td>
+              <td>${t.email_contacto || '—'}</td>
+              <td>${t.telefono || '—'}</td>
+              <td>${(t.zonas_operadas || []).join(', ') || '—'}</td>
+              <td>${fmtNum(vTot)}</td>
+              <td><span class="cat-estado ${t.activo === false ? 'off' : 'on'}">${t.activo === false ? 'Inactivo' : 'Activo'}</span></td>
+              <td>
+                <button class="btn btn-ghost btn-sm" onclick="abrirTranspModal('${t.id}')">Editar</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleActivoTransp('${t.id}', ${!(t.activo === false)})">${t.activo === false ? 'Reactivar' : 'Desactivar'}</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function abrirTranspModal(id) {
+    const t = id ? (state.transportadoras || []).find(x => x.id === id) : null;
+    document.getElementById('mod-tra-title').textContent = t ? 'Editar transportadora' : 'Nueva transportadora';
+    document.getElementById('mod-tra-id').value = t?.id || '';
+    document.getElementById('mod-tra-nombre').value = t?.nombre || '';
+    document.getElementById('mod-tra-nit').value = t?.nit || '';
+    document.getElementById('mod-tra-email').value = t?.email_contacto || '';
+    document.getElementById('mod-tra-telefono').value = t?.telefono || '';
+    document.getElementById('mod-tra-whatsapp').value = t?.whatsapp || '';
+    document.getElementById('mod-tra-zonas').value = (t?.zonas_operadas || []).join(', ');
+    document.getElementById('mod-tra-tipos').value = (t?.tipos_vehiculos || []).join(', ');
+    document.getElementById('mod-tra-notas').value = t?.notas || '';
+    document.getElementById('modal-transp').classList.add('open');
+  }
+
+  async function guardarTransp() {
+    const id = document.getElementById('mod-tra-id').value;
+    const zonasRaw = document.getElementById('mod-tra-zonas').value.trim();
+    const tiposRaw = document.getElementById('mod-tra-tipos').value.trim();
+    const payload = {
+      nombre:         document.getElementById('mod-tra-nombre').value.trim(),
+      nit:            document.getElementById('mod-tra-nit').value.trim() || null,
+      email_contacto: document.getElementById('mod-tra-email').value.trim() || null,
+      telefono:       document.getElementById('mod-tra-telefono').value.trim() || null,
+      whatsapp:       document.getElementById('mod-tra-whatsapp').value.trim() || null,
+      zonas_operadas: zonasRaw ? zonasRaw.split(',').map(s => s.trim()).filter(Boolean) : null,
+      tipos_vehiculos: tiposRaw ? tiposRaw.split(',').map(s => s.trim()).filter(Boolean) : null,
+      notas:          document.getElementById('mod-tra-notas').value.trim() || null,
+      activo:         true,
+    };
+    if (!payload.nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    try {
+      const h = await authHeaders();
+      let r;
+      if (id) {
+        r = await fetch(`${SUPABASE_URL}/rest/v1/transportadoras?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        r = await fetch(`${SUPABASE_URL}/rest/v1/transportadoras`, {
+          method: 'POST',
+          headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+      }
+      if (!r.ok) throw new Error(await r.text());
+      toast(id ? 'Transportadora actualizada' : 'Transportadora creada', 'success');
+      cerrarModal('modal-transp');
+      await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function toggleActivoTransp(id, activarActual) {
+    try {
+      const h = await authHeaders();
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/transportadoras?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...h, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ activo: !activarActual }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      toast(!activarActual ? 'Transportadora reactivada' : 'Transportadora desactivada', 'success');
+      await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 </script>
 </body>

@@ -1,8 +1,43 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-22 (cierre de sesión)** — Panel control `netfleet.app/control.html` reestructurado como "panel de trabajo" orientado a autopilot: tab Inicio en 2 bloques con badges de piloto, tab Pedidos con tira de pistas LogxIA + agrupado por RUTA (origen→destino) + sub-totales por estado + hints contextuales, tab Viajes (subasta + activos) con el mismo framing, workspace nuevo **🏢 Catálogo** con CRUD de clientes y transportadoras, ofertas visibles (alert dashboard + highlight verde en cards), Drive API operativo para abrir cumplidos directo (1 clic → archivo). Portal transportadora `mi-netfleet.html` con login inline (se comparte la URL directa), 5 stats KPI personalizados, tabs agrupados (Ofertas/Seguimiento/Cuenta), tab Flota placeholder, deep-link `?viaje_ref=` para el flujo de bidding desde mail. Bug histórico de schema M4 en ofertas (`viaje_rt` → `viaje_id UUID`) corregido.
+> Foto del proyecto al **2026-04-22 (sesión tarde/noche — journey mapping + scenarios + analizador Supabase)**.
+>
+> **Lo nuevo vs. cierre anterior:** capa de **Scenarios** operativa (propuestas tentativas de viaje — un pedido puede vivir en N scenarios sin salir de `sin_consolidar` hasta que se promueva uno). Analizador-rutas migrado a Supabase con selector dual 🚚 Viaje / 🧪 Scenario + deep-link `?scenario=<id>`. Badge de zona color inline + sub-split automático por zona dentro de "Agrupar por Origen". Nuevo doc [LOGXIA_JOURNEY.md](LOGXIA_JOURNEY.md) con tabla journey 7 pasos × [hoy · Fase 1 · Fase 2 · Fase 3], reglas Fase 1 priorizadas y spec de sistema de rating + Módulo 6 Facturación.
+>
+> **Lo que sigue en producción del cierre anterior:** Panel control reestructurado como "panel de trabajo" orientado a autopilot (tab Inicio en 2 bloques con badges de piloto, tab Pedidos con tira de pistas + agrupado por RUTA + hints, tab Viajes (subasta + activos) con el mismo framing, workspace 🏢 Catálogo con CRUD de clientes y transportadoras, ofertas visibles, Drive API operativo para cumplidos). Portal `mi-netfleet.html` con login inline + 5 stats KPI + deep-link `?viaje_ref=`.
 
-## TL;DR de la sesión 2026-04-22
+## TL;DR de la sesión 2026-04-22 (tarde/noche)
+
+### Journey mapping + reglas autopilot
+- Recorrido lineal con Bernardo de los 7 pasos operativos + 3 pasos invisibles (intake, consolidar, post-cierre). Salió el dato calibrador: **20% de pedidos nuevos tienen el mismo bug** — destino↔dirección swap cuando el vendedor pone el destino real en `direccion` porque no está en catálogo. ~80 h/año recuperables con regla #1 de Fase 1.
+- **Insight de subasta**: no es solo minimizar precio — es broadcast + price discovery (descubrir precio para facturar a Avgust). Eso condiciona el autopilot: no auto-adjudicar al más bajo sin preservar ancla de mercado.
+- **Sistema de calificación acordado** (3 actores × 6 dimensiones al cerrar viaje, visible a transportadoras). Fase 0 implícito = calcular desde datos existentes sin input humano.
+- **Módulo 6 Facturación** — nuevo módulo fuera del roadmap original: portal `cliente.html` para Avgust (ve cumplidos + facturas) + tab "💰 Facturar" en mi-netfleet (gate cumplidos 100%).
+- Spec completa en [docs/LOGXIA_JOURNEY.md](LOGXIA_JOURNEY.md).
+
+### Scenarios (capa tentativa de consolidación)
+- **Problema que resuelve:** cuando Bernardo armaba combinaciones tentativas, los pedidos desaparecían de `sin_consolidar` y no podía seguir "jugando" con ellos.
+- **Solución:** entidad `scenarios_viaje` = propuesta tentativa. Un pedido puede estar en N scenarios mientras siga en `sin_consolidar`. Solo al **promover** un scenario se crea el viaje real y los otros que compartían pedidos quedan `conflictivo` (con mensaje claro: "tiene N pedidos ya consumidos — limpiar o descartar"). `fn_scenario_limpiar_consumidos` quita los consumidos y devuelve a `borrador` con los libres.
+- Backend: 2 tablas + 6 Postgres functions + RLS staff-only. Smoke test PASS end-to-end. Ver [db/scenarios_viaje.sql](../db/scenarios_viaje.sql).
+- UI control.html: sub-tab **🧪 Scenarios** (count = borrador + conflictivo), cards con estado + agregados + warnings + acciones contextuales (Promover → abre modal pre-cargado / Descartar / Limpiar / Quitar pedido individual). Action-bar Pedidos con 2 botones: **🧪 Crear scenario** (default) + **⚡ Consolidar directo** (escape hatch naranja). Badge `🧪 N` en fila de pedido (rojo si alguno conflictivo).
+- Probado en prod por Bernardo — workflow correcto.
+
+### Analizador-rutas migrado a Supabase
+- Lee `viajes_consolidados` + `scenarios_viaje` + `scenarios_viaje_pedidos` + `pedidos` en vez del CSV legacy.
+- Selector dual en sidebar: **🚚 Viaje existente | 🧪 Scenario tentativo**. Label del select cambia según modo.
+- Deep-link: `?scenario=<id>` → auto-setea modo scenario + selecciona; `?viaje=<id>` → equivalente en modo viaje.
+- Fallback `?legacy=1` usa el CSV DETALLE_PEDIDOS (por si Supabase cae).
+- Parser simple del campo `horario` texto libre → extrae v1_desde/hasta y v2_desde/hasta (patrones `L-V 8:00-17:00`, `L-S 7:30 a 15:00`, etc.). Fallback default 08:00-17:00 si no parsea.
+- Adaptador mantiene la estructura "trip" que el analizador ya esperaba — toda la lógica OSRM, Leaflet, cálculo de ETAs y PDF export queda intacta.
+- Botones "🗺 Analizar ruta" en scen-card-actions: borrador/conflictivo → `?scenario=<id>`; promovido → `?viaje=<promovido_a_viaje_id>`.
+- Requiere sesión staff activa (usa `sb.auth.getSession()`). Si no hay, muestra "Iniciá sesión en control.html primero".
+
+### Badge zona + sub-split zona (mejoras tab Pedidos)
+- **Badge zona inline** junto al destino en cada fila: `CHOCONTA [BOYACÁ]`, `PASTO [SUR]`. 13 colores canónicos (BOYACÁ=ámbar, VALLE=rojo, SUR=verde, etc.).
+- **Sub-split automático por zona** dentro de cada grupo cuando está en modo "Agrupar por Origen": el grupo `CENTRO 3PL FUNZA` se parte en `BOYACÁ (3)` + `TOLIMA/HUILA (1)` + `SUR (1)`, cada sub-grupo con sus sub-totales + su propio hint contextual ("💡 3 listos — buen candidato" / "⏳ 1 listo — esperar más"). Elimina filtrado mental del operador.
+- Helpers: `normalizarZona()` (slug sin tildes ni espacios) + `badgeZona()` (devuelve HTML del span).
+
+## TL;DR de la sesión 2026-04-22 (mañana — en producción)
 
 ### Panel control (control.html) — panel de trabajo orientado a autopilot
 
@@ -119,18 +154,20 @@
 
 **Auto-switch** de tab tras cada acción. Toasts descriptivos con proveedor/destino ("Asignado directo a VIGÍA → ver en Seguimiento").
 
-### Supabase — estado al 2026-04-20
+### Supabase — estado al 2026-04-22
 
 | Tabla | Rows | Notas |
 |---|---|---|
 | `clientes` | 2 | AVGUST + FATECO (ambos `plan_bpo=true`) |
 | `transportadoras` | 7 | Seed: ENTRAPETROL, TRASAMER, JR, Trans Nueva Colombia, PRACARGO, Global, Vigía |
 | `perfiles` | 3 | 1 `logxie_staff` (Bernardo) + 2 `transportador` pendientes |
-| `viajes_consolidados` | **1297** | 100% sincronizados con Sheet ASIGNADOS (fresh sync 2026-04-20). Todos `fuente='sheet_asignados'` |
-| `pedidos` | **3748** | **97.3% linkeados** a viaje (3647 con viaje_id, 101 huérfanos). Linker v3 (regex) + v4 (substring BUSCARX-style) en cascada. |
-| `ofertas` | 0 | Ninguna todavía |
+| `viajes_consolidados` | **1297+** | Sincronizados con Sheet ASIGNADOS. Fuente `sheet_asignados` mayoría + nuevos `netfleet` tras promociones de scenarios |
+| `pedidos` | **3748+** | ~97% linkeados. Linker v3 (regex) + v4 (substring BUSCARX-style) en cascada |
+| `scenarios_viaje` | ✨ nueva | Capa tentativa de consolidación. Estados: borrador / promovido / descartado / conflictivo / invalidado. 2026-04-22 |
+| `scenarios_viaje_pedidos` | ✨ nueva | N:M pedidos↔scenarios con orden de ruta |
+| `ofertas` | 0 | Aún sin ofertas reales (falta Apps Script mail→Netfleet + onboarding transportadoras) |
 | `invitaciones_subasta` | 0 | Ninguna todavía |
-| `acciones_operador` | 40+ | Audit trail M4 + sync + admin pedidos |
+| `acciones_operador` | 40+ | Audit trail M4 + sync + admin pedidos + scenarios |
 
 ### Supabase — Postgres functions listas
 
@@ -165,9 +202,18 @@
 - `fn_pedidos_cambiar_estado_batch(ids[], nuevo_estado, razon)` — forzar estado
 - `fn_pedidos_eliminar_batch(ids[], razon)` — DELETE hard con snapshot
 
+**Scenarios — capa tentativa** (creadas 2026-04-22) — 6 functions:
+- `fn_scenario_crear(pedido_ids[], nombre?, notas?)` — crea scenario sin cambiar estado de pedidos; nombre autogenerado si no se pasa
+- `fn_scenario_agregar_pedido(scenario_id, pedido_id)` — suma pedido (solo borrador/conflictivo)
+- `fn_scenario_quitar_pedido(scenario_id, pedido_id)` — saca pedido
+- `fn_scenario_descartar(id, razon?)` — marca descartado
+- `fn_scenario_limpiar_consumidos(id)` — quita pedidos que ya se consumieron en otro scenario; vuelve a borrador si quedan libres, invalidado si no
+- `fn_scenario_promover(id, metadata)` — delega a `fn_consolidar_pedidos`, crea viaje, marca otros scenarios conflictivos/invalidados automáticamente
+
 **Helpers**:
 - `is_logxie_staff()` — SECURITY DEFINER, checkea `perfiles.tipo='logxie_staff'` via `auth.uid()`
 - `_recalc_viaje_agregados(viaje_id)` — recomputa peso/valor/cantidad
+- `_recalc_scenario(scenario_id)` — recomputa agregados + zonas
 - `_norm_empresa(text)` — canoniza "FATECO, AVGUST" → "AVGUST, FATECO"
 - `_norm_estado_viaje` / `_norm_estado_pedido` — estados crudos → canónicos
 
@@ -395,8 +441,8 @@ python db/sync_from_csv.py --viajes dumps/asignados.csv --pedidos dumps/base_ini
 - Supabase: https://pzouapqnvllaaqnmnlbs.supabase.co
 - Admin legacy: https://netfleet.app/admin.html
 - Control staff: https://netfleet.app/control.html
-- Último commit: `bdf5b22` — "feat: linker v4 — pase substring BUSCARX-style rescata 211 pedidos"
+- Último commit: `e4d8c38` — "feat(analizador): migración a Supabase + selector dual viaje/scenario"
 
 ---
 
-*Última actualización: 2026-04-20*
+*Última actualización: 2026-04-22 (sesión journey + scenarios + analizador Supabase)*

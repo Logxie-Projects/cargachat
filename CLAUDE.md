@@ -20,9 +20,10 @@
 | `CLAUDE.md` (este) | Reglas, decisiones duras, accesos, arquitectura estable, funciones protegidas | Raramente |
 | `docs/CONTEXTO_OPERATIVO.md` | Estado operativo vivo (qué está en prod, pendientes por prioridad) | Cada sesión |
 | `docs/ARQUITECTURA.md` | Profundización técnica del stack, módulos pendientes, convenciones | Cuando cambia la arquitectura |
+| `docs/LOGXIA_JOURNEY.md` | **Journey operativo + spec de reglas autopilot por fase (🟢🟡🔴)**. Tabla 7 pasos × [hoy · Fase 1 · Fase 2 · Fase 3], reglas priorizadas, sistema de rating, Módulo 6 Facturación | Cuando se activa una regla o cambia prioridad |
 | `docs/CONTEXTO_SESION.md` | Bitácora histórica de sesiones (append-only) | Al cierre de cada sesión |
 
-Si dos fuentes divergen, **CLAUDE.md gana para reglas y decisiones**, `CONTEXTO_OPERATIVO.md` gana para estado actual.
+Si dos fuentes divergen, **CLAUDE.md gana para reglas y decisiones**, `CONTEXTO_OPERATIVO.md` gana para estado actual, `docs/LOGXIA_JOURNEY.md` gana para "qué regla autopilot viene después y por qué".
 
 ---
 
@@ -109,11 +110,11 @@ D:\NETFLEET\
 ├── transportador.html          → Portal transportadores (login + viajes + ofertas)
 ├── empresa.html                → Portal registro/login empresas generadoras
 ├── admin.html                  → Panel admin Logxie
-├── control.html                → Panel de control staff Logxie (Módulo 4 UI: consolidar/subasta/activos/historial)
+├── control.html                → Panel de control staff Logxie (Módulo 4 UI: consolidar/subasta/activos/scenarios/historial/catálogo)
 ├── mis-ofertas.html            → Vista ofertas del transportador
 ├── viaje.html                  → Tarjeta individual (screenshots LinkedIn)
 ├── checkderuta.html            → Módulo seguimiento de ruta en tiempo real
-├── analizador-rutas.html       → Planificación de entregas por viaje consolidado
+├── analizador-rutas.html       → Planificador multi-parada: lee Supabase (viajes_consolidados + scenarios_viaje), selector dual 🚚 Viaje / 🧪 Scenario, deep-link ?scenario= / ?viaje=, OSRM + Leaflet + ETAs + PDF. Fallback CSV con ?legacy=1
 ├── q.html                      → Quote (propuesta) standalone para compartir
 ├── netfleet-core.js            → Funciones compartidas (inactivo — no lo carga ningún HTML todavía)
 ├── supabase.min.js             → SDK Supabase v2.39.8 (NO cambiar versión)
@@ -142,6 +143,8 @@ D:\NETFLEET\
 │   ├── modulo4_reabrir_finalizado.sql → fn_reabrir_finalizado (deshace cierre)
 │   ├── modulo4_pedidos_bulk.sql → fn_pedidos_cancelar/resetear_batch + fn_pedido_clonar
 │   ├── modulo4_pedidos_admin.sql → fn_pedido_editar + cambiar_estado_batch + eliminar_batch
+│   ├── scenarios_viaje.sql     → Capa tentativa: 2 tablas + 6 fns (crear/agregar/quitar/descartar/limpiar/promover)
+│   ├── scenarios_viaje_patch_constraint.sql → Patch extender CHECK acciones_operador con scenario_*
 │   ├── link_pedidos_viajes_v3.sql → linker v3 regex (aliases no rangos) — pase 1
 │   ├── link_pedidos_viajes_v4.sql → linker v4 substring BUSCARX-style — pase 2 (97.3% combinado)
 │   ├── smoke_test_modulo4.sql  → E2E test del ciclo completo M4
@@ -319,6 +322,24 @@ Esquema en [db/pedidos.sql](db/pedidos.sql). 3.764 registros migrados.
 Configuración por cliente generador de carga + canal de ingesta.
 Esquema en [db/clientes.sql](db/clientes.sql). Pobladas: AVGUST, FATECO.
 
+### Tablas `scenarios_viaje` + `scenarios_viaje_pedidos` (Módulo 4 — creadas 2026-04-22)
+Capa tentativa de consolidación. Un **scenario** agrupa pedidos sin comprometerlos — el pedido sigue en `sin_consolidar` mientras esté en N scenarios borrador. Solo al **promover** un scenario se crea el viaje real vía `fn_consolidar_pedidos`.
+
+- `scenarios_viaje` (22 cols): nombre, estado (`borrador|promovido|descartado|conflictivo|invalidado`), agregados (peso/valor/zonas), `promovido_a_viaje_id`, notas, audit.
+- `scenarios_viaje_pedidos` (N:M): scenario_id + pedido_id + orden.
+- 6 Postgres functions: `fn_scenario_crear`, `fn_scenario_agregar_pedido`, `fn_scenario_quitar_pedido`, `fn_scenario_descartar`, `fn_scenario_limpiar_consumidos`, `fn_scenario_promover` (delega a `fn_consolidar_pedidos` y marca otros scenarios como `conflictivo` o `invalidado` automáticamente).
+- RLS staff-only. Esquema completo en [db/scenarios_viaje.sql](db/scenarios_viaje.sql).
+
+**State machine scenarios:**
+```
+borrador → promovido (viaje_X) | descartado | conflictivo → borrador (tras limpiar)
+                                                         → invalidado
+```
+
+**Regla clave:** el estado del pedido NO cambia por estar en scenarios — solo cambia al promover un scenario o al consolidar directo.
+
+Ver contexto completo en [docs/LOGXIA_JOURNEY.md](docs/LOGXIA_JOURNEY.md).
+
 ---
 
 ## Algoritmo de Precio — PROTEGIDO
@@ -447,6 +468,11 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 - [ ] **Unificar las 5 copias de CIUDADES/estimarPrecio** en `netfleet-core.js` + `<script src="netfleet-core.js">` en cada HTML. Borrar copias locales.
 
 ### Producto
+- [x] ✅ hecho 2026-04-22 — **Capa Scenarios (Módulo 4)** — un pedido puede estar en N scenarios tentativos mientras siga sin_consolidar. Schema `scenarios_viaje` + `scenarios_viaje_pedidos`, 6 Postgres functions (`fn_scenario_crear/agregar_pedido/quitar_pedido/descartar/limpiar_consumidos/promover`), RLS staff-only. Sub-tab 🧪 Scenarios en control.html + modal dual (scenario/directo/promover), badge 🧪 N en fila de pedido. Ver [db/scenarios_viaje.sql](db/scenarios_viaje.sql), [docs/LOGXIA_JOURNEY.md](docs/LOGXIA_JOURNEY.md).
+- [x] ✅ hecho 2026-04-22 — **Analizador-rutas migrado a Supabase** — lee `viajes_consolidados` + `scenarios_viaje` en vez del CSV. Selector dual 🚚 Viaje / 🧪 Scenario, deep-link `?scenario=<id>` / `?viaje=<id>`, parser simple del campo `horario` texto → v1/v2. Fallback CSV legacy con `?legacy=1`. Botón "🗺 Analizar ruta" desde cards de scenario en control.html.
+- [x] ✅ hecho 2026-04-22 — **Badge zona inline + sub-split por zona en modo "Agrupar por Origen"** — 13 colores canónicos (BOYACÁ, VALLE, etc.) junto al destino. Dentro de un grupo de origen, separa automáticamente los consolidables (ej. Funza→Boyacá) de los no-consolidables (ej. Funza→Pasto). Elimina filtrado mental del operador.
+- [ ] **Regla #1 Fase 1 — Auto-swap destino↔dirección** (80 h/año estimadas). Requiere centralizar catálogo CIUDADES en netfleet-core.js primero. Ver [docs/LOGXIA_JOURNEY.md](docs/LOGXIA_JOURNEY.md).
+- [ ] **Rating implícito Fase 0** — calcular desde datos existentes (% on-time, % entregado_ok, % cumplidos a tiempo). Prerequisito del panel comparativo de ofertas.
 - [ ] **Renombrar** `LogxIA — PRODUCCIÓN v2 (Mails Avgust)` → `LogxIA — Parser Detalle Pedidos` en n8n
 - [ ] **LogxIA:** agregar Vigía y Global Logística al diccionario `CORREOS_PROVEEDORES` en Seguimiento Transportadores
 - [ ] **LogxIA:** poblar `ADMIN_IDS` y arrays de Telegram IDs por proveedor en Bot Telegram

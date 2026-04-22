@@ -145,6 +145,7 @@ D:\NETFLEET\
 │   ├── modulo4_pedidos_admin.sql → fn_pedido_editar + cambiar_estado_batch + eliminar_batch
 │   ├── scenarios_viaje.sql     → Capa tentativa: 2 tablas + 6 fns (crear/agregar/quitar/descartar/limpiar/promover)
 │   ├── scenarios_viaje_patch_constraint.sql → Patch extender CHECK acciones_operador con scenario_*
+│   ├── modulo4_flota.sql       → Flota transportadoras: tablas conductores/vehiculos/documentos_flota (polimórfico) + bucket privado flota-docs + 6 fns CRUD + RLS + perfiles.transportadora_id FK
 │   ├── link_pedidos_viajes_v3.sql → linker v3 regex (aliases no rangos) — pase 1
 │   ├── link_pedidos_viajes_v4.sql → linker v4 substring BUSCARX-style — pase 2 (97.3% combinado)
 │   ├── link_pedidos_viajes_v5.sql → linker v5 reconsolidación (pedido activo en viaje cancelado → re-link a no-cancelado)
@@ -322,6 +323,23 @@ Esquema en [db/pedidos.sql](db/pedidos.sql). 3.764 registros migrados.
 ### Tabla `clientes` (Módulo 2 — creada 2026-04-17)
 Configuración por cliente generador de carga + canal de ingesta.
 Esquema en [db/clientes.sql](db/clientes.sql). Pobladas: AVGUST, FATECO.
+
+### Tablas `conductores` + `vehiculos` + `documentos_flota` (Módulo 4 — creadas 2026-04-22 noche)
+
+**Flota por transportadora**. Un transportador logueado gestiona SU flota (CRUD + upload de docs) desde mi-netfleet tab 🚛 Flota. Al adjudicar un viaje, esos conductores/vehículos aparecerán como opciones (pendiente: Bloque 2 — asignación).
+
+- `conductores` (14 cols): transportadora_id FK, nombre, cedula, licencia_numero + categoria, telefono, email, activo, notas. UNIQUE (transp, cedula).
+- `vehiculos` (14 cols): transportadora_id FK, placa (auto-upper), tipo, marca, modelo_anio, capacidad_kg, configuracion_ejes, activo, notas. UNIQUE (transp, placa).
+- `documentos_flota` (polimórfico): entidad_tipo ∈ {conductor, vehiculo} + entidad_id + tipo_doc + archivo_url (path en bucket) + vence_at. UNIQUE (entidad_tipo, entidad_id, tipo_doc). Un doc vigente por tipo.
+- Helper: `_mi_transportadora_id()` resuelve via `perfiles.transportadora_id` (FK explícito) con fallback string-match `perfiles.empresa ↔ transportadoras.nombre`.
+- 6 Postgres fns: `fn_flota_conductor_upsert/desactivar`, `fn_flota_vehiculo_upsert/desactivar`, `fn_flota_doc_upsert/eliminar`.
+- Bucket `flota-docs` privado. Path: `{transp_id}/{entidad_tipo}/{entidad_id}/{tipo_doc}_{ts}.{ext}`. RLS valida `(storage.foldername(name))[1]::uuid = _mi_transportadora_id()`.
+- Docs conductor: cédula · licencia (+ vence) · EPS (vence) · ARL (vence) · examen médico (vence) · curso sust.peligrosas (vence, opcional) · hoja de vida (opcional).
+- Docs vehículo: tarjeta propiedad · SOAT (vence) · tecnomecánica (vence) · póliza RC (vence) · foto vehículo (opcional).
+- RLS: staff_all + transp_own (`transportadora_id = _mi_transportadora_id()`) + service_role.
+- `perfiles.transportadora_id UUID FK` nuevo. Bernardo test (`e2269e48-…`) linkeado a JR LOGÍSTICA (`97c46fd6-…`).
+
+Esquema completo en [db/modulo4_flota.sql](db/modulo4_flota.sql).
 
 ### Tablas `scenarios_viaje` + `scenarios_viaje_pedidos` (Módulo 4 — creadas 2026-04-22)
 Capa tentativa de consolidación. Un **scenario** agrupa pedidos sin comprometerlos — el pedido sigue en `sin_consolidar` mientras esté en N scenarios borrador. Solo al **promover** un scenario se crea el viaje real vía `fn_consolidar_pedidos`.

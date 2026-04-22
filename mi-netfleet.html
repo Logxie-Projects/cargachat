@@ -271,6 +271,65 @@
     .flota-card-btn { background: var(--navy); color: white; border: none; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; align-self: flex-start; transition: background .2s; }
     .flota-card-btn:disabled { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
     .flota-placeholder-note { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12px; text-align: center; margin-top: 8px; }
+
+    /* ── FLOTA: sub-tabs (conductores / vehículos) ── */
+    .flota-subtabs { display: inline-flex; gap: 3px; background: white; border: 1px solid var(--gray-100); border-radius: 12px; padding: 3px; margin-bottom: 1rem; }
+    .flota-subtab { padding: 8px 16px; border-radius: 9px; border: none; background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--gray-400); transition: all .2s; white-space: nowrap; }
+    .flota-subtab.active { background: var(--navy); color: white; }
+    .flota-subtab .tab-count { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:var(--gray-100); font-size:10px; font-weight:700; color:var(--gray-600); }
+    .flota-subtab.active .tab-count { background:rgba(255,255,255,0.2); color:white; }
+    .flota-section { display: none; }
+    .flota-section.active { display: block; }
+    .flota-hint { font-size: 12.5px; color: var(--gray-600); background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; line-height: 1.5; }
+    .flota-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .btn-add-flota { background: var(--green); color: white; border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .btn-add-flota:hover { background: #16a34a; }
+    .flota-empty { text-align: center; padding: 2.5rem 1rem; color: var(--gray-400); font-size: 13px; background: var(--gray-50); border: 1px dashed var(--gray-100); border-radius: 14px; }
+
+    /* ── FLOTA: cards conductor / vehículo ── */
+    .flota-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+    .fitem { background: white; border: 1px solid var(--gray-100); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; transition: box-shadow .2s; }
+    .fitem.inactivo { opacity: 0.55; background: var(--gray-50); }
+    .fitem:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.06); }
+    .fitem-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .fitem-title { font-size: 15px; font-weight: 800; color: var(--navy); }
+    .fitem-sub { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
+    .fitem-meta { font-size: 11.5px; color: var(--gray-600); display: flex; flex-direction: column; gap: 2px; }
+    .fitem-meta span { }
+    .fitem-docs-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--gray-50); border-radius: 10px; padding: 8px 12px; font-size: 12px; }
+    .docs-summary { display: flex; gap: 8px; align-items: center; }
+    .docs-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .docs-badge.ok   { background: #dcfce7; color: #16a34a; }
+    .docs-badge.warn { background: #fef3c7; color: #b45309; }
+    .docs-badge.crit { background: #fee2e2; color: #dc2626; }
+    .docs-badge.none { background: #e5e7eb; color: #6b7280; }
+    .fitem-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .fitem-btn { border: 1px solid var(--gray-100); background: white; border-radius: 8px; padding: 6px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--gray-600); }
+    .fitem-btn:hover { border-color: var(--navy); color: var(--navy); }
+    .fitem-btn.primary { background: var(--navy); color: white; border-color: var(--navy); }
+    .fitem-btn.primary:hover { background: var(--cyan); color: var(--navy); }
+    .fitem-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Modal grande (para docs) ── */
+    .modal-box.wide { max-width: 640px; }
+    .doc-row { display: grid; grid-template-columns: 1.6fr 1.2fr 100px 90px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .doc-row:last-child { border-bottom: none; }
+    .doc-row-label { font-size: 12.5px; font-weight: 600; color: var(--navy); }
+    .doc-row-label small { display: block; color: var(--gray-400); font-weight: 500; font-size: 11px; margin-top: 2px; }
+    .doc-row-opt { color: var(--gray-400); font-weight: 400; }
+    .doc-row input[type=date] { width: 100%; padding: 7px 10px; border: 1px solid var(--gray-100); border-radius: 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+    .doc-row-status { text-align: center; }
+    .doc-row-action { display: flex; gap: 4px; justify-content: flex-end; }
+    .doc-row-action button { background: var(--navy); color: white; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .doc-row-action button.view { background: none; color: var(--navy); border: 1px solid var(--gray-100); }
+    .doc-row-action button.del  { background: none; color: var(--red);  border: 1px solid var(--gray-100); }
+    .doc-row-action button:hover { opacity: 0.85; }
+    @media (max-width: 640px) {
+      .doc-row { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
+      .doc-row-status, .doc-row-action { justify-content: flex-start; text-align: left; }
+    }
+    .doc-row input[type=file] { display: none; }
+
     /* Mapa del portal (sin grid 2-col, ancho completo, altura fija) */
     .mapa-portal { margin: 1.25rem 0; }
     .mapa-portal .mapa-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--gray-100); }
@@ -576,44 +635,37 @@
       </div>
     </div>
 
-    <!-- ══ TAB FLOTA (conductores + vehículos) — placeholder, data pendiente de diseño ══ -->
+    <!-- ══ TAB FLOTA (conductores + vehículos) ══ -->
     <div class="tab-section" id="tab-flota">
-      <div style="padding:1rem 0;color:var(--gray-600);font-size:13px">
-        Gestioná conductores y vehículos de tu flota. Subí los documentos requeridos por industria — NETFLEET los valida antes del primer viaje.
+      <div class="flota-hint">
+        Cargá acá tus conductores y vehículos una sola vez — al asignarlos a un viaje adjudicado no tenés que retipearlos. Los documentos quedan guardados y NETFLEET avisa cuando están por vencer.
       </div>
-      <div class="flota-grid">
-        <div class="flota-card">
-          <div class="flota-card-icon">👷‍♂️</div>
-          <div class="flota-card-body">
-            <div class="flota-card-title">Conductores</div>
-            <ul class="flota-card-docs">
-              <li>Cédula de ciudadanía</li>
-              <li>Licencia de conducción</li>
-              <li>Seguridad social (EPS + ARL)</li>
-              <li>Hoja de vida, examen médico, antecedentes</li>
-              <li><strong>Curso de sustancias peligrosas</strong> (obligatorio para agroquímicos)</li>
-              <li>Otros certificados según industria del cliente</li>
-            </ul>
-            <div class="flota-card-count" id="flota-count-conductores">— registrados</div>
-          </div>
-          <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>
+
+      <div class="flota-subtabs">
+        <button class="flota-subtab active" data-sub="conductores" onclick="cambiarFlotaSubtab('conductores', this)">👷 Conductores <span class="tab-count" id="fcount-conductores">0</span></button>
+        <button class="flota-subtab" data-sub="vehiculos" onclick="cambiarFlotaSubtab('vehiculos', this)">🚛 Vehículos <span class="tab-count" id="fcount-vehiculos">0</span></button>
+      </div>
+
+      <!-- Sub-tab CONDUCTORES -->
+      <div class="flota-section active" id="flota-conductores">
+        <div class="flota-toolbar">
+          <div style="font-size:12px;color:var(--gray-600)">Los que podrás asignar a cada viaje.</div>
+          <button class="btn-add-flota" onclick="abrirModalConductor()">+ Agregar conductor</button>
         </div>
-        <div class="flota-card">
-          <div class="flota-card-icon">🚛</div>
-          <div class="flota-card-body">
-            <div class="flota-card-title">Vehículos</div>
-            <ul class="flota-card-docs">
-              <li>Tarjeta de propiedad</li>
-              <li>Técnico-mecánica vigente</li>
-              <li>Póliza de responsabilidad civil</li>
-            </ul>
-            <div class="flota-card-count" id="flota-count-vehiculos">— registrados</div>
-          </div>
-          <button class="flota-card-btn" disabled title="Próximamente">Gestionar &rarr;</button>
+        <div id="conductores-lista" class="flota-lista">
+          <div class="loading-msg">Cargando...</div>
         </div>
       </div>
-      <div class="flota-placeholder-note">
-        Módulo en construcción · Pronto vas a poder asignar conductor y vehículo a cada viaje adjudicado.
+
+      <!-- Sub-tab VEHÍCULOS -->
+      <div class="flota-section" id="flota-vehiculos">
+        <div class="flota-toolbar">
+          <div style="font-size:12px;color:var(--gray-600)">Tus camiones / vehículos disponibles.</div>
+          <button class="btn-add-flota" onclick="abrirModalVehiculo()">+ Agregar vehículo</button>
+        </div>
+        <div id="vehiculos-lista" class="flota-lista">
+          <div class="loading-msg">Cargando...</div>
+        </div>
       </div>
     </div>
 
@@ -745,6 +797,139 @@
     <div class="modal-footer">
       <button class="btn-cancelar" onclick="cerrarModal('modal-factura')">Cancelar</button>
       <button class="btn-enviar" id="btn-enviar-fact" onclick="enviarFactura()">Emitir factura &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CONDUCTOR (alta/edición) ══ -->
+<div class="modal-overlay" id="modal-conductor">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title" id="modal-conductor-title">Agregar conductor</div>
+      <button class="modal-close" onclick="cerrarModal('modal-conductor')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre completo *</label>
+        <input class="form-input" id="cond-nombre" placeholder="Ej: Juan Pérez Ramírez">
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="form-label">Cédula</label>
+          <input class="form-input" id="cond-cedula" placeholder="1234567890">
+        </div>
+        <div>
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="cond-telefono" placeholder="300 000 0000">
+        </div>
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px">
+        <div>
+          <label class="form-label">Licencia — número</label>
+          <input class="form-input" id="cond-licencia" placeholder="Ej: 12345678">
+        </div>
+        <div>
+          <label class="form-label">Categoría</label>
+          <select class="form-input" id="cond-lic-cat">
+            <option value="">—</option>
+            <option>B1</option><option>B2</option><option>B3</option>
+            <option>C1</option><option>C2</option><option>C3</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email (opcional)</label>
+        <input class="form-input" id="cond-email" type="email" placeholder="conductor@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas (opcional)</label>
+        <textarea class="form-textarea" id="cond-notas" placeholder="Ej: Ruta preferida, experiencia, contacto de emergencia..."></textarea>
+      </div>
+      <div id="cond-error"   class="form-error"   style="display:none"></div>
+      <div id="cond-success" class="form-success" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal('modal-conductor')">Cancelar</button>
+      <button class="btn-enviar" id="btn-cond-guardar" onclick="guardarConductor()">Guardar &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL VEHÍCULO (alta/edición) ══ -->
+<div class="modal-overlay" id="modal-vehiculo">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-title" id="modal-vehiculo-title">Agregar vehículo</div>
+      <button class="modal-close" onclick="cerrarModal('modal-vehiculo')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1.3fr;gap:10px">
+        <div>
+          <label class="form-label">Placa *</label>
+          <input class="form-input" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase">
+        </div>
+        <div>
+          <label class="form-label">Tipo</label>
+          <select class="form-input" id="veh-tipo">
+            <option value="">—</option>
+            <option>Turbo</option><option>Sencillo</option>
+            <option>Mini-mula</option><option>Tractomula</option>
+            <option>Tractocamión</option><option>Patineta</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1.3fr 0.7fr 1fr;gap:10px">
+        <div>
+          <label class="form-label">Marca</label>
+          <input class="form-input" id="veh-marca" placeholder="Ej: Kenworth, Freightliner">
+        </div>
+        <div>
+          <label class="form-label">Modelo (año)</label>
+          <input class="form-input" id="veh-anio" type="number" min="1980" max="2030" placeholder="2018">
+        </div>
+        <div>
+          <label class="form-label">Capacidad (kg)</label>
+          <input class="form-input" id="veh-cap" type="number" min="0" placeholder="20000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Configuración ejes</label>
+        <select class="form-input" id="veh-ejes">
+          <option value="">—</option>
+          <option>2 ejes</option><option>3 ejes</option>
+          <option>4 ejes</option><option>6x4</option><option>6x2</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas (opcional)</label>
+        <textarea class="form-textarea" id="veh-notas" placeholder="Ej: Refrigerado, carrocería tipo X..."></textarea>
+      </div>
+      <div id="veh-error"   class="form-error"   style="display:none"></div>
+      <div id="veh-success" class="form-success" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal('modal-vehiculo')">Cancelar</button>
+      <button class="btn-enviar" id="btn-veh-guardar" onclick="guardarVehiculo()">Guardar &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DOCS FLOTA (upload + vence) ══ -->
+<div class="modal-overlay" id="modal-docs-flota">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <div class="modal-head-title" id="modal-docs-title">Documentos</div>
+      <button class="modal-close" onclick="cerrarModal('modal-docs-flota')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="docs-flota-info" style="font-size:12px;color:var(--gray-600);margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:8px"></div>
+      <div id="docs-flota-lista">
+        <div class="loading-msg">Cargando...</div>
+      </div>
+      <div id="docs-flota-error" class="form-error" style="display:none;margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="cerrarModal('modal-docs-flota')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1016,6 +1201,7 @@
       else handleDeepLink();
     });
     cargarDocumentos();
+    cargarFlota();
     cargarStatsTransportador();
 
     // Banner de perfil incompleto si faltan empresa/telefono/nit
@@ -1196,6 +1382,7 @@
     if (nombre === 'ofertas')    renderMisOfertas();
     if (nombre === 'misviajes')  cargarMisViajes();
     if (nombre === 'facturar')   cargarParaFacturar();
+    if (nombre === 'flota')      cargarFlota();
     // Leaflet calcula mal el tamaño si el #map estaba dentro de un tab oculto
     // (display:none con tiles inicializados). Al volver a Ofertar forzamos
     // invalidateSize para que recalcule y los pins/tiles no se salgan del wrap.
@@ -2003,6 +2190,488 @@
 
     msg.innerHTML = '<span style="color:var(--green);font-weight:600">\u2713 Subido \u2014 en revision</span>';
     await cargarDocumentos();
+  }
+
+  // ═════════════ FLOTA (conductores + vehículos + docs) ═════════════
+  //
+  // Flota pertenece a la transportadora (FK transportadora_id). RLS
+  // filtra automáticamente — cada transportadora ve solo su flota.
+  // Al asignar a un viaje adjudicado (Mis viajes), se elige de acá.
+  //
+  // Storage: bucket privado `flota-docs`. Path:
+  //   {transportadora_id}/{entidad_tipo}/{entidad_id}/{tipo_doc}_{ts}.{ext}
+  // RLS de Storage valida por la primera carpeta = transportadora_id.
+
+  const DOCS_CONDUCTOR = [
+    { tipo: 'cedula',          label: 'Cédula de ciudadanía',     vence: false },
+    { tipo: 'licencia',        label: 'Licencia de conducción',    vence: true },
+    { tipo: 'eps',             label: 'EPS (seguridad social)',    vence: true },
+    { tipo: 'arl',             label: 'ARL (riesgos)',             vence: true },
+    { tipo: 'examen_medico',   label: 'Examen médico',             vence: true },
+    { tipo: 'sust_peligrosas', label: 'Sustancias peligrosas',     vence: true, opcional: true, hint: 'Obligatorio agroquímicos' },
+    { tipo: 'hoja_vida',       label: 'Hoja de vida',              vence: false, opcional: true },
+  ];
+  const DOCS_VEHICULO = [
+    { tipo: 'tarjeta_propiedad', label: 'Tarjeta de propiedad', vence: false },
+    { tipo: 'soat',              label: 'SOAT',                  vence: true },
+    { tipo: 'tecnomecanica',     label: 'Técnico-mecánica',      vence: true },
+    { tipo: 'poliza_rc',         label: 'Póliza responsabilidad civil', vence: true },
+    { tipo: 'foto_vehiculo',     label: 'Foto del vehículo',     vence: false, opcional: true },
+  ];
+
+  let misConductores = [];
+  let misVehiculos   = [];
+  let misDocsFlota   = [];  // todos los docs de mi flota (entidad_tipo+entidad_id+tipo_doc)
+  let condEditId = null;
+  let vehEditId  = null;
+  let docsEntidadActual = null; // {tipo:'conductor'|'vehiculo', id, label}
+
+  function cambiarFlotaSubtab(nombre, btn) {
+    document.querySelectorAll('.flota-subtab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.flota-section').forEach(s => s.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('flota-' + nombre).classList.add('active');
+  }
+
+  async function cargarFlota() {
+    if (!usuarioActual || !tokenActual) return;
+    try {
+      const h = { apikey: SUPABASE_KEY, Authorization: `Bearer ${tokenActual}` };
+      const [rc, rv, rd] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/conductores?select=*&order=activo.desc,nombre.asc`, { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/vehiculos?select=*&order=activo.desc,placa.asc`,   { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/documentos_flota?select=*`,                          { headers: h }),
+      ]);
+      misConductores = rc.ok ? await rc.json() : [];
+      misVehiculos   = rv.ok ? await rv.json() : [];
+      misDocsFlota   = rd.ok ? await rd.json() : [];
+    } catch (e) {
+      console.warn('Flota fetch falló:', e);
+      misConductores = []; misVehiculos = []; misDocsFlota = [];
+    }
+    document.getElementById('fcount-conductores').textContent = misConductores.filter(c => c.activo).length;
+    document.getElementById('fcount-vehiculos').textContent   = misVehiculos.filter(v => v.activo).length;
+    renderConductores();
+    renderVehiculos();
+  }
+
+  function resumenDocsEntidad(entidadTipo, entidadId) {
+    const requeridos = (entidadTipo === 'conductor' ? DOCS_CONDUCTOR : DOCS_VEHICULO).filter(d => !d.opcional);
+    const docs = misDocsFlota.filter(d => d.entidad_tipo === entidadTipo && d.entidad_id === entidadId);
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    let ok = 0, warn = 0, crit = 0, totalSubidos = docs.length;
+    // Estado por requerido
+    requeridos.forEach(req => {
+      const d = docs.find(x => x.tipo_doc === req.tipo);
+      if (!d) return; // cuenta como faltante
+      if (!req.vence || !d.vence_at) { ok++; return; }
+      const vence = new Date(d.vence_at);
+      const dias = Math.floor((vence - hoy) / 86400000);
+      if (dias < 0) crit++;
+      else if (dias <= 30) warn++;
+      else ok++;
+    });
+    const faltantes = requeridos.length - (ok + warn + crit);
+    return { requeridos: requeridos.length, ok, warn, crit, faltantes, totalSubidos };
+  }
+
+  function docsBadgeHTML(entidadTipo, entidadId) {
+    const r = resumenDocsEntidad(entidadTipo, entidadId);
+    if (r.crit > 0)
+      return `<span class="docs-badge crit">🔴 ${r.crit} vencido${r.crit>1?'s':''}</span>`;
+    if (r.faltantes > 0)
+      return `<span class="docs-badge none">⚪ ${r.faltantes} falta${r.faltantes>1?'n':''}</span>`;
+    if (r.warn > 0)
+      return `<span class="docs-badge warn">🟡 ${r.warn} por vencer</span>`;
+    if (r.ok === r.requeridos && r.requeridos > 0)
+      return `<span class="docs-badge ok">🟢 Docs al día</span>`;
+    return `<span class="docs-badge none">Sin docs</span>`;
+  }
+
+  function renderConductores() {
+    const el = document.getElementById('conductores-lista');
+    if (!misConductores.length) {
+      el.innerHTML = `<div class="flota-empty">No tenés conductores cargados. <br><br>Al agregar uno, va a aparecer como opción cuando asignes recursos a un viaje adjudicado.</div>`;
+      return;
+    }
+    el.innerHTML = misConductores.map(c => {
+      const lic = c.licencia_numero
+        ? `Lic. ${c.licencia_numero}${c.licencia_categoria ? ' · '+c.licencia_categoria : ''}`
+        : (c.licencia_categoria ? `Categoría ${c.licencia_categoria}` : '');
+      return `
+        <div class="fitem${c.activo ? '' : ' inactivo'}">
+          <div class="fitem-head">
+            <div>
+              <div class="fitem-title">👷 ${escapeHtml(c.nombre)}${c.activo ? '' : ' <small style="color:var(--gray-400);font-weight:500">(inactivo)</small>'}</div>
+              <div class="fitem-sub">${c.cedula ? 'CC ' + escapeHtml(c.cedula) : 'Sin cédula'}${lic ? ' · ' + escapeHtml(lic) : ''}</div>
+            </div>
+          </div>
+          ${c.telefono || c.email ? `<div class="fitem-meta">
+            ${c.telefono ? `<span>📞 ${escapeHtml(c.telefono)}</span>` : ''}
+            ${c.email ? `<span>✉️ ${escapeHtml(c.email)}</span>` : ''}
+          </div>` : ''}
+          <div class="fitem-docs-row">
+            <div class="docs-summary">
+              <span style="font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Documentos</span>
+              ${docsBadgeHTML('conductor', c.id)}
+            </div>
+            <button class="fitem-btn primary" onclick="abrirModalDocs('conductor','${c.id}','${escapeAttr(c.nombre)}')">Gestionar</button>
+          </div>
+          <div class="fitem-actions">
+            <button class="fitem-btn" onclick="abrirModalConductor('${c.id}')">✎ Editar</button>
+            <button class="fitem-btn danger" onclick="toggleConductor('${c.id}', ${!c.activo})">${c.activo ? '⊖ Desactivar' : '↻ Reactivar'}</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderVehiculos() {
+    const el = document.getElementById('vehiculos-lista');
+    if (!misVehiculos.length) {
+      el.innerHTML = `<div class="flota-empty">No tenés vehículos cargados. <br><br>Al agregar uno, va a aparecer como opción cuando asignes recursos a un viaje adjudicado.</div>`;
+      return;
+    }
+    el.innerHTML = misVehiculos.map(v => {
+      const especs = [];
+      if (v.marca) especs.push(v.marca);
+      if (v.modelo_anio) especs.push(v.modelo_anio);
+      if (v.capacidad_kg) especs.push((+v.capacidad_kg).toLocaleString('es-CO') + ' kg');
+      return `
+        <div class="fitem${v.activo ? '' : ' inactivo'}">
+          <div class="fitem-head">
+            <div>
+              <div class="fitem-title">🚛 ${escapeHtml(v.placa)}${v.activo ? '' : ' <small style="color:var(--gray-400);font-weight:500">(inactivo)</small>'}</div>
+              <div class="fitem-sub">${v.tipo ? escapeHtml(v.tipo) : 'Tipo —'}${especs.length ? ' · ' + escapeHtml(especs.join(' · ')) : ''}</div>
+            </div>
+          </div>
+          ${v.configuracion_ejes ? `<div class="fitem-meta"><span>⚙️ ${escapeHtml(v.configuracion_ejes)}</span></div>` : ''}
+          <div class="fitem-docs-row">
+            <div class="docs-summary">
+              <span style="font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Documentos</span>
+              ${docsBadgeHTML('vehiculo', v.id)}
+            </div>
+            <button class="fitem-btn primary" onclick="abrirModalDocs('vehiculo','${v.id}','${escapeAttr(v.placa)}')">Gestionar</button>
+          </div>
+          <div class="fitem-actions">
+            <button class="fitem-btn" onclick="abrirModalVehiculo('${v.id}')">✎ Editar</button>
+            <button class="fitem-btn danger" onclick="toggleVehiculo('${v.id}', ${!v.activo})">${v.activo ? '⊖ Desactivar' : '↻ Reactivar'}</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s) { return String(s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+  // ── MODAL CONDUCTOR ──────────────────────────────────────────
+  function abrirModalConductor(id) {
+    condEditId = id || null;
+    document.getElementById('modal-conductor-title').textContent = id ? 'Editar conductor' : 'Agregar conductor';
+    const c = id ? misConductores.find(x => x.id === id) : null;
+    document.getElementById('cond-nombre').value   = c?.nombre   || '';
+    document.getElementById('cond-cedula').value   = c?.cedula   || '';
+    document.getElementById('cond-telefono').value = c?.telefono || '';
+    document.getElementById('cond-licencia').value = c?.licencia_numero || '';
+    document.getElementById('cond-lic-cat').value  = c?.licencia_categoria || '';
+    document.getElementById('cond-email').value    = c?.email    || '';
+    document.getElementById('cond-notas').value    = c?.notas    || '';
+    document.getElementById('cond-error').style.display   = 'none';
+    document.getElementById('cond-success').style.display = 'none';
+    document.getElementById('btn-cond-guardar').disabled  = false;
+    document.getElementById('btn-cond-guardar').textContent = 'Guardar →';
+    abrirModal('modal-conductor');
+  }
+
+  async function guardarConductor() {
+    const nombre = document.getElementById('cond-nombre').value.trim();
+    const errEl = document.getElementById('cond-error');
+    const sucEl = document.getElementById('cond-success');
+    const btn   = document.getElementById('btn-cond-guardar');
+    errEl.style.display = 'none'; sucEl.style.display = 'none';
+    if (!nombre) { errEl.textContent = 'Nombre requerido.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_conductor_upsert`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_id: condEditId,
+          p_nombre: nombre,
+          p_cedula: document.getElementById('cond-cedula').value.trim() || null,
+          p_licencia_numero: document.getElementById('cond-licencia').value.trim() || null,
+          p_licencia_categoria: document.getElementById('cond-lic-cat').value || null,
+          p_telefono: document.getElementById('cond-telefono').value.trim() || null,
+          p_email: document.getElementById('cond-email').value.trim() || null,
+          p_notas: document.getElementById('cond-notas').value.trim() || null,
+        })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      sucEl.textContent = '✓ Guardado'; sucEl.style.display = 'block';
+      await cargarFlota();
+      setTimeout(() => cerrarModal('modal-conductor'), 600);
+    } catch (e) {
+      errEl.textContent = 'Error: ' + e.message.slice(0, 220);
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Guardar →';
+    }
+  }
+
+  async function toggleConductor(id, activo) {
+    if (!confirm(activo ? '¿Reactivar conductor?' : '¿Desactivar conductor? No aparecerá en la asignación de viajes.')) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_conductor_desactivar`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id: id, p_activo: activo })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await cargarFlota();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // ── MODAL VEHÍCULO ──────────────────────────────────────────
+  function abrirModalVehiculo(id) {
+    vehEditId = id || null;
+    document.getElementById('modal-vehiculo-title').textContent = id ? 'Editar vehículo' : 'Agregar vehículo';
+    const v = id ? misVehiculos.find(x => x.id === id) : null;
+    document.getElementById('veh-placa').value  = v?.placa || '';
+    document.getElementById('veh-tipo').value   = v?.tipo  || '';
+    document.getElementById('veh-marca').value  = v?.marca || '';
+    document.getElementById('veh-anio').value   = v?.modelo_anio || '';
+    document.getElementById('veh-cap').value    = v?.capacidad_kg || '';
+    document.getElementById('veh-ejes').value   = v?.configuracion_ejes || '';
+    document.getElementById('veh-notas').value  = v?.notas || '';
+    document.getElementById('veh-error').style.display   = 'none';
+    document.getElementById('veh-success').style.display = 'none';
+    document.getElementById('btn-veh-guardar').disabled  = false;
+    document.getElementById('btn-veh-guardar').textContent = 'Guardar →';
+    abrirModal('modal-vehiculo');
+  }
+
+  async function guardarVehiculo() {
+    const placa = document.getElementById('veh-placa').value.trim();
+    const errEl = document.getElementById('veh-error');
+    const sucEl = document.getElementById('veh-success');
+    const btn   = document.getElementById('btn-veh-guardar');
+    errEl.style.display = 'none'; sucEl.style.display = 'none';
+    if (!placa) { errEl.textContent = 'Placa requerida.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const anio = parseInt(document.getElementById('veh-anio').value) || null;
+      const cap  = parseFloat(document.getElementById('veh-cap').value) || null;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_vehiculo_upsert`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_id: vehEditId,
+          p_placa: placa,
+          p_tipo: document.getElementById('veh-tipo').value || null,
+          p_marca: document.getElementById('veh-marca').value.trim() || null,
+          p_modelo_anio: anio,
+          p_capacidad_kg: cap,
+          p_configuracion_ejes: document.getElementById('veh-ejes').value || null,
+          p_notas: document.getElementById('veh-notas').value.trim() || null,
+        })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      sucEl.textContent = '✓ Guardado'; sucEl.style.display = 'block';
+      await cargarFlota();
+      setTimeout(() => cerrarModal('modal-vehiculo'), 600);
+    } catch (e) {
+      errEl.textContent = 'Error: ' + e.message.slice(0, 220);
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Guardar →';
+    }
+  }
+
+  async function toggleVehiculo(id, activo) {
+    if (!confirm(activo ? '¿Reactivar vehículo?' : '¿Desactivar vehículo? No aparecerá en la asignación de viajes.')) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_vehiculo_desactivar`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id: id, p_activo: activo })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await cargarFlota();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  // ── MODAL DOCS (upload por entidad) ──────────────────────────
+  function abrirModalDocs(entidadTipo, entidadId, entidadLabel) {
+    docsEntidadActual = { tipo: entidadTipo, id: entidadId, label: entidadLabel };
+    document.getElementById('modal-docs-title').textContent =
+      (entidadTipo === 'conductor' ? 'Documentos — ' : 'Documentos — 🚛 ') + entidadLabel;
+    document.getElementById('docs-flota-info').textContent =
+      entidadTipo === 'conductor'
+        ? 'Subí cada documento en PDF o imagen. Los que vencen tienen fecha.'
+        : 'Subí los documentos obligatorios del vehículo. NETFLEET te avisa cuando faltan pocos días para vencer.';
+    document.getElementById('docs-flota-error').style.display = 'none';
+    renderDocsEntidad();
+    abrirModal('modal-docs-flota');
+  }
+
+  function renderDocsEntidad() {
+    const { tipo, id } = docsEntidadActual;
+    const requeridos = tipo === 'conductor' ? DOCS_CONDUCTOR : DOCS_VEHICULO;
+    const docs = misDocsFlota.filter(d => d.entidad_tipo === tipo && d.entidad_id === id);
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+    document.getElementById('docs-flota-lista').innerHTML = requeridos.map(req => {
+      const d = docs.find(x => x.tipo_doc === req.tipo);
+      let status = '', badge = '';
+      if (!d) {
+        status = `<span class="docs-badge none">sin subir</span>`;
+      } else if (!req.vence || !d.vence_at) {
+        status = `<span class="docs-badge ok">✓ subido</span>`;
+      } else {
+        const vence = new Date(d.vence_at);
+        const dias = Math.floor((vence - hoy) / 86400000);
+        if (dias < 0)       status = `<span class="docs-badge crit">🔴 vencido</span>`;
+        else if (dias <= 30) status = `<span class="docs-badge warn">🟡 ${dias}d</span>`;
+        else                 status = `<span class="docs-badge ok">🟢 ${dias}d</span>`;
+      }
+      const viewBtn = d?.archivo_url
+        ? `<button class="view" onclick="verDocFlota('${d.id}')">Ver</button>`
+        : '';
+      const delBtn = d
+        ? `<button class="del" onclick="eliminarDocFlota('${d.id}')">✕</button>`
+        : '';
+      return `
+        <div class="doc-row">
+          <div class="doc-row-label">
+            ${escapeHtml(req.label)}${req.opcional ? ' <span class="doc-row-opt">(opcional)</span>' : ''}
+            ${req.hint ? `<small>${escapeHtml(req.hint)}</small>` : ''}
+          </div>
+          <div>
+            ${req.vence
+              ? `<input type="date" id="venc-${req.tipo}" value="${d?.vence_at ? d.vence_at.substring(0,10) : ''}" onchange="actualizarVencimiento('${req.tipo}', this.value)" placeholder="vence">`
+              : '<span style="font-size:11px;color:var(--gray-400)">sin vencimiento</span>'
+            }
+          </div>
+          <div class="doc-row-status">${status}</div>
+          <div class="doc-row-action">
+            ${viewBtn}
+            <input type="file" id="file-${req.tipo}" accept="application/pdf,image/*" onchange="subirDocFlota('${req.tipo}', this, ${req.vence})">
+            <button onclick="document.getElementById('file-${req.tipo}').click()">${d ? 'Reemplazar' : 'Subir'}</button>
+            ${delBtn}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function subirDocFlota(tipoDoc, inputEl, tieneVence) {
+    const file = inputEl.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('El archivo supera 5MB.'); inputEl.value = ''; return;
+    }
+    const transpId = perfilActual?.transportadora_id;
+    if (!transpId) {
+      alert('Tu cuenta no está linkeada a una transportadora. Contactá a Logxie.'); return;
+    }
+    const errEl = document.getElementById('docs-flota-error');
+    errEl.style.display = 'none';
+
+    const vencEl = document.getElementById('venc-' + tipoDoc);
+    let vence_at = null;
+    if (tieneVence) {
+      vence_at = vencEl?.value || null;
+      if (!vence_at && !confirm('¿Querés subir sin fecha de vencimiento? Es recomendable ingresarla antes.')) {
+        inputEl.value = ''; return;
+      }
+    }
+
+    try {
+      const { tipo: entTipo, id: entId } = docsEntidadActual;
+      const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+      const path = `${transpId}/${entTipo}/${entId}/${tipoDoc}_${Date.now()}.${ext}`;
+
+      const up = await fetch(`${SUPABASE_URL}/storage/v1/object/flota-docs/${path}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${tokenActual}`,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+      if (!up.ok) throw new Error('Upload: ' + await up.text());
+
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_doc_upsert`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_entidad_tipo: entTipo,
+          p_entidad_id:   entId,
+          p_tipo_doc:     tipoDoc,
+          p_archivo_url:  path,
+          p_vence_at:     vence_at,
+          p_notas:        null,
+        })
+      });
+      if (!r.ok) throw new Error(await r.text());
+
+      await cargarFlota();
+      renderDocsEntidad();
+    } catch (e) {
+      errEl.textContent = 'Error: ' + e.message.slice(0, 220);
+      errEl.style.display = 'block';
+    } finally {
+      inputEl.value = '';
+    }
+  }
+
+  async function actualizarVencimiento(tipoDoc, fecha) {
+    const { tipo: entTipo, id: entId } = docsEntidadActual;
+    const doc = misDocsFlota.find(d => d.entidad_tipo === entTipo && d.entidad_id === entId && d.tipo_doc === tipoDoc);
+    if (!doc || !doc.archivo_url) return; // aún no subido; solo guardar vence al subir
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_doc_upsert`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_entidad_tipo: entTipo, p_entidad_id: entId,
+          p_tipo_doc: tipoDoc, p_archivo_url: doc.archivo_url,
+          p_vence_at: fecha || null, p_notas: doc.notas || null,
+        })
+      });
+      await cargarFlota();
+      renderDocsEntidad();
+    } catch (e) { console.warn('Error actualizar vencimiento:', e); }
+  }
+
+  async function verDocFlota(docId) {
+    const doc = misDocsFlota.find(d => d.id === docId);
+    if (!doc?.archivo_url) return;
+    try {
+      // Bucket privado → signed URL
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/flota-docs/${doc.archivo_url}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresIn: 3600 })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const { signedURL } = await r.json();
+      window.open(SUPABASE_URL + signedURL, '_blank', 'noopener');
+    } catch (e) { alert('No se pudo abrir: ' + e.message); }
+  }
+
+  async function eliminarDocFlota(docId) {
+    if (!confirm('¿Eliminar este documento? Vas a tener que volver a subirlo.')) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fn_flota_doc_eliminar`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tokenActual}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_doc_id: docId })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await cargarFlota();
+      renderDocsEntidad();
+    } catch (e) { alert('Error: ' + e.message); }
   }
 
   // ── BUSCADOR ──────────────────────────────────────────────────

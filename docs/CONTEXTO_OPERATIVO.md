@@ -1,6 +1,37 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-22 (sesión tarde/noche — journey mapping + scenarios + analizador Supabase)**.
+> Foto del proyecto al **2026-04-22 (sesión noche — Flota transportadoras end-to-end)**.
+>
+> **Lo nuevo vs. cierre anterior:** **Módulo 4 Flota** — tab 🚛 Flota en mi-netfleet deja de ser placeholder. Schema `conductores` + `vehiculos` + `documentos_flota` (polimórfico) + bucket Storage privado `flota-docs` + 6 Postgres fns CRUD + RLS por transportadora. UI completa en mi-netfleet.html con 2 sub-tabs, CRUD inline, modal de docs con upload + color-coded estado vencimiento (🟢/🟡/🔴/⚪). `perfiles.transportadora_id FK` nuevo + test user linkeado a JR LOGÍSTICA. Smoke test end-to-end PASS: crear conductor, crear vehículo, subir doc con vence_at, verificar Storage + DB + audit trail.
+
+## TL;DR de la sesión 2026-04-22 (noche — Flota)
+
+### Bloque 1 completo — Schema + UI Flota end-to-end
+
+- **Motivación (customer journey)**: para cerrar el loop de bidding, los conductores y vehículos tienen que estar **precargados una sola vez**. Al adjudicar un viaje, la transportadora elige de dropdown — sin retipeo. La asignación vehículo/conductor NO va en la oferta (decisión de Bernardo: fiel a cómo opera hoy, a veces el conductor se define último momento), va en el seguimiento post-adjudicación (Bloque 2 siguiente).
+- **Schema** — [db/modulo4_flota.sql](../db/modulo4_flota.sql):
+  - 3 tablas nuevas: `conductores` (14 cols, FK transp, UNIQUE cedula por transp), `vehiculos` (14 cols, FK transp, placa upper auto, UNIQUE placa por transp), `documentos_flota` (polimórfico, UNIQUE entidad_tipo+entidad_id+tipo_doc → 1 doc vigente por tipo).
+  - 6 Postgres fns SECURITY DEFINER: `fn_flota_conductor_upsert/desactivar`, `fn_flota_vehiculo_upsert/desactivar`, `fn_flota_doc_upsert/eliminar`. Todas con gate `is_logxie_staff() OR transp_own`, todas escriben audit a `acciones_operador`.
+  - Helper `_mi_transportadora_id()` resuelve via `perfiles.transportadora_id` (FK nuevo) con fallback string-match `perfiles.empresa ↔ transportadoras.nombre`. Evita romper cuentas legacy que tienen empresa pero no FK.
+  - Bucket Storage `flota-docs` privado. Path: `{transp_id}/{entidad_tipo}/{entidad_id}/{tipo_doc}_{ts}.{ext}`. RLS Storage: `(storage.foldername(name))[1]::uuid = _mi_transportadora_id()`.
+  - RLS por tabla: staff_all + transp_own + service_role. 14 policies totales (9 tablas + 5 storage).
+  - Acciones `flota_*` (8 nuevas) + entidad_tipo `conductor`/`vehiculo`/`doc_flota` agregados al CHECK de `acciones_operador`.
+  - ALTER `perfiles` ADD `transportadora_id UUID` FK + populate de `bernardojaristizabal@gmail.com` → JR LOGÍSTICA.
+- **UI mi-netfleet** — [mi-netfleet.html](../mi-netfleet.html):
+  - Tab 🚛 Flota: 2 sub-tabs (👷 Conductores N · 🚛 Vehículos M) con CRUD inline.
+  - Cards por entidad con `.fitem`: nombre + especs + docs badge (🟢 al día · 🟡 N por vencer · 🔴 N vencidos · ⚪ N faltan) + botón "Gestionar" docs + editar / desactivar.
+  - Modales: alta/edición conductor (7 campos), alta/edición vehículo (7 campos), docs por entidad (modal wide con `.doc-row` grid).
+  - Docs conductor (7 tipos): cédula · licencia (+ vence + categoría) · EPS · ARL · examen médico · sust.peligrosas (opcional, agroquímicos) · hoja de vida (opcional).
+  - Docs vehículo (5 tipos): tarjeta propiedad · SOAT · tecnomecánica · póliza RC · foto (opcional).
+  - Estado por doc color-coded por `vence_at`: >30d 🟢 / 0-30d 🟡 / vencido 🔴 / sin vence 🟢✓.
+  - Upload a Storage directo via REST (`POST /storage/v1/object/flota-docs/<path>` con `x-upsert: true`), luego llama `fn_flota_doc_upsert` con `archivo_url` = path. Ver docs via signed URL con `POST /storage/v1/object/sign/flota-docs/<path>`.
+- **Smoke test end-to-end PASS** (cuenta `bernardojaristizabal@gmail.com` / 123ABC, cargo flota en JR LOGÍSTICA):
+  - Conductor "Juan Pérez Ramírez" CC 1234567890 Lic C2 ✓
+  - Vehículo "XYZ789" Tractomula Kenworth 2020 32.000 kg ✓
+  - Doc licencia PDF fake subido con `vence_at = hoy+6m` → badge 🟢 182d en modal, card muestra "⚪ 4 faltan" (5 obligatorios - 1 subido)
+  - Storage object persistido (23 bytes), path correcto
+  - Audit trail: 3 entries (`flota_conductor_crear`, `flota_vehiculo_crear`, `flota_doc_subir`)
+- **Próximo paso (Bloque 2)**: asignar vehículo+conductor al viaje adjudicado desde tab "Mis viajes" — selects + persiste en `viajes_consolidados.placa/conductor_nombre/conductor_id`. Estimación ~45min. Ver journey plan en el mensaje de este chat.
 >
 > **Lo nuevo vs. cierre anterior:** capa de **Scenarios** operativa (propuestas tentativas de viaje — un pedido puede vivir en N scenarios sin salir de `sin_consolidar` hasta que se promueva uno). Analizador-rutas migrado a Supabase con selector dual 🚚 Viaje / 🧪 Scenario + deep-link `?scenario=<id>`. Badge de zona color inline + sub-split automático por zona dentro de "Agrupar por Origen". Nuevo doc [LOGXIA_JOURNEY.md](LOGXIA_JOURNEY.md) con tabla journey 7 pasos × [hoy · Fase 1 · Fase 2 · Fase 3], reglas Fase 1 priorizadas y spec de sistema de rating + Módulo 6 Facturación.
 >
@@ -81,7 +112,7 @@
 - **5 stats KPI personalizados**: Viajes con Netfleet, Km recorridos, Facturado (SUM flete_total finalizados), CO₂ evitado (fórmula EPA × 25% ahorro consolidación), Peso transportado. Filtrados por `proveedor ILIKE %empresa%`.
 - **Tabs agrupados en 3 bloques**: OFERTAS (Ofertar · Mis ofertas) · SEGUIMIENTO (Mis viajes · Flota) · CUENTA (Facturar · Documentos).
 - **Cards de viaje con altura pareja** (flex column + min-height 340px + footer `margin-top:auto`).
-- **Tab 🚛 Flota placeholder** — 2 cards (Conductores · Vehículos) con lista de docs por industria (curso sustancias peligrosas para agroquímicos, tarjeta propiedad + tecno + póliza para vehículos). Botón "Gestionar" disabled hasta que se construya el schema.
+- **Tab 🚛 Flota** — ✅ ACTIVO (2026-04-22 noche). 2 sub-tabs Conductores/Vehículos con CRUD inline, modal docs con upload + color-coded vence. Ver TL;DR arriba + [db/modulo4_flota.sql](../db/modulo4_flota.sql).
 - **Bug ofertas legacy arreglado**: la tabla ofertas en Supabase fue recreada por el Módulo 4 con `viaje_id UUID FK`, el frontend legacy todavía enviaba `viaje_rt TEXT + nombre/empresa/telefono`. Resolvemos `rt_total → supa_id` antes del INSERT.
 
 ## TL;DR de la sesión 2026-04-21

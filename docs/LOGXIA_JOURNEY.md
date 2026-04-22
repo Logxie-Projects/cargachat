@@ -6,6 +6,33 @@
 
 ---
 
+## 🚀 Próxima regla a implementar — Fase 1 Piloto
+
+**Regla #1: Auto-swap destino↔dirección** · ROI estimado **80 h/año**
+
+**Contexto:** 20% de pedidos nuevos tienen el destino canónico mal poblado porque el vendedor pone el destino real en la columna `direccion` (el destino del Sheet es un dropdown cerrado que no incluye todos los municipios). Bernardo hoy corrige manualmente cada uno. LogxIA puede detectarlo y hacer el swap solo, con log de audit para que se pueda revertir.
+
+**Pre-work (bloquea la regla):**
+- Centralizar diccionario `CIUDADES` en `netfleet-core.js` — hoy está duplicado en 5 HTMLs (index, transportador, analizador-rutas, viaje, netfleet-core) — ver deuda técnica en CLAUDE.md.
+
+**Infra mínima LogxIA a construir con esta regla** (reusable para siguientes):
+- Tabla `logxia_reglas` (id, nombre, estado activa/pausada, config jsonb, creada_por, created_at)
+- Tabla `logxia_acciones` (regla_id, entidad_tipo, entidad_id, accion, antes/después, aplicada_at) — audit separado de `acciones_operador`
+- Postgres function o trigger que ejecuta la regla cuando un pedido entra en estado revisable
+- UI en control.html (tab Inicio o workspace nuevo) para ver reglas activas + toggle on/off + últimas acciones
+
+**Decisiones técnicas pendientes:**
+- Trigger BD (instantáneo) vs job periódico n8n (batch). Para #1 el trigger BD es lo natural.
+- Política reversible: toda acción LogxIA debe tener botón "deshacer" por ≥24h.
+- Nivel de confianza: solo auto-ejecutar si match es único y no ambiguo. Si ambiguo → 🟡 pre-sugerir, humano aprueba.
+
+**Siguientes candidatas después de #1:**
+1. #2 Rating implícito Fase 0 (desbloquea panel comparativo ofertas)
+2. #4 Auto-cerrar viajes terminales +Xh
+3. #5 Hint "sin ofertas hace Xh → republicar"
+
+---
+
 ## TL;DR — filosofía del piloto
 
 Cada tile del panel de control lleva un badge:

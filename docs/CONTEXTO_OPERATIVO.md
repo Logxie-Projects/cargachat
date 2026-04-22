@@ -157,6 +157,127 @@ Al recibir viaje adjudicado, la transportadora tiene card expandible mail-style 
 
 ---
 
+### 🎯 Sesión D — **Empezar implementación LogxIA Fase 1** (piloto: regla #1 auto-swap destino↔dirección) — ~2h
+
+**Objetivo**: arrancar el módulo **LogxIA** como capa de reglas autopilot, dándole contenido ejecutable a los badges 🟢🟡🔴 del panel. Piloto end-to-end: **Regla #1 Auto-swap destino↔dirección** (ROI estimado **80 h/año** — 20% de pedidos nuevos tienen el destino real en la columna `direccion` porque el dropdown del Sheet es cerrado, Bernardo corrige a mano). La infra mínima que se construya con esta regla es reusable para las siguientes.
+
+**Criterios de done**:
+- [ ] Diccionario `CIUDADES` centralizado en `netfleet-core.js` (hoy duplicado en 5 HTMLs) + los 5 HTMLs (`index.html`, `transportador.html`, `analizador-rutas.html`, `viaje.html`, `mi-netfleet.html` si aplica) `<script src="netfleet-core.js">` y borran su copia local
+- [ ] Tabla `logxia_reglas` (id, codigo, nombre, descripcion, estado `activa|pausada|shadow`, config jsonb, created_at, updated_at) + seed para regla #1
+- [ ] Tabla `logxia_acciones` (id, regla_id, entidad_tipo, entidad_id, accion, antes jsonb, despues jsonb, aplicada_at, deshecha_at, deshecha_por) — audit reversible
+- [ ] Postgres function `fn_logxia_auto_swap_destino_direccion(p_pedido_id)` — detecta el patrón, hace el swap si es seguro, logea en `logxia_acciones`
+- [ ] Trigger `logxia_pedidos_auto_swap` AFTER INSERT/UPDATE OF `destino, direccion` ON `pedidos` que llama la function cuando la regla está `activa` o `shadow`
+- [ ] Modo `shadow`: detecta pero NO aplica — solo logea lo que hubiera hecho. Bernardo aprueba pasando de `shadow` a `activa`
+- [ ] Botón "Deshacer" en cada fila de `logxia_acciones` por ≥24h (revierte antes↔después)
+- [ ] UI en control.html — nuevo workspace `🤖 LogxIA` (icono en nav principal) con 2 sub-tabs:
+  - **⚙ Reglas**: lista de reglas con toggle `activa/shadow/pausada` + stats (N aplicadas, N revertidas, % ahorro estimado)
+  - **📋 Acciones recientes**: últimas 100 acciones auto con botón deshacer
+- [ ] Smoke test E2E: simular 3 pedidos con el bug típico, verificar que se auto-corrigen, verificar deshacer funciona
+- [ ] Backfill opcional: correr una vez sobre los pedidos históricos `sin_consolidar + revisado_at IS NULL` para ver cuántos se corregirían hoy
+
+**Decisiones técnicas ya tomadas** (no volver a discutir):
+- Arquitectura: **trigger BD** (no job periódico) porque la regla dispara al INSERT/UPDATE de pedido — instantáneo, sin scheduler
+- Reversibilidad: toda acción LogxIA tiene botón deshacer por ≥24h (política global del módulo)
+- Nivel de confianza: auto-aplicar solo si match es **único y no ambiguo** (destino no en catálogo CIUDADES + dirección tiene exactamente 1 ciudad conocida). Si ambiguo → deja el pedido sin tocar, loguea como "ambiguo — skipped"
+- Audit separado: `logxia_acciones` (no reusar `acciones_operador`) para poder filtrar y revertir acciones autopilot sin contaminar el historial de acciones humanas
+- Modo `shadow` como default al activar regla por primera vez — Bernardo ve qué haría antes de aprobar
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md + docs/CONTEXTO_OPERATIVO.md + docs/LOGXIA_JOURNEY.md
+obligatorios. Si tocás schema también docs/ARQUITECTURA.md.
+
+OBJETIVO: arrancar implementación de LOGXIA Fase 1 — capa de reglas
+autopilot. Piloto end-to-end con Regla #1: auto-swap destino↔dirección
+(80 h/año). Construir infra mínima reusable para reglas futuras.
+
+CONTEXTO DEL BUG (dato calibrador del journey con Bernardo 2026-04-22):
+20% de pedidos nuevos tienen el destino canónico mal poblado porque
+el vendedor pone el destino real en la columna `direccion` (el
+destino del Sheet es un dropdown cerrado que no incluye todos los
+municipios de Cundinamarca/Boyacá rural). Bernardo corrige a mano
+~2 min por pedido, ~10 pedidos/día → 80 h/año.
+
+PRE-WORK OBLIGATORIO (sin esto la regla no es confiable):
+Centralizar diccionario CIUDADES en netfleet-core.js. Hoy está
+duplicado en 5 HTMLs: index.html, transportador.html,
+analizador-rutas.html, viaje.html, mi-netfleet.html (si tiene).
+Cualquier ciudad que falte en un HTML hace que la regla #1 tire
+falsos negativos. Unificar primero, después la regla.
+
+QUÉ CONSTRUIR:
+
+BLOQUE 1 — Centralizar CIUDADES (pre-work)
+- Mover el dict completo (más el que tiene el analizador post-sesión
+  22/04 con +38 municipios Cundinamarca/Boyacá) a netfleet-core.js
+- Cada HTML: <script src="netfleet-core.js"></script> antes de su JS
+  principal + borrar la copia local
+- Verificar: getCoordenadas() sigue funcionando en cada página
+
+BLOQUE 2 — Infra LogxIA (schema + audit)
+- Tabla logxia_reglas (id uuid, codigo text UNIQUE, nombre, descripcion,
+  estado text CHECK (estado IN ('activa','shadow','pausada')),
+  config jsonb, created_at, updated_at) + índice estado
+- Tabla logxia_acciones (id uuid, regla_id FK, entidad_tipo text,
+  entidad_id uuid, accion text, antes jsonb, despues jsonb,
+  aplicada_at timestamptz, deshecha_at timestamptz NULL,
+  deshecha_por uuid NULL) + índices regla_id + aplicada_at DESC
+- RLS: staff_all en ambas. service_role bypass.
+- Seed regla #1:
+    INSERT INTO logxia_reglas (codigo, nombre, estado, config) VALUES
+    ('r01_auto_swap_destino_direccion',
+     'Auto-swap destino↔dirección cuando destino no está en catálogo',
+     'shadow', '{"min_confianza":"unico_no_ambiguo"}');
+
+BLOQUE 3 — Lógica de la regla
+- Postgres fn fn_logxia_auto_swap_destino_direccion(p_pedido_id uuid):
+  1. Lee el pedido (destino, direccion)
+  2. Chequea: destino NO matchea ninguna ciudad conocida (catálogo
+     hardcoded en la function — mismo dict que netfleet-core.js, o
+     leer de tabla ciudades_canonicas si la creamos)
+  3. Chequea: direccion contiene EXACTAMENTE 1 ciudad conocida
+     (buscar match por palabra, con regex word boundaries)
+  4. Si ambas condiciones OK: swap destino↔direccion en el pedido
+  5. Si ambiguo o no aplica: skip (loguear como skipped en modo shadow)
+  6. Siempre escribe a logxia_acciones (antes/despues, timestamps)
+  7. Si regla.estado='shadow': solo loguea, NO aplica el swap
+  8. Si regla.estado='activa': aplica el swap + loguea
+- Trigger logxia_pedidos_auto_swap AFTER INSERT OR UPDATE OF destino,
+  direccion ON pedidos FOR EACH ROW WHEN (estado de regla activa o
+  shadow) → llama la fn
+- Function auxiliar fn_logxia_deshacer(p_accion_id uuid) — revierte
+  una acción si pasaron <24h desde aplicada_at
+
+BLOQUE 4 — UI control.html
+- Nuevo workspace 🤖 LogxIA en nav principal (junto a 🏢 Catálogo)
+- Sub-tabs:
+  * ⚙ Reglas: lista con toggle 3-way (activa/shadow/pausada) +
+    stats por regla (N aplicadas 7d, N revertidas, % ahorro estimado)
+  * 📋 Acciones: tabla últimas 100 filas de logxia_acciones con
+    filtros (por regla, por fecha, solo no-deshechas). Botón "↶
+    Deshacer" por fila si aplicada_at dentro de 24h
+- RPC calls: fn_logxia_deshacer, UPDATE logxia_reglas.estado
+
+BLOQUE 5 — Test + backfill
+- Smoke test E2E: crear 3 pedidos con el patrón (destino bogus,
+  dirección con ciudad real), verificar que el trigger en modo
+  'shadow' los detecta pero no swapea. Cambiar regla a 'activa',
+  correr trigger de nuevo (UPDATE NOOP), verificar swap + audit.
+  Deshacer 1. Verificar revertido + marcado deshecha_at.
+- Backfill opcional: función fn_logxia_backfill_r01() que corre
+  sobre pedidos existentes en estado sin_consolidar. Devuelve count
+  de candidatos detectados (sin aplicar — para estimar volumen).
+
+ALCANCE DE LA SESIÓN: 5 bloques en orden. Si se va de tiempo, cerrá
+los bloques completos y el resto queda para sesión siguiente.
+Obligatorio commit end-to-end por bloque (schema + function + UI +
+test). Mostrame PLAN con tiempos antes de código.
+
+Cuenta staff: bernardoaristizabal@logxie.com (logxie_staff).
+```
+
+---
+
 ### 📌 Notas operativas para todas las sesiones
 
 - **Abrir Claude Code en `D:\NETFLEET`**: CLAUDE.md se carga automáticamente.

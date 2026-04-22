@@ -163,6 +163,145 @@
     .grp-hint.hint-ok   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
     .grp-hint.hint-wait { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 
+    /* ── BADGE DE ZONA (inline en fila de pedido + sub-grupo) ── */
+    .zona-badge {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 1px 7px; border-radius: 8px; margin-left: 6px;
+      text-transform: uppercase; letter-spacing: 0.3px;
+      vertical-align: middle; white-space: nowrap;
+      background: var(--gray-100); color: var(--gray-600);
+    }
+    .zona-badge.zona-boyaca        { background:#fef3c7; color:#92400e; }
+    .zona-badge.zona-cundinamarca  { background:#ede9fe; color:#5b21b6; }
+    .zona-badge.zona-valle         { background:#fee2e2; color:#991b1b; }
+    .zona-badge.zona-antioquia     { background:#dbeafe; color:#1e3a8a; }
+    .zona-badge.zona-norte         { background:#cffafe; color:#155e75; }
+    .zona-badge.zona-santanderes   { background:#fce7f3; color:#9f1239; }
+    .zona-badge.zona-sur           { background:#d1fae5; color:#065f46; }
+    .zona-badge.zona-llanos        { background:#ecfccb; color:#3f6212; }
+    .zona-badge.zona-occidente     { background:#ffedd5; color:#9a3412; }
+    .zona-badge.zona-oriente       { background:#ffe4e6; color:#9f1239; }
+    .zona-badge.zona-eje-cafetero  { background:#fdf4ff; color:#86198f; }
+    .zona-badge.zona-tolima-huila  { background:#fef9c3; color:#713f12; }
+    .zona-badge.zona-hub           { background:var(--gray-100); color:var(--gray-600); }
+
+    /* ── BADGE 🧪 SCENARIO EN FILA DE PEDIDO ── */
+    .scen-ind-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 1px 7px; border-radius: 8px; margin-left: 6px;
+      background: #ede9fe; color: #5b21b6; cursor: help;
+      vertical-align: middle; white-space: nowrap;
+    }
+    .scen-ind-badge.conflict { background: #fef2f2; color: #991b1b; }
+
+    /* ── MODAL hint (scenario vs directo) ── */
+    .modal-hint-box {
+      background: #f0f9ff; border: 1px solid #bae6fd; color: #075985;
+      padding: 10px 14px; border-radius: 10px; font-size: 12px;
+      line-height: 1.5; margin: 10px 0 16px;
+    }
+    .modal-hint-box.directo {
+      background: #fff7ed; border-color: #fed7aa; color: #9a3412;
+    }
+    .modal-hint-box strong { font-weight: 800; }
+    .modal-hint-box em { font-style: normal; background: white; padding: 0 5px; border-radius: 4px; font-weight: 600; }
+
+    /* ── TAB SCENARIOS ── */
+    .scen-intro {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 12px;
+      padding: 14px 18px; margin-bottom: 1rem;
+      font-size: 13px; color: var(--gray-800); line-height: 1.5;
+    }
+    .scen-intro-icon { font-size: 22px; line-height: 1; }
+    .scen-intro strong { font-weight: 800; color: var(--navy); }
+    .scen-intro em { font-style: normal; background: white; padding: 1px 6px; border-radius: 4px; font-weight: 600; color: #6d28d9; }
+    .filtro-count {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      background: rgba(0,0,0,0.08); color: inherit; padding: 1px 7px;
+      border-radius: 100px; margin-left: 4px;
+    }
+    .filtro-btn.active .filtro-count { background: rgba(255,255,255,0.3); }
+
+    /* Scenario card */
+    .scen-card {
+      background: white; border: 1px solid var(--gray-100); border-radius: 14px;
+      padding: 16px 18px; margin-bottom: 12px; transition: box-shadow .15s;
+    }
+    .scen-card:hover { box-shadow: 0 4px 14px rgba(14,27,77,0.06); }
+    .scen-card.scen-conflictivo { border-color: #fecaca; background: #fffafa; }
+    .scen-card.scen-invalidado, .scen-card.scen-descartado { opacity: 0.55; }
+    .scen-card.scen-promovido { border-color: #86efac; background: #f0fdf4; }
+
+    .scen-card-hdr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .scen-card-name { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -0.2px; }
+    .scen-card-estado {
+      font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .scen-card-estado.borrador     { background: #f3f4f6; color: #4b5563; }
+    .scen-card-estado.conflictivo  { background: #fef2f2; color: #991b1b; }
+    .scen-card-estado.promovido    { background: #dcfce7; color: #166534; }
+    .scen-card-estado.descartado   { background: var(--gray-100); color: var(--gray-400); }
+    .scen-card-estado.invalidado   { background: #e5e7eb; color: #6b7280; }
+
+    .scen-card-stats {
+      display: grid; grid-template-columns: repeat(4, auto);
+      gap: 14px; font-size: 12px; color: var(--gray-600); margin-bottom: 10px;
+    }
+    .scen-card-stats strong { color: var(--navy); font-weight: 700; }
+
+    .scen-card-zonas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+    .scen-card-warn {
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+      padding: 8px 12px; border-radius: 8px; font-size: 12px; margin: 8px 0;
+      display: flex; align-items: center; gap: 8px; line-height: 1.45;
+    }
+
+    .scen-peds {
+      background: var(--gray-50); border-radius: 10px; padding: 10px 12px;
+      margin: 10px 0; display: none;
+    }
+    .scen-peds.open { display: block; }
+    .scen-ped-row {
+      display: flex; align-items: center; gap: 10px; padding: 6px 0;
+      border-bottom: 1px dashed var(--gray-100); font-size: 12px;
+    }
+    .scen-ped-row:last-child { border-bottom: none; }
+    .scen-ped-ref { font-family: monospace; font-weight: 700; min-width: 130px; }
+    .scen-ped-ruta { color: var(--gray-800); flex: 1; }
+    .scen-ped-estado { font-size: 10px; padding: 1px 7px; border-radius: 8px; }
+    .scen-ped-estado.ok { background: #dcfce7; color: #166534; }
+    .scen-ped-estado.consumido { background: #fef2f2; color: #991b1b; }
+    .scen-ped-quitar { background: transparent; border: none; color: var(--gray-400); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px; }
+    .scen-ped-quitar:hover { background: var(--gray-100); color: var(--red); }
+
+    .scen-card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .scen-action {
+      padding: 6px 12px; font-size: 12px; font-weight: 600;
+      border-radius: 8px; border: 1px solid var(--gray-100);
+      background: white; color: var(--gray-800); cursor: pointer;
+      font-family: inherit; transition: all .15s;
+    }
+    .scen-action:hover { background: var(--gray-50); border-color: var(--gray-400); }
+    .scen-action.primary { background: var(--navy); color: white; border-color: var(--navy); }
+    .scen-action.primary:hover { background: #0f1a45; }
+    .scen-action.warn { color: #991b1b; border-color: #fecaca; }
+    .scen-action.warn:hover { background: #fef2f2; }
+    .scen-action.ok { background: #16a34a; color: white; border-color: #16a34a; }
+    .scen-action.ok:hover { background: #15803d; }
+    .scen-action .ico { margin-right: 4px; }
+
+    /* ── SUB-GRUPO POR ZONA (solo en modo "Agrupar por Origen") ── */
+    .sub-group-row { background: #fafbfc; }
+    .sub-group-row td { padding: 5px 14px 5px 34px !important; border-bottom: 1px dashed var(--gray-100) !important; }
+    .sub-group-inner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .sub-group-name { font-size: 11px; font-weight: 700; color: var(--gray-800); display: flex; align-items: center; gap: 4px; }
+    .sub-group-name .zona-badge { margin-left: 0; font-size: 11px; padding: 2px 10px; }
+    .sub-group-stats { font-size: 10px; color: var(--gray-600); }
+    .sub-group-stats strong { color: var(--navy); font-weight: 700; }
+
     /* ── CATÁLOGO (clientes / transportadoras / usuarios) ── */
     .cat-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap; }
     .cat-title { font-size: 18px; font-weight: 800; color: var(--navy); letter-spacing: -0.3px; }
@@ -605,6 +744,9 @@
       <button class="subtab-btn" data-tab="activos" onclick="cambiarTab('activos', this)">
         🚛 Asignados <span class="tab-count" id="count-activos">0</span>
       </button>
+      <button class="subtab-btn" data-tab="scenarios" onclick="cambiarTab('scenarios', this)" title="Combinaciones tentativas de pedidos antes de consolidar">
+        🧪 Scenarios <span class="tab-count" id="count-scenarios">0</span>
+      </button>
       <button class="subtab-btn" data-tab="historial" onclick="cambiarTab('historial', this)">
         📚 Archivo (finalizados/cancelados) <span class="tab-count" id="count-historial">0</span>
       </button>
@@ -795,7 +937,8 @@
           <button class="ghost" onclick="bulkCambiarEstado()" title="Forzar cualquier estado">⇄ Cambiar estado</button>
           <button class="ghost" onclick="bulkCancelar()" style="color:#fca5a5" title="estado=cancelado">✕ Cancelar</button>
           <button class="ghost" onclick="bulkEliminar()" style="color:#ef4444" title="DELETE hard de la BD">🗑 Eliminar</button>
-          <button onclick="abrirModalConsolidar()">Consolidar →</button>
+          <button class="ghost" onclick="abrirModalConsolidar(false)" style="color:#f97316" title="Consolida directo ahora: crea viaje real y los pedidos SALEN de sin_consolidar. Úsalo si ya decidiste — te saltás los scenarios">⚡ Consolidar directo</button>
+          <button onclick="abrirModalConsolidar(true)" title="Crea scenario tentativo: los pedidos siguen en sin_consolidar y podés armar combinaciones alternativas en paralelo">🧪 Crear scenario →</button>
         </div>
       </div>
 
@@ -926,6 +1069,39 @@
       </div>
       <div id="historial-lista">
         <div class="loading-msg">Cargando historial…</div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: SCENARIOS — combinaciones tentativas pre-consolidación ═══ -->
+    <div class="tab-section" id="tab-scenarios">
+      <div class="scen-intro">
+        <span class="scen-intro-icon">🧪</span>
+        <div>
+          <strong>Scenarios = propuestas tentativas de viaje.</strong>
+          Los pedidos siguen libres en <em>sin_consolidar</em> y podés armar múltiples combinaciones con los mismos pedidos. Solo al <strong>promover</strong> un scenario se crea el viaje real.
+        </div>
+      </div>
+      <div class="filtros">
+        <button class="filtro-btn active" data-scen="borrador" onclick="setFiltroScenarios('borrador',this)">
+          ✏️ Borradores <span id="sc-count-borr" class="filtro-count">0</span>
+        </button>
+        <button class="filtro-btn" data-scen="conflictivo" onclick="setFiltroScenarios('conflictivo',this)" title="Tienen pedidos que ya se consumieron en otro scenario promovido">
+          ⚠ Conflictivos <span id="sc-count-conf" class="filtro-count">0</span>
+        </button>
+        <button class="filtro-btn" data-scen="promovido" onclick="setFiltroScenarios('promovido',this)">
+          ✓ Promovidos <span id="sc-count-prom" class="filtro-count">0</span>
+        </button>
+        <button class="filtro-btn" data-scen="descartado" onclick="setFiltroScenarios('descartado',this)">
+          ✕ Descartados <span id="sc-count-desc" class="filtro-count">0</span>
+        </button>
+        <button class="filtro-btn" data-scen="invalidado" onclick="setFiltroScenarios('invalidado',this)" title="Todos sus pedidos ya se consumieron en otros scenarios">
+          🗑 Invalidados <span id="sc-count-inv" class="filtro-count">0</span>
+        </button>
+        <button class="filtro-btn" data-scen="todos" onclick="setFiltroScenarios('todos',this)">Todos</button>
+        <input class="filtro-input" id="flt-scen-nombre" placeholder="🔍 Nombre…" style="min-width:220px" oninput="renderScenarios()">
+      </div>
+      <div id="scenarios-lista">
+        <div class="loading-msg">Cargando scenarios…</div>
       </div>
     </div>
 
@@ -1088,8 +1264,11 @@
 <!-- ══════════════════════ MODAL: CONSOLIDAR ══════════════════════ -->
 <div class="modal-overlay" id="modal-consolidar">
   <div class="modal-box">
-    <div class="modal-title">Consolidar pedidos en un viaje</div>
+    <div class="modal-title" id="mod-cons-title">🧪 Crear scenario tentativo</div>
     <div class="modal-sub" id="mod-cons-sub">—</div>
+    <div class="modal-hint-box" id="mod-cons-modo-hint">
+      <strong>Scenario:</strong> los pedidos siguen en <em>sin_consolidar</em> y podés armar más combinaciones con los mismos pedidos. Promovés a viaje cuando decidas.
+    </div>
 
     <div class="modal-resumen" id="mod-cons-resumen"></div>
 
@@ -1127,10 +1306,16 @@
     <label class="modal-label">Observaciones</label>
     <textarea class="modal-textarea" id="mod-cons-obs" placeholder="Carga frágil, llamar antes…"></textarea>
 
-    <div class="modal-actions">
+    <!-- Footer variante A — modo SCENARIO (por default) -->
+    <div class="modal-actions" id="mod-cons-actions-scenario">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-consolidar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="ejecutarCrearScenario()">🧪 Crear scenario →</button>
+    </div>
+    <!-- Footer variante B — modo CONSOLIDAR DIRECTO (escape hatch) -->
+    <div class="modal-actions" id="mod-cons-actions-directo" style="display:none">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-consolidar')">Cancelar</button>
       <button class="btn btn-ghost" onclick="consolidarYPublicar(false)">Solo consolidar</button>
-      <button class="btn btn-primary" onclick="consolidarYPublicar(true)">Consolidar y publicar →</button>
+      <button class="btn btn-primary" onclick="consolidarYPublicar(true)" style="background:#f97316;border-color:#f97316">⚡ Consolidar y publicar →</button>
     </div>
   </div>
 </div>
@@ -1288,6 +1473,12 @@
     ofertas: [],         // todas las ofertas
     clientes: [],
     transportadoras: [],
+    scenarios: [],                 // rows de scenarios_viaje
+    scenariosPedidos: [],          // rows de scenarios_viaje_pedidos
+    scenarioIdxPorPedido: new Map(), // pedido_id → [{scenario_id, estado}] (derivado)
+    filtroScenarios: 'borrador',   // borrador|conflictivo|promovido|descartado|invalidado|todos
+    scenariosExpandidos: new Set(),// IDs con pedidos expandidos en vista
+    modoModalConsolidar: 'scenario', // 'scenario' | 'directo'
     seleccionados: new Set(),
     seleccionadosActivos: new Set(),
     filtroEstados: new Set(['sin_consolidar']),  // multiselect de estados visibles
@@ -1357,7 +1548,7 @@
 
   // ───────── TABS ─────────
   // Tabs que pertenecen a cada workspace con sub-nav
-  const TABS_VIAJES   = ['subasta', 'activos', 'historial'];
+  const TABS_VIAJES   = ['subasta', 'activos', 'scenarios', 'historial'];
   const TABS_CATALOGO = ['cat-clientes', 'cat-transportadoras', 'cat-usuarios'];
 
   function cambiarTab(nombre, btn) {
@@ -1578,7 +1769,7 @@
   async function recargarTodo() {
     try {
       const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,revisado_at,revisado_por,revision_notas,created_at';
-      const [clientes, transp, pedidosAll, viajes, ofertas, intentos] = await Promise.all([
+      const [clientes, transp, pedidosAll, viajes, ofertas, intentos, scenarios, scenPeds] = await Promise.all([
         getJson('clientes?select=*&order=nombre.asc'),
         getJson('transportadoras?select=*&order=nombre.asc'),
         // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
@@ -1589,6 +1780,8 @@
         getJsonPaginated('viajes_consolidados?select=*&order=created_at.desc,id.desc'),
         getJson('ofertas?select=*&order=precio_oferta.asc&limit=1000'),
         getJsonPaginated('intentos_entrega?select=*&order=pedido_id,intento_num'),
+        getJson('scenarios_viaje?select=*&order=created_at.desc&limit=500'),
+        getJson('scenarios_viaje_pedidos?select=*&limit=5000'),
       ]);
       state.pedidos = pedidosAll;
       state.clientes = clientes;
@@ -1596,6 +1789,19 @@
       state.viajes = viajes;
       state.ofertas = ofertas;
       state.intentos = intentos;
+      state.scenarios = scenarios;
+      state.scenariosPedidos = scenPeds;
+
+      // Index pedido_id → [{ scenario_id, estado_scenario }] — para badge 🧪 en filas
+      const scenEstadoPorId = new Map(scenarios.map(s => [s.id, s.estado]));
+      const idx = new Map();
+      scenPeds.forEach(sp => {
+        const estSc = scenEstadoPorId.get(sp.scenario_id);
+        if (!estSc || ['descartado','invalidado','promovido'].includes(estSc)) return;
+        if (!idx.has(sp.pedido_id)) idx.set(sp.pedido_id, []);
+        idx.get(sp.pedido_id).push({ scenario_id: sp.scenario_id, estado: estSc });
+      });
+      state.scenarioIdxPorPedido = idx;
 
       // Poblar selector transp
       const sel = document.getElementById('mod-asig-transp');
@@ -1609,6 +1815,7 @@
       renderSubasta();
       renderActivos();
       renderHistorial();
+      renderScenarios();
       renderClientes();
       renderTransportadorasCat();
 
@@ -2068,6 +2275,23 @@
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
+  // ═════════════ HELPERS DE ZONA (badge + normalización) ═════════════
+  // La zona viene de la columna pedidos.zona (valores canónicos:
+  // BOYACÁ, CUNDINAMARCA, VALLE, ANTIOQUIA, NORTE, SANTANDERES, SUR,
+  // LLANOS, OCCIDENTE, ORIENTE, EJE CAFETERO, TOLIMA/HUILA, HUB).
+  // Normalizamos a slug sin tildes ni espacios para matchear las clases CSS.
+  function normalizarZona(z) {
+    if (!z) return '';
+    return z.toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\/\s]+/g, '-')
+      .replace(/[^a-z0-9\-]/g, '');
+  }
+  function badgeZona(zona) {
+    if (!zona) return '';
+    return `<span class="zona-badge zona-${normalizarZona(zona)}">${zona}</span>`;
+  }
+
   // ═════════════ TAB PEDIDOS (Sin consolidar — ya revisados) ═════════════
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
@@ -2161,26 +2385,78 @@
       return b[1].pedidos.length - a[1].pedidos.length;
     });
 
+    // Helpers reutilizados por grupo y sub-grupo por zona
+    function statsDe(peds) {
+      const kg  = peds.reduce((s,p) => s + (+p.peso_kg||0), 0);
+      const val = peds.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
+      const st = {
+        listos:   peds.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length,
+        nuevos:   peds.filter(p => esNuevo(p)).length,
+        asignado: peds.filter(p => ['consolidado','asignado'].includes(p.estado)).length,
+        enRuta:   peds.filter(p => p.estado === 'en_ruta').length,
+        entreg:   peds.filter(p => p.estado === 'entregado').length,
+        novedad:  peds.filter(p => ['entregado_novedad','devuelto_bodega'].includes(p.estado)).length,
+      };
+      return { kg, val, st };
+    }
+    function hintDe(stListos, kg) {
+      if (stListos >= 3 && kg >= 500) return `<span class="grp-hint hint-ok">💡 ${stListos} listos — buen candidato para consolidar</span>`;
+      if (stListos >= 2)              return `<span class="grp-hint hint-ok">💡 ${stListos} listos — se puede armar viaje</span>`;
+      if (stListos === 1)             return `<span class="grp-hint hint-wait">⏳ 1 listo — esperar más para consolidar</span>`;
+      return '';
+    }
+    function renderPedidoRow(p) {
+      const esN = esNuevo(p);
+      const incon = esInconsistente(p);
+      const estadoBadge = esN
+        ? '<span class="badge" style="background:#fff7ed;color:var(--orange);margin-left:6px">NUEVO</span>'
+        : `<span class="badge ${p.estado}" style="margin-left:6px">${p.estado}</span>`;
+      const inconBadge = incon
+        ? '<span class="badge" style="background:#fef2f2;color:var(--red);margin-left:4px" title="estado indica en viaje pero viaje_id=NULL">⚠ sin viaje</span>'
+        : '';
+      // Badge 🧪: este pedido está en N scenarios activos (borrador + conflictivo)
+      const scenEntries = state.scenarioIdxPorPedido?.get(p.id) || [];
+      const scenN = scenEntries.length;
+      const scenConflict = scenEntries.some(e => e.estado === 'conflictivo');
+      const scenBadge = scenN > 0
+        ? `<span class="scen-ind-badge ${scenConflict ? 'conflict' : ''}" title="En ${scenN} scenario${scenN!==1?'s':''} tentativo${scenN!==1?'s':''}${scenConflict ? ' (al menos uno con conflicto)' : ''} — click para ver" onclick="irATab('scenarios');event.stopPropagation()">🧪 ${scenN}</span>`
+        : '';
+      return `
+      <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
+        <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
+        <td>
+          <div class="pedido-ref">${p.pedido_ref || '—'} ${estadoBadge}${inconBadge}${scenBadge}</div>
+          <div class="pedido-cliente">${p.cliente_nombre || '—'}</div>
+        </td>
+        <td>${p.empresa || '—'}</td>
+        <td>
+          <div class="pedido-ruta"><span class="origen-hide">${p.origen || '—'} → </span><span class="destino-only">${p.destino || '—'}</span>${badgeZona(p.zona)}</div>
+          ${p.prioridad ? `<div class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}">${p.prioridad}</div>` : ''}
+        </td>
+        <td>${p.zona || '—'}</td>
+        <td>${fmtNum(p.peso_kg)} kg</td>
+        <td>${fmtFecha(p.fecha_cargue)}</td>
+        <td>${fmtCOP(p.valor_mercancia)}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button>
+          <button class="btn-info" onclick="abrirModalEditar('${p.id}')" title="Editar">✎</button>
+          <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento" style="font-size:11px">⎘</button>
+          <button class="btn-info" onclick="abrirAsociarViaje('${p.id}')" title="${p.viaje_id ? 'Cambiar/desasociar viaje' : 'Asociar a un viaje manualmente'}" style="font-size:11px">${p.viaje_id ? '🔗✓' : '🔗'}</button>
+          ${esN ? `<button class="btn-info" onclick="marcarRevisado('${p.id}')" title="Marcar como revisado → pasa a Sin consolidar" style="font-size:11px;color:#16a34a">✓</button>` : ''}
+        </td>
+      </tr>`;
+    }
+
     const html = [];
     for (const [key, grupo] of gruposOrdenados) {
-      const { label, pedidos, origen, destino } = grupo;
-      const kg = pedidos.reduce((s,p) => s + (+p.peso_kg||0), 0);
-      const val = pedidos.reduce((s,p) => s + (+p.valor_mercancia||0), 0);
+      const { label, pedidos } = grupo;
+      const { kg, val, st } = statsDe(pedidos);
       const fechas = pedidos.map(p => p.fecha_cargue).filter(Boolean).sort();
       const rango = fechas.length ? `${fmtFecha(fechas[0])}${fechas[0]!==fechas[fechas.length-1] ? ' → ' + fmtFecha(fechas[fechas.length-1]) : ''}` : '';
       const ids = pedidos.map(p => p.id);
       const selectedCount = ids.filter(id => state.seleccionados.has(id)).length;
       const checkState = selectedCount === 0 ? 'unchecked' : selectedCount === pedidos.length ? 'checked' : 'indeterminate';
 
-      // Sub-totales por estado (para la vista de patrón)
-      const st = {
-        listos:   pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length,
-        nuevos:   pedidos.filter(p => esNuevo(p)).length,
-        asignado: pedidos.filter(p => ['consolidado','asignado'].includes(p.estado)).length,
-        enRuta:   pedidos.filter(p => p.estado === 'en_ruta').length,
-        entreg:   pedidos.filter(p => p.estado === 'entregado').length,
-        novedad:  pedidos.filter(p => ['entregado_novedad','devuelto_bodega'].includes(p.estado)).length,
-      };
       const subTot = [
         st.nuevos   ? `<span class="st-pill st-nuevo">${st.nuevos} nuevos</span>`       : '',
         st.listos   ? `<span class="st-pill st-listo">${st.listos} listos</span>`       : '',
@@ -2190,17 +2466,9 @@
         st.novedad  ? `<span class="st-pill st-nov">${st.novedad} novedad</span>`       : '',
       ].filter(Boolean).join(' ');
 
-      // Hint de LogxIA por grupo (sugerencia, no ejecuta)
-      let hint = '';
-      if (modoAgrup === 'ruta' || modoAgrup === 'origen') {
-        if (st.listos >= 3 && kg >= 500) {
-          hint = `<span class="grp-hint hint-ok">💡 ${st.listos} listos — buen candidato para consolidar</span>`;
-        } else if (st.listos >= 2) {
-          hint = `<span class="grp-hint hint-ok">💡 ${st.listos} listos — se puede armar viaje</span>`;
-        } else if (st.listos === 1) {
-          hint = `<span class="grp-hint hint-wait">⏳ 1 listo — esperar más para consolidar</span>`;
-        }
-      }
+      // Hint del grupo: en modo 'origen' el hint útil vive en cada sub-zona,
+      // no en el grupo completo (porque el grupo mezcla zonas no consolidables entre sí).
+      const hint = (modoAgrup === 'ruta' || modoAgrup === 'destino') ? hintDe(st.listos, kg) : '';
 
       html.push(`
         <tr class="group-row">
@@ -2219,40 +2487,45 @@
           </td>
         </tr>`);
 
-      pedidos.forEach(p => {
-        const esN = esNuevo(p);
-        const incon = esInconsistente(p);
-        const estadoBadge = esN
-          ? '<span class="badge" style="background:#fff7ed;color:var(--orange);margin-left:6px">NUEVO</span>'
-          : `<span class="badge ${p.estado}" style="margin-left:6px">${p.estado}</span>`;
-        const inconBadge = incon
-          ? '<span class="badge" style="background:#fef2f2;color:var(--red);margin-left:4px" title="estado indica en viaje pero viaje_id=NULL">⚠ sin viaje</span>'
-          : '';
-        html.push(`
-        <tr class="${state.seleccionados.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
-          <td><input type="checkbox" ${state.seleccionados.has(p.id) ? 'checked' : ''} onclick="togglePedido('${p.id}')"></td>
-          <td>
-            <div class="pedido-ref">${p.pedido_ref || '—'} ${estadoBadge}${inconBadge}</div>
-            <div class="pedido-cliente">${p.cliente_nombre || '—'}</div>
-          </td>
-          <td>${p.empresa || '—'}</td>
-          <td>
-            <div class="pedido-ruta"><span class="origen-hide">${p.origen || '—'} → </span><span class="destino-only">${p.destino || '—'}</span></div>
-            ${p.prioridad ? `<div class="pedido-prioridad prio-${((p.prioridad||'').toLowerCase().match(/^([a-z]+)/)||[''])[0]}">${p.prioridad}</div>` : ''}
-          </td>
-          <td>${p.zona || '—'}</td>
-          <td>${fmtNum(p.peso_kg)} kg</td>
-          <td>${fmtFecha(p.fecha_cargue)}</td>
-          <td>${fmtCOP(p.valor_mercancia)}</td>
-          <td style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="btn-info" onclick="verDetallePedido('${p.id}')" title="Ver detalle">ℹ</button>
-            <button class="btn-info" onclick="abrirModalEditar('${p.id}')" title="Editar">✎</button>
-            <button class="btn-info" onclick="clonarPedido('${p.id}')" title="Clonar para reintento" style="font-size:11px">⎘</button>
-            <button class="btn-info" onclick="abrirAsociarViaje('${p.id}')" title="${p.viaje_id ? 'Cambiar/desasociar viaje' : 'Asociar a un viaje manualmente'}" style="font-size:11px">${p.viaje_id ? '🔗✓' : '🔗'}</button>
-            ${esN ? `<button class="btn-info" onclick="marcarRevisado('${p.id}')" title="Marcar como revisado → pasa a Sin consolidar" style="font-size:11px;color:#16a34a">✓</button>` : ''}
-          </td>
-        </tr>`);
-      });
+      if (modoAgrup === 'origen') {
+        // Sub-split por zona: dentro de un mismo origen, la zona del destino
+        // decide qué pedidos son consolidables entre sí (ej. Funza → Boyacá
+        // va junto, Funza → Sur/Pasto es viaje aparte). Evita que tengas que
+        // filtrar mental dentro del grupo.
+        const subZonas = new Map();
+        pedidos.forEach(p => {
+          const z = (p.zona || 'SIN ZONA').toString().trim().toUpperCase();
+          if (!subZonas.has(z)) subZonas.set(z, []);
+          subZonas.get(z).push(p);
+        });
+        const subOrdenadas = [...subZonas.entries()].sort((a, b) => {
+          const lA = a[1].filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
+          const lB = b[1].filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
+          if (lA !== lB) return lB - lA;
+          return b[1].length - a[1].length;
+        });
+        for (const [zonaKey, pedsZona] of subOrdenadas) {
+          const ss = statsDe(pedsZona);
+          const sHint = hintDe(ss.st.listos, ss.kg);
+          const zonaTxt = zonaKey === 'SIN ZONA' ? '(sin zona)' : zonaKey;
+          const labelNode = zonaKey === 'SIN ZONA'
+            ? `<span style="color:var(--gray-400);font-weight:500">${zonaTxt}</span>`
+            : badgeZona(zonaTxt);
+          html.push(`
+            <tr class="sub-group-row">
+              <td colspan="9">
+                <div class="sub-group-inner">
+                  <span class="sub-group-name">${labelNode}</span>
+                  <span class="sub-group-stats"><strong>${pedsZona.length}</strong> · <strong>${fmtNum(ss.kg)} kg</strong> · ${fmtCOP(ss.val)}</span>
+                  ${sHint}
+                </div>
+              </td>
+            </tr>`);
+          pedsZona.forEach(p => html.push(renderPedidoRow(p)));
+        }
+      } else {
+        pedidos.forEach(p => html.push(renderPedidoRow(p)));
+      }
     }
     document.getElementById('pedidos-tbody').innerHTML = html.join('');
 
@@ -2344,9 +2617,35 @@
   }
 
   // ───────── MODAL CONSOLIDAR ─────────
-  function abrirModalConsolidar() {
+  function abrirModalConsolidar(modoScenario = true) {
     const ids = [...state.seleccionados];
     if (!ids.length) { toast('Selecciona al menos 1 pedido', 'error'); return; }
+
+    // Guardar modo + ajustar UI del modal
+    state.modoModalConsolidar = modoScenario ? 'scenario' : 'directo';
+    const tituloEl = document.getElementById('mod-cons-title');
+    const hintEl   = document.getElementById('mod-cons-modo-hint');
+    const actScen  = document.getElementById('mod-cons-actions-scenario');
+    const actDir   = document.getElementById('mod-cons-actions-directo');
+    const promoviendo = !!state.promoviendoScenarioId;
+
+    if (promoviendo) {
+      const s = state.scenarios.find(x => x.id === state.promoviendoScenarioId);
+      tituloEl.textContent = '✓ Promover scenario → viaje';
+      hintEl.className = 'modal-hint-box directo';
+      hintEl.innerHTML = `<strong>Promovés "${s?.nombre || ''}".</strong> Se crea el viaje real, los pedidos pasan a <em>consolidado</em> y otros scenarios con estos pedidos quedan <em>conflictivos</em> para que limpies.`;
+      actScen.style.display = 'none'; actDir.style.display = 'flex';
+    } else if (modoScenario) {
+      tituloEl.textContent = '🧪 Crear scenario tentativo';
+      hintEl.className = 'modal-hint-box';
+      hintEl.innerHTML = `<strong>Scenario:</strong> los pedidos siguen en <em>sin_consolidar</em> y podés armar más combinaciones con los mismos pedidos. Promovés a viaje cuando decidas.`;
+      actScen.style.display = 'flex'; actDir.style.display = 'none';
+    } else {
+      tituloEl.textContent = '⚡ Consolidar directo — sin scenario';
+      hintEl.className = 'modal-hint-box directo';
+      hintEl.innerHTML = `<strong>Consolidar directo:</strong> los pedidos SALEN de <em>sin_consolidar</em> y queda creado el viaje real inmediatamente. Usalo solo si ya decidiste.`;
+      actScen.style.display = 'none'; actDir.style.display = 'flex';
+    }
 
     const ped = state.pedidos.filter(p => ids.includes(p.id));
     const clientesSet = new Set(ped.map(p => p.cliente_id).filter(Boolean));
@@ -2408,19 +2707,72 @@
     };
 
     try {
-      const viajeId = await rpc('fn_consolidar_pedidos', {
-        p_pedido_ids: ids,
-        p_metadata: metadata,
-      });
+      let viajeId;
+      if (state.promoviendoScenarioId) {
+        // Modo "Promover scenario": delega a fn_scenario_promover que internamente
+        // llama a fn_consolidar_pedidos y marca otros scenarios conflictivos.
+        viajeId = await rpc('fn_scenario_promover', {
+          p_scenario_id: state.promoviendoScenarioId,
+          p_metadata: metadata,
+        });
+        state.promoviendoScenarioId = null;
+      } else {
+        viajeId = await rpc('fn_consolidar_pedidos', {
+          p_pedido_ids: ids,
+          p_metadata: metadata,
+        });
+      }
       if (publicar) {
         await rpc('fn_publicar_viaje', { p_viaje_id: viajeId, p_tipo: tipoSubasta });
-        toast(`Consolidado y publicado (${tipoSubasta}) → ver en Asignar proveedor`, 'success');
+        toast(`Consolidado y publicado (${tipoSubasta}) → ver en Por asignar`, 'success');
       } else {
-        toast('Consolidado como borrador → ver en Asignar proveedor', 'success');
+        toast('Consolidado como borrador → ver en Por asignar', 'success');
       }
       state.seleccionados.clear();
       cerrarModal('modal-consolidar');
       irATab('subasta');
+      recargarTodo();
+    } catch (e) {
+      console.error(e);
+      toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // ═════════════ CREAR SCENARIO (modo tentativo — pedidos no salen de sin_consolidar) ═════════════
+  async function ejecutarCrearScenario() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) return;
+
+    // Reutilizamos los campos del modal como metadata para pre-llenar
+    // el scenario (nombre sugerido + notas = observaciones). El resto
+    // de campos (flete/fecha/origen/destino) son referencia visual:
+    // se persisten en scenarios_viaje.notas como bloque estructurado.
+    const origen = document.getElementById('mod-cons-origen').value.trim();
+    const destino = document.getElementById('mod-cons-destino').value.trim();
+    const fecha = document.getElementById('mod-cons-fecha').value;
+    const flete = +document.getElementById('mod-cons-flete').value;
+    const obs = document.getElementById('mod-cons-obs').value.trim();
+
+    // Nombre sugerido — el operador lo edita después si quiere
+    const nombreGuess = (origen || '?') + (destino ? ' → ' + destino.split(',')[0] : '') + ` (${ids.length})`;
+
+    // Notas con bloque estructurado (lo leemos al promover)
+    const notasLineas = [];
+    if (obs) notasLineas.push(obs);
+    if (flete > 0) notasLineas.push(`[flete_est=${flete}]`);
+    if (fecha) notasLineas.push(`[fecha_cargue=${fecha}]`);
+    const notas = notasLineas.join('\n') || null;
+
+    try {
+      await rpc('fn_scenario_crear', {
+        p_pedido_ids: ids,
+        p_nombre: nombreGuess,
+        p_notas: notas,
+      });
+      toast(`🧪 Scenario creado · ${ids.length} pedidos siguen libres para más combinaciones`, 'success');
+      state.seleccionados.clear();
+      cerrarModal('modal-consolidar');
+      irATab('scenarios');
       recargarTodo();
     } catch (e) {
       console.error(e);
@@ -4108,6 +4460,191 @@
       if (!r.ok) throw new Error(await r.text());
       toast(!activarActual ? 'Transportadora reactivada' : 'Transportadora desactivada', 'success');
       await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════════════════════════════════════════════════════════
+  // SCENARIOS — render del sub-tab 🧪 + acciones
+  // Un scenario agrupa pedidos tentativamente (pedidos siguen sin_consolidar).
+  // Estados: borrador → promovido | descartado | conflictivo → invalidado
+  // ═════════════════════════════════════════════════════════════════
+  function setFiltroScenarios(tipo, btn) {
+    state.filtroScenarios = tipo;
+    document.querySelectorAll('[data-scen]').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderScenarios();
+  }
+
+  function toggleExpandirScenario(id) {
+    if (state.scenariosExpandidos.has(id)) state.scenariosExpandidos.delete(id);
+    else state.scenariosExpandidos.add(id);
+    renderScenarios();
+  }
+
+  function pedidosDelScenario(scenarioId) {
+    const pedIds = state.scenariosPedidos
+      .filter(sp => sp.scenario_id === scenarioId)
+      .sort((a, b) => (a.orden || 999) - (b.orden || 999))
+      .map(sp => sp.pedido_id);
+    return pedIds.map(id => state.pedidos.find(p => p.id === id)).filter(Boolean);
+  }
+
+  function renderScenarios() {
+    // Update counts en los filtros
+    const todos = state.scenarios || [];
+    const byEst = e => todos.filter(s => s.estado === e).length;
+    const setCount = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    setCount('sc-count-borr', byEst('borrador'));
+    setCount('sc-count-conf', byEst('conflictivo'));
+    setCount('sc-count-prom', byEst('promovido'));
+    setCount('sc-count-desc', byEst('descartado'));
+    setCount('sc-count-inv',  byEst('invalidado'));
+    // Count en la sub-nav (solo activos = borrador + conflictivo)
+    setCount('count-scenarios', byEst('borrador') + byEst('conflictivo'));
+
+    const cont = document.getElementById('scenarios-lista');
+    if (!cont) return;
+
+    const filtro = state.filtroScenarios || 'borrador';
+    const nombreFlt = (document.getElementById('flt-scen-nombre')?.value || '').trim().toLowerCase();
+
+    let lista = todos.slice();
+    if (filtro !== 'todos') lista = lista.filter(s => s.estado === filtro);
+    if (nombreFlt) lista = lista.filter(s => (s.nombre || '').toLowerCase().includes(nombreFlt));
+
+    if (!lista.length) {
+      cont.innerHTML = `<div class="empty-msg" style="padding:2rem;text-align:center;color:var(--gray-400);font-size:13px">
+        No hay scenarios${filtro !== 'todos' ? ' en ' + filtro : ''}.
+      </div>`;
+      return;
+    }
+
+    const html = lista.map(s => {
+      const peds = pedidosDelScenario(s.id);
+      const expandido = state.scenariosExpandidos.has(s.id);
+      const isBorr = s.estado === 'borrador';
+      const isConf = s.estado === 'conflictivo';
+      const isInv  = s.estado === 'invalidado';
+      const isProm = s.estado === 'promovido';
+      const isDesc = s.estado === 'descartado';
+
+      const consumidos = peds.filter(p => p.estado !== 'sin_consolidar').length;
+      const libres     = peds.filter(p => p.estado === 'sin_consolidar').length;
+
+      const zonasHtml = (s.zonas || []).map(z => badgeZona(z)).join('');
+
+      const warn = isConf
+        ? `<div class="scen-card-warn">⚠ <div>Tiene <strong>${consumidos}</strong> pedido${consumidos!==1?'s':''} ya consumidos en otro scenario promovido. Limpiá para quitarlos y seguir trabajando con los <strong>${libres}</strong> libres — o descartá si ya no sirve.</div></div>`
+        : '';
+      const invMsg = isInv
+        ? `<div class="scen-card-warn" style="background:#f3f4f6;border-color:#e5e7eb;color:#4b5563">🗑 Todos sus pedidos ya se consumieron en otros scenarios. Descartá para archivar.</div>`
+        : '';
+      const promInfo = isProm && s.promovido_a_viaje_id
+        ? `<div class="scen-card-warn" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534">✓ Promovido a viaje — ver en <a href="#" onclick="irATab('subasta');return false" style="color:inherit;font-weight:700;text-decoration:underline">🤝 Por asignar</a></div>`
+        : '';
+      const descInfo = isDesc && s.descartado_razon
+        ? `<div style="font-size:11px;color:var(--gray-600);font-style:italic;margin:6px 0">Razón: ${s.descartado_razon}</div>`
+        : '';
+
+      const pedsHtml = expandido ? `
+        <div class="scen-peds open">
+          ${peds.map(p => {
+            const consumido = p.estado !== 'sin_consolidar';
+            return `
+              <div class="scen-ped-row">
+                <span class="scen-ped-ref">${p.pedido_ref || '—'}</span>
+                <span class="scen-ped-ruta">${p.origen || '?'} → ${p.destino || '?'}${badgeZona(p.zona)}</span>
+                <span class="scen-ped-estado ${consumido ? 'consumido' : 'ok'}">${consumido ? p.estado : 'libre'}</span>
+                <span style="font-size:11px;color:var(--gray-600)">${fmtNum(p.peso_kg)} kg</span>
+                ${(isBorr || isConf) ? `<button class="scen-ped-quitar" title="Quitar pedido del scenario" onclick="accionQuitarPedidoDeScenario('${s.id}','${p.id}')">×</button>` : ''}
+              </div>`;
+          }).join('')}
+        </div>` : '';
+
+      const actions = [];
+      if (isBorr) {
+        actions.push(`<button class="scen-action ok" onclick="accionScenarioPromover('${s.id}')"><span class="ico">✓</span> Promover a viaje</button>`);
+        actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Descartar</button>`);
+      }
+      if (isConf) {
+        actions.push(`<button class="scen-action primary" onclick="accionScenarioLimpiar('${s.id}')"><span class="ico">🧹</span> Limpiar consumidos</button>`);
+        actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Descartar</button>`);
+      }
+      if (isInv) {
+        actions.push(`<button class="scen-action warn" onclick="accionScenarioDescartar('${s.id}')"><span class="ico">✕</span> Archivar</button>`);
+      }
+      actions.push(`<button class="scen-action" onclick="toggleExpandirScenario('${s.id}')">${expandido ? '▲ Ocultar pedidos' : `▼ Ver ${peds.length} pedidos`}</button>`);
+
+      return `
+        <div class="scen-card scen-${s.estado}">
+          <div class="scen-card-hdr">
+            <div class="scen-card-name">${s.nombre || '(sin nombre)'}</div>
+            <span class="scen-card-estado ${s.estado}">${s.estado}</span>
+            <div style="flex:1"></div>
+            <div style="font-size:10px;color:var(--gray-400)">${new Date(s.created_at).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div class="scen-card-stats">
+            <div>📦 <strong>${s.cantidad_pedidos || peds.length}</strong> pedidos</div>
+            <div>⚖ <strong>${fmtNum(s.peso_kg_total || 0)}</strong> kg</div>
+            <div>💰 <strong>${fmtCOP(s.valor_mercancia_total || 0)}</strong> mercancía</div>
+            <div>📍 <strong>${s.origen_sugerido || '—'}</strong></div>
+          </div>
+          ${zonasHtml ? `<div class="scen-card-zonas">${zonasHtml}</div>` : ''}
+          ${warn}${invMsg}${promInfo}${descInfo}
+          ${pedsHtml}
+          <div class="scen-card-actions">${actions.join('')}</div>
+        </div>`;
+    }).join('');
+
+    cont.innerHTML = html;
+  }
+
+  // ───────── ACCIONES ─────────
+  async function accionScenarioPromover(scenarioId) {
+    const s = state.scenarios.find(x => x.id === scenarioId);
+    if (!s) return;
+    if (s.estado !== 'borrador') return toast('Solo scenarios en borrador se pueden promover', 'error');
+    const pedIds = pedidosDelScenario(scenarioId).map(p => p.id);
+    if (!pedIds.length) return toast('Scenario sin pedidos', 'error');
+
+    // Pre-seleccionar los pedidos y abrir el modal en modo "promover" (UI directo)
+    state.seleccionados = new Set(pedIds);
+    state.promoviendoScenarioId = scenarioId;
+
+    // Pre-llenar flete estimado desde notas (si lo guardamos al crear)
+    abrirModalConsolidar(false);
+    // Si notas traían [flete_est=N], parsear y poner
+    if (s.notas) {
+      const m = s.notas.match(/\[flete_est=(\d+)\]/);
+      if (m) document.getElementById('mod-cons-flete').value = m[1];
+      const mf = s.notas.match(/\[fecha_cargue=(\d{4}-\d{2}-\d{2})\]/);
+      if (mf) document.getElementById('mod-cons-fecha').value = mf[1];
+    }
+  }
+
+  async function accionScenarioDescartar(scenarioId) {
+    const razon = prompt('Razón del descarte (opcional):');
+    if (razon === null) return; // cancelado
+    try {
+      await rpc('fn_scenario_descartar', { p_scenario_id: scenarioId, p_razon: razon || null });
+      toast('Scenario descartado', 'success');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function accionScenarioLimpiar(scenarioId) {
+    try {
+      const n = await rpc('fn_scenario_limpiar_consumidos', { p_scenario_id: scenarioId });
+      toast(`Limpiados ${n} pedido${n!==1?'s':''} consumido${n!==1?'s':''}`, 'success');
+      recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function accionQuitarPedidoDeScenario(scenarioId, pedidoId) {
+    try {
+      await rpc('fn_scenario_quitar_pedido', { p_scenario_id: scenarioId, p_pedido_id: pedidoId });
+      toast('Pedido quitado del scenario', 'success');
+      recargarTodo();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 </script>

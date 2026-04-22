@@ -398,11 +398,39 @@ function getCoordenadas(ciudad){
 async function geocodeCiudad(ciudad){
   if(!ciudad)return null;const key=ciudad.toLowerCase().trim();
   if(geocodeCache[key])return geocodeCache[key];
-  try{const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ciudad+', Colombia')}&key=${GMAPS_KEY}`);const d=await r.json();
-  if(d.results&&d.results.length>0){const l=d.results[0].geometry.location;const c=[l.lat,l.lng];geocodeCache[key]=c;return c;}}catch(e){}return null;
+  // Timeout de 6s para no colgar el flujo si Google no responde
+  try{
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), 6000);
+    const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ciudad+', Colombia')}&key=${GMAPS_KEY}`, {signal:ctrl.signal});
+    clearTimeout(t);
+    const d=await r.json();
+    if(d.results&&d.results.length>0){const l=d.results[0].geometry.location;const c=[l.lat,l.lng];geocodeCache[key]=c;return c;}
+  }catch(e){ console.warn('[geocode] timeout/error para', ciudad, e.message); }
+  return null;
 }
 async function getCoords(ciudad){return getCoordenadas(ciudad)||await geocodeCiudad(ciudad)}
 function geo(name){const c=getCoordenadas(name);return c?{lat:c[0],lng:c[1],name:name.trim()}:null}
+
+// Extrae la ciudad real desde un destino verbose tipo "CENTRO OCOBOS ESPINAL"
+// o "PPAL 3PL SAN DIEGO FUNZA" buscando dentro de los tokens cuál matchea una
+// ciudad conocida. Fallback: el texto original (dejá que Google intente).
+function extraerCiudad(destino){
+  if(!destino) return '';
+  const completo = getCoordenadas(destino);
+  if(completo) return destino;
+  // Normalizar y separar en palabras de ≥3 chars (ignorar prefijos tipo "3PL", "PPAL")
+  const tokens = destino.split(/[\s,;\/()\-]+/).filter(t => t && t.length >= 3);
+  // Probar combinaciones de 2 tokens (para "santa marta", "san diego", etc.)
+  for(let i=0;i<tokens.length-1;i++){
+    const par = tokens[i]+' '+tokens[i+1];
+    if(getCoordenadas(par)) return par;
+  }
+  // Probar tokens sueltos empezando por el ÚLTIMO (las ciudades suelen ir al final)
+  for(let i=tokens.length-1;i>=0;i--){
+    if(getCoordenadas(tokens[i])) return tokens[i];
+  }
+  return destino;  // no matcheó nada — que lo intente Google
+}
 
 // Pricing Ridge R²=0.919
 const CC_ZONA_AJUSTE={'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226};
@@ -663,11 +691,24 @@ async function loadFromSupabase(){
       const peds=await fetchInBatches('pedidos','*','id',pedIds);
       PEDIDOS_INDEX=new Map(peds.map(p=>[p.id,p]));
       VIAJES_ROWS=[];
-      // También cargamos TODOS los scenarios activos en background para que el toggle funcione
+      // Background: todos los scenarios activos + viajes recientes para que AMBOS toggles funcionen
       sbAnal.from('scenarios_viaje').select('*').in('estado',['borrador','conflictivo','promovido']).order('created_at',{ascending:false}).limit(100)
         .then(({data})=>{
           if(data && data.length){ SCENARIOS_ROWS=data; if(MODO_FUENTE==='scenario'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); } }
         }).catch(e=>console.warn('[analizador] fetch scenarios extra falló:',e));
+      sbAnal.from('viajes_consolidados').select('*').in('estado',['pendiente','confirmado','en_ruta','entregado']).order('fecha_cargue',{ascending:false,nullsFirst:false}).limit(50)
+        .then(async ({data})=>{
+          if(data && data.length){
+            VIAJES_ROWS=data;
+            // También pedidos de esos viajes
+            const ids=data.map(v=>v.id);
+            try{
+              const peds=await fetchInBatches('pedidos','*','viaje_id',ids);
+              peds.forEach(p=>PEDIDOS_INDEX.set(p.id, p));
+            }catch(e){console.warn('[analizador] fetch pedidos viajes extra:',e);}
+            if(MODO_FUENTE==='viaje'){ buildTripsFromCurrentData(); populateSelect(); }
+          }
+        }).catch(e=>console.warn('[analizador] fetch viajes extra falló:',e));
 
       setModoFuente('scenario');  // esto llama buildTrips + populateSelect
       st.textContent=`Scenario "${sc[0].nombre}" · ${peds.length} pedidos`; st.style.color='var(--green)';
@@ -1215,21 +1256,37 @@ async function runAnalysis(){
   const maxDriveH=parseInt(document.getElementById('inNocturno').value)||22;
   
   // Build stops from destConditions (already grouped by unique destination)
-  const origin=geo(trip.origenes[0]);
+  // Para el origen, intentar extraer ciudad real desde "PPAL 3PL SAN DIEGO FUNZA" → "FUNZA"
+  const origenCiudad = extraerCiudad(trip.origenes[0]);
+  let origin = geo(origenCiudad);
+  if(!origin){
+    const coords = await geocodeCiudad(origenCiudad || trip.origenes[0]);
+    if(coords) origin = {lat:coords[0],lng:coords[1],name:origenCiudad || trip.origenes[0]};
+  }
   if(!origin){alert('Sin coords para '+trip.origenes[0]);btn.disabled=false;btn.textContent='Calcular ruta sugerida';return}
-  
+  console.log('[analizador] origen:', trip.origenes[0], '→', origin.name, origin);
+
   const destGeo=[];const missing=[];
   for(const cond of destConditions){
-    let c=geo(cond.city);
+    // Primero intentar extraer ciudad desde el destino verbose ("CENTRO OCOBOS ESPINAL" → "ESPINAL")
+    const ciudadReal = extraerCiudad(cond.city);
+    let c = geo(ciudadReal);
     // Fallback: if not in local dict, try Google Geocoding
     if(!c){
-      const coords=await geocodeCiudad(cond.city);
-      if(coords)c={lat:coords[0],lng:coords[1],name:cond.city.trim()};
+      const coords = await geocodeCiudad(ciudadReal || cond.city);
+      if(coords) c = {lat:coords[0],lng:coords[1],name:cond.city.trim()};
     }
-    if(!c){missing.push(cond.city);continue}
+    if(!c){
+      console.warn('[analizador] sin coords para destino:', cond.city, '(probé:', ciudadReal, ')');
+      missing.push(cond.city); continue;
+    }
+    console.log('[analizador] destino:', cond.city, '→', c.name);
     destGeo.push({...c,origIdx:cond.idx,isReturnDest:cond.isReturnDest});
   }
-  if(!destGeo.length){alert('Sin destinos con coordenadas');btn.disabled=false;btn.textContent='Calcular ruta sugerida';return}
+  if(missing.length){
+    console.warn('[analizador] destinos sin coordenadas:', missing);
+  }
+  if(!destGeo.length){alert('Sin destinos con coordenadas. Revisa consola para ver cuáles fallaron.');btn.disabled=false;btn.textContent='Calcular ruta sugerida';return}
   
   // Apply priority: move priority items to front
   let orderedDests=[...destGeo];
@@ -1281,7 +1338,10 @@ async function runAnalysis(){
     
     // Always use OSRM /route with our fixed order (nearest-neighbor or user-defined)
     const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
-    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);
+    console.log('[analizador] OSRM request:', osrmStops.length, 'stops');
+    const ctrl=new AbortController(); const tmo=setTimeout(()=>ctrl.abort(), 20000); // 20s timeout
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, {signal:ctrl.signal});
+    clearTimeout(tmo);
     const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
     tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
     ordered=osrmStops;

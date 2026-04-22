@@ -115,7 +115,9 @@
     .badge-en_subasta { background: #ecfdf5; color: var(--green); }
 
     /* ── OFERTA MODAL ── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    /* z-index 9999 para quedar por encima de Leaflet (panes hasta 700) y de cualquier
+       otro overlay de página. Antes era 200, quedaba debajo del mapa. */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 1rem; }
     .modal-overlay.open { display: flex; }
     .modal-box { background: white; border-radius: 20px; width: 100%; max-width: 480px; box-shadow: 0 25px 80px rgba(0,0,0,0.3); }
     .modal-head { padding: 1.5rem 1.75rem 1rem; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }

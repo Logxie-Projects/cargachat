@@ -1,6 +1,6 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-22 (sesión noche — Flota + RLS aislamiento)**.
+> Foto del proyecto al **2026-04-23 (sesión — Catálogo · Usuarios con Edge Function)**.
 
 ---
 
@@ -8,7 +8,10 @@
 
 > Cuando abras nueva sesión, revisá acá qué bloque sigue. Cada bloque es una sesión independiente, commit-atómico end-to-end. Copiá el prompt tal cual al chat de Claude.
 
-### 🎯 Sesión siguiente (A): **Sub-tab 👥 Usuarios en Catálogo** — ~1h 50min
+### ✅ Sesión A — COMPLETADA (2026-04-23): Sub-tab 👥 Usuarios en Catálogo
+Ver TL;DR abajo.
+
+### 🎯 Sesión siguiente (A-OLD, reemplazada): **Sub-tab 👥 Usuarios en Catálogo** — ~1h 50min
 
 **Objetivo**: Bernardo crea y administra cuentas de transportadoras y staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios (hoy placeholder). Edge Function con `service_role` + UI inline. Cierra el onboarding — a partir de acá el link `netfleet.app/mi-netfleet.html` se puede compartir por WhatsApp con credenciales.
 
@@ -165,6 +168,53 @@ Al recibir viaje adjudicado, la transportadora tiene card expandible mail-style 
 - **Commits chicos**: un bloque = un commit end-to-end (schema + UI + test + docs). No acumular 1000+ líneas en un solo push.
 
 ---
+
+>
+> **Lo nuevo vs. bloque anterior (RLS aislamiento):** **Sub-tab 👥 Usuarios operativo en Catálogo** — Bernardo ya puede crear/resetear/suspender/eliminar cuentas de transportadoras + staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios. Edge Function `admin_user` deployada (5 acciones · service_role + gate `logxie_staff` via JWT · log a `acciones_operador`). Campo nuevo `perfiles.rol_transportadora` enum `comercial|operativo|facturacion` — informativo hoy, preparado para gate de tabs en mi-netfleet en sesión futura. Password auto-generado `Netfleet-XXXXXX` con botón "📱 Copiar para WhatsApp" que arma mensaje completo con link + email + pass. Onboarding listo: crear transportadora en Catálogo → crear N usuarios linkeados (uno por rol) → mandar credenciales por WhatsApp.
+
+## TL;DR de la sesión 2026-04-23 (Catálogo · Usuarios)
+
+### Bloque Usuarios — onboarding end-to-end desde control.html
+
+- **Motivación**: cerrar bloqueo de onboarding. Para compartir `netfleet.app/mi-netfleet` con las 7 transportadoras por WhatsApp con credenciales, hace falta poder crear cuentas sin ir al Dashboard de Supabase. Con RLS ya endurecido (sesión anterior), cada cuenta nueva nace aislada correctamente.
+
+- **Schema** — [db/modulo4_usuarios_admin.sql](../db/modulo4_usuarios_admin.sql) + [db/perfiles_rol_transportadora.sql](../db/perfiles_rol_transportadora.sql):
+  - `perfiles.rol_transportadora TEXT` CHECK IN `('comercial','operativo','facturacion')`. Nullable (solo aplica cuando `tipo=transportador`). Hoy **solo informativo** — no gate de acceso. Preparado para cuando se quiera restringir tabs en mi-netfleet por rol.
+  - `acciones_operador.accion` CHECK extendido con 4 acciones: `usuario_crear`, `usuario_reset_password`, `usuario_toggle_active`, `usuario_eliminar`.
+  - `acciones_operador.entidad_tipo` CHECK extendido con `usuario`.
+  - Índice parcial `idx_perfiles_rol_transportadora` donde NOT NULL.
+
+- **Edge Function `admin_user`** — [supabase/functions/admin_user/index.ts](../supabase/functions/admin_user/index.ts):
+  - Runtime Deno (`@supabase/supabase-js@2` — SDK v2 latest, necesario para soporte ES256).
+  - Deploy con `--no-verify-jwt` — el gateway de Supabase NO soporta verificar JWTs ES256 (el nuevo formato asimétrico) en su capa `verify_jwt`. Error exacto: `UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM`. Workaround: disable verify_jwt + validar manualmente en el código con `admin.auth.getUser(token)` usando `service_role` key (que SÍ soporta ES256).
+  - Gate server-side: (1) Bearer header presente → (2) `admin.auth.getUser(token)` decodifica JWT y resuelve user → (3) chequeo `perfiles.tipo='logxie_staff'` + `estado='aprobado'`. Si cualquier paso falla → 401/403.
+  - 6 acciones: `list_users`, `create_user`, `reset_password`, `toggle_active`, `delete_user`, `update_rol` (cambio inline de rol desde la tabla).
+  - Password auto-generado `Netfleet-XXXXXX` con chars sin ambiguedad (sin 0/O/1/l/I) usando `crypto.getRandomValues`.
+  - Audit log: cada acción escribe a `acciones_operador` con snapshot en metadata.
+  - README de deploy + curl smoke tests en [supabase/functions/admin_user/README.md](../supabase/functions/admin_user/README.md).
+
+- **UI** — [control.html](../control.html):
+  - Sub-tab 👥 Usuarios en Catálogo (reemplaza el placeholder "Módulo en construcción").
+  - Filtros: search box · radios tipo (Todos/Transportador/Staff) · checkbox "Mostrar suspendidos".
+  - Tabla: Email · Nombre · Tipo (badge color-coded) · Transportadora · **Rol (select inline — cambia en caliente via `update_rol`)** · Estado · Últ login · Acciones (🔑 reset · ⊘/↻ toggle · 🗑 delete con doble confirm).
+  - Modal "Nueva cuenta": radio tipo · selector transportadora (lazy-load si state vacío, con fallback fetch directo) · selector rol · email/nombre/teléfono.
+  - Modal "Password generado": se muestra email + password UNA sola vez · 2 botones copy ("📱 Copiar para WhatsApp" arma mensaje completo con link + email + pass, "📋 Copiar solo contraseña").
+  - Contador `👥 Usuarios N` en sub-nav, filtra suspendidos.
+
+- **Proceso de deploy** — aprendizaje operativo:
+  - Ni Node/npm ni Supabase CLI están instalados en el sistema de Bernardo. Tampoco Docker (warning esperado del CLI, no bloquea deploy cloud).
+  - CLI binario Windows (~30MB tar.gz, ~94MB ejecutable) descargado de github releases a `/tmp/sbcli` temporal, borrado post-deploy.
+  - Personal Access Token (PAT) de Bernardo vía env var `SUPABASE_ACCESS_TOKEN`. Tras el deploy, Bernardo revocó el PAT inmediato. Documentado para futuro: para deploys siguientes de Edge Functions, repetir el flow (descargar CLI binario temp + PAT temp + revocar).
+
+- **Gotcha importante — JWT ES256**: Supabase migró sus JWTs de HS256 a ES256 (asymmetric ECDSA). El gateway de Supabase y versiones viejas del SDK `supabase-js` (<2.45) no soportan verificar ES256. Síntomas: `{"code":"UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM","message":"Unsupported JWT algorithm ES256"}`. Fix: (1) SDK import `@supabase/supabase-js@2` (latest) en la Edge Function, (2) deploy con `--no-verify-jwt`, (3) validar token manualmente con `admin.auth.getUser(token)` que usa service_role.
+
+- **E2E test PASS**: crear cuenta transportador con rol → verificar linkeo a transportadora correcto → cambiar rol inline → reset password → suspender → reactivar → eliminar con doble confirmación. Todo loggeado en `acciones_operador`.
+
+- **Archivos creados/modificados**:
+  - ✅ Nuevos: `db/modulo4_usuarios_admin.sql`, `db/perfiles_rol_transportadora.sql`, `supabase/functions/admin_user/index.ts`, `supabase/functions/admin_user/README.md`
+  - ✅ Modificado: `control.html` (sub-tab HTML + 2 modales + ~280 líneas JS: `renderUsuarios` · `cargarUsuarios` · `callAdminUser` · `abrirUsuarioModal` · `crearUsuario` · `mostrarPassGenerado` · `copiarPassWhatsApp` · `resetearPassword` · `toggleActivoUsuario` · `eliminarUsuario` · `cambiarRolUsuario` · `onUsrTipoChange`)
+
+- **Próximo paso (Bloque 2)**: asignar vehículo+conductor al viaje adjudicado desde mi-netfleet → tab "Mis viajes". Ver sección "Próximas sesiones" arriba.
 
 >
 > **Lo nuevo vs. bloque anterior (Flota):** **RLS endurecido** en `viajes_consolidados` + `pedidos` — cada transportadora ahora ve SOLO sus viajes (los asignados a ella + subastas abiertas + invitaciones activas). Antes `authenticated_all` dejaba a cualquier transportador logueado hacer `fetch('/rest/v1/viajes_consolidados')` y ver TODOS los viajes con flete/proveedor/valor de la competencia + pedidos con cliente final, dirección, teléfono. Backfill de 1145 viajes legacy (7 transportadoras seed) via substring match. Test end-to-end PASS con JWT auth: staff ve 1311, JR user ve 236 (todos suyos, 0 ajenos).

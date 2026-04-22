@@ -761,7 +761,7 @@
         🚛 Transportadoras <span class="tab-count" id="count-transportadoras">0</span>
       </button>
       <button class="subtab-btn" data-tab="cat-usuarios" onclick="cambiarTab('cat-usuarios', this)">
-        👥 Usuarios staff
+        👥 Usuarios <span class="tab-count" id="count-usuarios">0</span>
       </button>
     </div>
 
@@ -1141,19 +1141,24 @@
       </div>
     </div>
 
-    <!-- ═══ TAB: CATÁLOGO — USUARIOS STAFF (placeholder) ═══ -->
+    <!-- ═══ TAB: CATÁLOGO — USUARIOS ═══ -->
     <div class="tab-section" id="tab-cat-usuarios">
       <div class="cat-header">
         <div>
-          <div class="cat-title">Usuarios staff Logxie</div>
-          <div class="cat-sub">Cuentas con acceso al panel de control. Crear/editar usuarios requiere service_role — se implementa con una Edge Function.</div>
+          <div class="cat-title">Usuarios</div>
+          <div class="cat-sub">Cuentas con acceso a Netfleet. Transportadoras loguean en mi-netfleet; staff Logxie en control.html. Podés crear varias cuentas por transportadora (ej. comercial, operativo, facturación).</div>
         </div>
-        <button class="btn btn-primary" disabled title="Próximamente">➕ Nuevo usuario</button>
+        <button class="btn btn-primary" onclick="abrirUsuarioModal()">➕ Nueva cuenta</button>
       </div>
-      <div class="cat-placeholder">
-        <div style="font-size:40px;margin-bottom:8px">👥</div>
-        <strong>Módulo en construcción</strong>
-        <p>Por ahora las cuentas staff se crean desde el dashboard de Supabase. Pronto vas a poder administrarlas desde acá.</p>
+      <div class="filtros">
+        <input class="filtro-input" id="flt-cat-usr" placeholder="🔍 Buscar por email, nombre, transportadora…" oninput="renderUsuarios()">
+        <label class="filtro-check"><input type="radio" name="flt-usr-tipo" value="" checked onchange="renderUsuarios()"> Todos</label>
+        <label class="filtro-check"><input type="radio" name="flt-usr-tipo" value="transportador" onchange="renderUsuarios()"> 🚛 Transportador</label>
+        <label class="filtro-check"><input type="radio" name="flt-usr-tipo" value="logxie_staff" onchange="renderUsuarios()"> 🏢 Staff Logxie</label>
+        <label class="filtro-check"><input type="checkbox" id="flt-cat-usr-suspendidos" onchange="renderUsuarios()"> Mostrar suspendidos</label>
+      </div>
+      <div id="usuarios-lista">
+        <div class="loading-msg">Cargando…</div>
       </div>
     </div>
 
@@ -1257,6 +1262,78 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-transp')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarTransp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: USUARIO (nueva cuenta) ══════════════════════ -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title">Nueva cuenta</div>
+    <div class="modal-sub">Se genera una contraseña aleatoria que vas a poder copiar una sola vez.</div>
+
+    <div class="modal-grid-2" style="margin-top:10px">
+      <div style="grid-column:1/-1">
+        <label class="modal-label">Tipo de cuenta *</label>
+        <div style="display:flex;gap:14px;padding:6px 0">
+          <label class="filtro-check"><input type="radio" name="usr-tipo" value="transportador" checked onchange="onUsrTipoChange()"> 🚛 Transportador (mi-netfleet)</label>
+          <label class="filtro-check"><input type="radio" name="usr-tipo" value="logxie_staff" onchange="onUsrTipoChange()"> 🏢 Staff Logxie (control.html)</label>
+        </div>
+      </div>
+      <div style="grid-column:1/-1" id="usr-transp-wrap">
+        <label class="modal-label">Transportadora *</label>
+        <select class="modal-select" id="mod-usr-transp"></select>
+      </div>
+      <div style="grid-column:1/-1" id="usr-rol-wrap">
+        <label class="modal-label">Rol <span class="modal-hint">(informativo — no limita acceso todavía)</span></label>
+        <select class="modal-select" id="mod-usr-rol">
+          <option value="">— Sin especificar —</option>
+          <option value="comercial">💼 Comercial (oferta y acepta viajes)</option>
+          <option value="operativo">🚛 Operativo (asigna flota, tracking)</option>
+          <option value="facturacion">💰 Facturación</option>
+        </select>
+      </div>
+      <div>
+        <label class="modal-label">Email *</label>
+        <input class="modal-input" id="mod-usr-email" type="email" placeholder="jeimmy@entrapetrol.co">
+      </div>
+      <div>
+        <label class="modal-label">Nombre</label>
+        <input class="modal-input" id="mod-usr-nombre" placeholder="Jeimmy Socha">
+      </div>
+      <div>
+        <label class="modal-label">Teléfono / WhatsApp</label>
+        <input class="modal-input" id="mod-usr-telefono" placeholder="+57 3XX XXX XXXX">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-usr-crear" onclick="crearUsuario()">Crear y generar contraseña</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: PASSWORD GENERADO ══════════════════════ -->
+<div class="modal-overlay" id="modal-usr-pass">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title" id="mod-pass-title">🔑 Contraseña generada</div>
+    <div class="modal-sub" id="mod-pass-sub">Copiala ahora — no se vuelve a mostrar. Compartila con la persona por WhatsApp junto con el link de login.</div>
+
+    <div style="background:#0e1324;border:1px solid #23304d;border-radius:8px;padding:14px;margin:14px 0">
+      <div style="font-size:11px;color:#6a7896;margin-bottom:4px">Email</div>
+      <div id="mod-pass-email" style="font-family:monospace;color:#e6edf8;margin-bottom:10px">—</div>
+      <div style="font-size:11px;color:#6a7896;margin-bottom:4px">Contraseña</div>
+      <div id="mod-pass-value" style="font-family:monospace;font-size:18px;font-weight:700;color:#ffd166;letter-spacing:1px">—</div>
+    </div>
+
+    <div class="modal-hint-box">
+      <strong>Link para compartir:</strong> <span id="mod-pass-link">https://netfleet.app/mi-netfleet.html</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="copiarPassWhatsApp()">📱 Copiar para WhatsApp</button>
+      <button class="btn btn-ghost" onclick="copiarPassSolo()">📋 Copiar solo contraseña</button>
+      <button class="btn btn-primary" onclick="cerrarModal('modal-usr-pass')">Listo</button>
     </div>
   </div>
 </div>
@@ -1473,6 +1550,7 @@
     ofertas: [],         // todas las ofertas
     clientes: [],
     transportadoras: [],
+    usuarios: [],                  // cargado lazy al entrar a sub-tab Usuarios
     scenarios: [],                 // rows de scenarios_viaje
     scenariosPedidos: [],          // rows de scenarios_viaje_pedidos
     scenarioIdxPorPedido: new Map(), // pedido_id → [{scenario_id, estado}] (derivado)
@@ -1572,6 +1650,14 @@
       // Render on-demand cuando entrás al sub-tab
       if (nombre === 'cat-clientes')          renderClientes();
       if (nombre === 'cat-transportadoras')   renderTransportadorasCat();
+      if (nombre === 'cat-usuarios') {
+        // Lazy-load: la primera vez hace fetch; las siguientes solo re-render
+        if (!state.usuarios.length) {
+          cargarUsuarios().then(renderUsuarios);
+        } else {
+          renderUsuarios();
+        }
+      }
     } else {
       // Workspace principal (Inicio / Pedidos)
       btn.classList.add('active');
@@ -4460,6 +4546,273 @@
       if (!r.ok) throw new Error(await r.text());
       toast(!activarActual ? 'Transportadora reactivada' : 'Transportadora desactivada', 'success');
       await recargarTodo();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ═════════════════════════════════════════════════════════════════
+  // CATÁLOGO — USUARIOS (Edge Function admin_user)
+  // Gestión server-side via /functions/v1/admin_user (gate logxie_staff).
+  // 5 acciones: list_users · create_user · reset_password · toggle_active · delete_user.
+  // ═════════════════════════════════════════════════════════════════
+  const ADMIN_USER_URL = `${SUPABASE_URL}/functions/v1/admin_user`;
+
+  async function callAdminUser(action, payload = {}) {
+    const h = await authHeaders();
+    const r = await fetch(ADMIN_USER_URL, {
+      method: 'POST',
+      headers: { ...h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+    return data;
+  }
+
+  async function cargarUsuarios() {
+    try {
+      const { users } = await callAdminUser('list_users');
+      state.usuarios = users || [];
+    } catch (e) {
+      state.usuarios = [];
+      toast('Error cargando usuarios: ' + e.message, 'error');
+    }
+  }
+
+  function renderUsuarios() {
+    const q = (document.getElementById('flt-cat-usr')?.value || '').trim().toLowerCase();
+    const mostrarSuspendidos = document.getElementById('flt-cat-usr-suspendidos')?.checked;
+    const tipoFiltro = document.querySelector('input[name="flt-usr-tipo"]:checked')?.value || '';
+
+    let rows = state.usuarios || [];
+    rows = rows.filter(u => {
+      if (!mostrarSuspendidos && u.estado === 'rechazado') return false;
+      if (tipoFiltro && u.tipo !== tipoFiltro) return false;
+      if (!q) return true;
+      return [u.email, u.nombre, u.transportadora_nombre].some(v => (v || '').toLowerCase().includes(q));
+    });
+
+    const el = document.getElementById('count-usuarios');
+    if (el) el.textContent = fmtNum((state.usuarios || []).filter(u => u.estado !== 'rechazado').length);
+
+    const lista = document.getElementById('usuarios-lista');
+    if (!lista) return;
+    if (!rows.length) {
+      lista.innerHTML = '<div class="empty-msg">No hay usuarios que coincidan. Clic en "Nueva cuenta" para agregar.</div>';
+      return;
+    }
+
+    const tipoBadge = (t) => {
+      if (t === 'logxie_staff') return '<span class="cat-pill" style="background:#2a1f3d;color:#b794f4">🏢 Staff</span>';
+      if (t === 'transportador') return '<span class="cat-pill" style="background:#1f2f3d;color:#68b2f4">🚛 Transp.</span>';
+      if (t === 'cliente_self_service') return '<span class="cat-pill" style="background:#1f3d2a;color:#6ef48b">🏭 Cliente</span>';
+      if (t === 'empresa') return '<span class="cat-pill" style="background:#3d2a1f;color:#f4b36e">Empresa</span>';
+      return `<span class="cat-pill">${t}</span>`;
+    };
+
+    const rolSelect = (u) => {
+      if (u.tipo !== 'transportador') return '<span style="color:#6a7896;font-size:12px">—</span>';
+      const val = u.rol_transportadora || '';
+      return `<select class="modal-select" style="padding:4px 8px;font-size:12px;min-width:130px"
+          onchange="cambiarRolUsuario('${u.id}', this.value)">
+        <option value=""${val===''?' selected':''}>— Sin especificar —</option>
+        <option value="comercial"${val==='comercial'?' selected':''}>💼 Comercial</option>
+        <option value="operativo"${val==='operativo'?' selected':''}>🚛 Operativo</option>
+        <option value="facturacion"${val==='facturacion'?' selected':''}>💰 Facturación</option>
+      </select>`;
+    };
+
+    const estadoBadge = (e) => {
+      if (e === 'aprobado')  return '<span class="cat-estado on">Activo</span>';
+      if (e === 'rechazado') return '<span class="cat-estado off">Suspendido</span>';
+      if (e === 'pendiente') return '<span class="cat-estado" style="background:#3d2a1f;color:#f4b36e">Pendiente</span>';
+      return `<span class="cat-estado">${e}</span>`;
+    };
+
+    const fmtDate = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const now = new Date();
+      const diasAgo = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+      if (diasAgo === 0) return 'hoy';
+      if (diasAgo === 1) return 'ayer';
+      if (diasAgo < 30) return `hace ${diasAgo}d`;
+      return d.toISOString().slice(0, 10);
+    };
+
+    lista.innerHTML = `
+      <table class="cat-table">
+        <thead><tr>
+          <th>Email</th><th>Nombre</th><th>Tipo</th><th>Transportadora</th><th>Rol</th>
+          <th>Estado</th><th>Últ login</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(u => `
+            <tr class="${u.estado === 'rechazado' ? 'inactivo' : ''}">
+              <td><strong>${u.email || '—'}</strong></td>
+              <td>${u.nombre || '—'}</td>
+              <td>${tipoBadge(u.tipo)}</td>
+              <td>${u.transportadora_nombre || '—'}</td>
+              <td>${rolSelect(u)}</td>
+              <td>${estadoBadge(u.estado)}</td>
+              <td>${fmtDate(u.last_sign_in_at)}</td>
+              <td>
+                <button class="btn btn-ghost btn-sm" onclick="resetearPassword('${u.id}', '${(u.email || '').replace(/'/g, '&#39;')}')" title="Generar nueva contraseña">🔑</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleActivoUsuario('${u.id}', ${u.estado !== 'aprobado'})">${u.estado === 'aprobado' ? '⊘ Suspender' : '↻ Reactivar'}</button>
+                <button class="btn btn-ghost btn-sm" onclick="eliminarUsuario('${u.id}', '${(u.email || '').replace(/'/g, '&#39;')}')" style="color:#f4686e">🗑</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function onUsrTipoChange() {
+    const tipo = document.querySelector('input[name="usr-tipo"]:checked')?.value;
+    const esTransp = (tipo === 'transportador');
+    const wrapTransp = document.getElementById('usr-transp-wrap');
+    const wrapRol = document.getElementById('usr-rol-wrap');
+    if (wrapTransp) wrapTransp.style.display = esTransp ? '' : 'none';
+    if (wrapRol)    wrapRol.style.display    = esTransp ? '' : 'none';
+  }
+
+  async function abrirUsuarioModal() {
+    // Reset inputs
+    document.getElementById('mod-usr-email').value = '';
+    document.getElementById('mod-usr-nombre').value = '';
+    document.getElementById('mod-usr-telefono').value = '';
+    document.getElementById('mod-usr-rol').value = '';
+    document.querySelector('input[name="usr-tipo"][value="transportador"]').checked = true;
+
+    const sel = document.getElementById('mod-usr-transp');
+    sel.innerHTML = '<option value="">Cargando transportadoras…</option>';
+    onUsrTipoChange();
+    document.getElementById('modal-usuario').classList.add('open');
+
+    // Fetch directo si state está vacío (ej. abrir modal antes de recargarTodo)
+    if (!state.transportadoras || state.transportadoras.length === 0) {
+      try {
+        const h = await authHeaders();
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/transportadoras?select=*&order=nombre.asc`, { headers: h });
+        if (r.ok) state.transportadoras = await r.json();
+      } catch (e) { console.error('[abrirUsuarioModal] fetch transportadoras:', e); }
+    }
+
+    // Poblar select (activas, ordenadas alfabéticamente)
+    const transps = (state.transportadoras || [])
+      .filter(t => t.activo !== false)
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+
+    if (transps.length === 0) {
+      sel.innerHTML = '<option value="">⚠ No hay transportadoras — crealas en Catálogo → 🚛 Transportadoras</option>';
+    } else {
+      sel.innerHTML = '<option value="">— Elegir transportadora —</option>' +
+        transps.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+    }
+  }
+
+  async function crearUsuario() {
+    const email = document.getElementById('mod-usr-email').value.trim().toLowerCase();
+    const nombre = document.getElementById('mod-usr-nombre').value.trim();
+    const telefono = document.getElementById('mod-usr-telefono').value.trim();
+    const tipo = document.querySelector('input[name="usr-tipo"]:checked')?.value;
+    const transportadora_id = document.getElementById('mod-usr-transp').value || null;
+    const rol_transportadora = document.getElementById('mod-usr-rol').value || null;
+
+    if (!email) { toast('Email requerido', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Email inválido', 'error'); return; }
+    if (tipo === 'transportador' && !transportadora_id) {
+      toast('Elegí una transportadora', 'error'); return;
+    }
+
+    const btn = document.getElementById('btn-usr-crear');
+    btn.disabled = true; btn.textContent = 'Creando…';
+    try {
+      const res = await callAdminUser('create_user', {
+        email, nombre: nombre || null, telefono: telefono || null,
+        tipo, transportadora_id, rol_transportadora,
+      });
+      cerrarModal('modal-usuario');
+      mostrarPassGenerado(res.email, res.password, 'Cuenta creada ✓');
+      await cargarUsuarios();
+      renderUsuarios();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Crear y generar contraseña';
+    }
+  }
+
+  async function cambiarRolUsuario(user_id, nuevoRol) {
+    try {
+      await callAdminUser('update_rol', { user_id, rol_transportadora: nuevoRol || null });
+      toast('Rol actualizado', 'success');
+      await cargarUsuarios();
+      renderUsuarios();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  function mostrarPassGenerado(email, password, titulo = '🔑 Contraseña generada') {
+    document.getElementById('mod-pass-title').textContent = titulo;
+    document.getElementById('mod-pass-email').textContent = email;
+    document.getElementById('mod-pass-value').textContent = password;
+    // Guardar para los botones copiar
+    window.__lastGenPass = { email, password };
+    document.getElementById('modal-usr-pass').classList.add('open');
+  }
+
+  function copiarPassWhatsApp() {
+    const { email, password } = window.__lastGenPass || {};
+    if (!password) return;
+    const txt =
+      `Hola! Te dejo tus credenciales para ingresar a Netfleet:\n\n` +
+      `🔗 https://netfleet.app/mi-netfleet.html\n` +
+      `📧 Email: ${email}\n` +
+      `🔑 Contraseña: ${password}\n\n` +
+      `Recordá cambiar la contraseña en tu primer ingreso.`;
+    navigator.clipboard.writeText(txt).then(
+      () => toast('Copiado — pegalo en WhatsApp', 'success'),
+      () => toast('No se pudo copiar', 'error')
+    );
+  }
+
+  function copiarPassSolo() {
+    const { password } = window.__lastGenPass || {};
+    if (!password) return;
+    navigator.clipboard.writeText(password).then(
+      () => toast('Contraseña copiada', 'success'),
+      () => toast('No se pudo copiar', 'error')
+    );
+  }
+
+  async function resetearPassword(user_id, email) {
+    if (!confirm(`¿Generar nueva contraseña para ${email}?\n\nLa actual dejará de funcionar inmediatamente.`)) return;
+    try {
+      const res = await callAdminUser('reset_password', { user_id });
+      mostrarPassGenerado(email, res.password, '🔑 Nueva contraseña generada');
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function toggleActivoUsuario(user_id, activar) {
+    const accion = activar ? 'reactivar' : 'suspender';
+    if (!confirm(`¿Seguro que querés ${accion} esta cuenta?`)) return;
+    try {
+      await callAdminUser('toggle_active', { user_id, activar });
+      toast(activar ? 'Cuenta reactivada' : 'Cuenta suspendida', 'success');
+      await cargarUsuarios();
+      renderUsuarios();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function eliminarUsuario(user_id, email) {
+    if (!confirm(`⚠ ELIMINAR cuenta de ${email}\n\nEsto borra la cuenta de forma permanente. Todas las ofertas/viajes/docs asociados pueden quedar huérfanos.\n\n¿Continuar?`)) return;
+    const conf = prompt(`Confirmá escribiendo el email exacto:\n\n${email}`);
+    if (conf !== email) { toast('Cancelado — el email no coincide', 'error'); return; }
+    try {
+      await callAdminUser('delete_user', { user_id });
+      toast('Cuenta eliminada', 'success');
+      await cargarUsuarios();
+      renderUsuarios();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 

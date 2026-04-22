@@ -1,6 +1,53 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-21 (sesión completa)** — Sync 4-fases (ASIGNADOS+Base+Seguimiento+Linkers) operativo, Módulo 3 parcial funcionando vía Sheet Seguimiento, transportador.html migrado a Supabase, estado de viajes auto-derivado, capacidad de bidding end-to-end. El documento anterior (2026-04-20) hablaba de armar el Sync; hoy eso quedó atrás — el sistema es operativamente usable.
+> Foto del proyecto al **2026-04-22 (cierre de sesión)** — Panel control `netfleet.app/control.html` reestructurado como "panel de trabajo" orientado a autopilot: tab Inicio en 2 bloques con badges de piloto, tab Pedidos con tira de pistas LogxIA + agrupado por RUTA (origen→destino) + sub-totales por estado + hints contextuales, tab Viajes (subasta + activos) con el mismo framing, workspace nuevo **🏢 Catálogo** con CRUD de clientes y transportadoras, ofertas visibles (alert dashboard + highlight verde en cards), Drive API operativo para abrir cumplidos directo (1 clic → archivo). Portal transportadora `mi-netfleet.html` con login inline (se comparte la URL directa), 5 stats KPI personalizados, tabs agrupados (Ofertas/Seguimiento/Cuenta), tab Flota placeholder, deep-link `?viaje_ref=` para el flujo de bidding desde mail. Bug histórico de schema M4 en ofertas (`viaje_rt` → `viaje_id UUID`) corregido.
+
+## TL;DR de la sesión 2026-04-22
+
+### Panel control (control.html) — panel de trabajo orientado a autopilot
+
+- **Tab Inicio rediseñado en 2 bloques + badges de piloto**:
+  - 📥 PEDIDOS (unidad atómica): Revisar nuevos 🟡, Listos para consolidar 🟢, Con novedad 🔴
+  - 🚚 VIAJES (consolidación): Borradores 🟡, Publicados sin proveedor 🟢, En ruta 🟢, Entregados pendiente cerrar 🟢
+  - Cada tile con badge 🟢/🟡/🔴 (rutina / supervisada / decisión humana) + tooltip explicando qué puede manejar LogxIA cuando se active autopilot. Ya documenta la arquitectura para cuando llegue la capa IA.
+  - KPI nuevo "Con novedad" — pedidos con intento fallido + devuelto_bodega + entregado_novedad.
+  - Alert pulse verde en KPI "Publicados sin proveedor" cuando hay ofertas pendientes de adjudicar.
+
+- **Tab Pedidos con tira de pistas + agrupación inteligente**:
+  - Tira compacta arriba: chips clickeables con counts globales `🟡 N revisar · 🟢 N listos · 🔴 N con novedad`. Al click filtra la tabla.
+  - Selector "Agrupar por" con 3 modos: **Ruta (default, origen→destino)**, Origen, Destino. La ruta es la vista que Bernardo pidió para detectar patrones de consolidación manualmente.
+  - Cada grupo muestra sub-totales por estado: `4 nuevos · 10 listos · 5 en ruta · 2 entregados · 1 novedad`.
+  - Hint contextual por grupo: `💡 N listos — buen candidato para consolidar` (≥3 listos + ≥500kg), `💡 se puede armar viaje` (≥2), `⏳ esperar más` (1).
+  - Grupos ordenados: consolidables arriba (más "listos" primero).
+
+- **Tab Viajes (subasta + activos) con framing LogxIA**:
+  - Pistas arriba del tab Subasta: `✏️ N borradores · 💰 N con ofertas · 🤝 N sin ofertas · ⏳ N stale +2d`.
+  - Pistas arriba del tab Activos: `📍 N esperando cargue · 🚛 N en ruta · 📬 N listos cerrar · ⚠️ N con novedad`.
+  - Hint contextual por card: "Borrador falta publicar", "Publicado hace Xh esperando ofertas", "+Xd sin ofertas — revisar precio", "💰 N ofertas — adjudicar", "Esperando cargue", "En ruta", "Listo para cerrar".
+  - Ofertas visibles: cards con ofertas tienen borde verde + banner prominente `N ofertas recibidas · mejor $XXX · clic para adjudicar`.
+  - Bloque de tracking visible sin expandir en viajes activos (confirmado/en_ruta/entregado): timeline de 4 steps con check verde si se completó, lista de pedidos con badge individual de estado, link 📷 Foto / 📄 PDF directo al cumplido.
+
+- **Workspace nuevo 🏢 Catálogo** con 3 sub-tabs:
+  - 🏭 Clientes: CRUD completo (nombre, NIT, email, nivel ingesta, plan BPO, sheet_id, webhook_secret), conteo de pedidos, soft delete via `activo=false`.
+  - 🚛 Transportadoras: CRUD (nombre, NIT, contactos, zonas operadas, tipos vehículos, notas), conteo de viajes asignados, soft delete.
+  - 👥 Usuarios staff: placeholder (requiere Edge Function con service_role para crear auth.users).
+  - RLS ya permite `staff_all` en ambas tablas.
+
+- **Drive API para cumplidos — 1 clic directo al archivo**:
+  - Proyecto Cloud dedicado **NETFLEET** con API key nueva (`AIzaSyBo3eh8YWuP-tdcIYBl_NbWxjqATTa5Tyc`), restringido a Drive API + referrers netfleet.app/* + localhost.
+  - Las 2 folders de Avgust `192ritQ72WChqjWwOvO2TTlOvqmbwa8uq` y `17QmlbCaMhlbgYO88G9mLDQ9R4rv1Gm3Y` compartidas "Anyone with the link".
+  - `resolverCumplidosAsync` consulta cada folder por separado (OR en single query da 403 con API key sin OAuth), cachea filename→fileId, devuelve URL `drive.google.com/file/d/<id>/view`.
+  - Re-render silencioso de Activos + Historial cuando terminan las lookups.
+
+### Portal transportadora (mi-netfleet.html)
+
+- **Login inline (no redirect a landing)**: la URL `netfleet.app/mi-netfleet` se puede compartir con transportadoras directamente; si no hay sesión muestra un card de login con marketing discreto (h1 + 3 bullets de valor) en vez de redirigir a `transportador.html`.
+- **Deep-link `?viaje_ref=<ID>`**: al abrir con ese param, scroll a la card + pulse highlight + auto-abre modal de oferta si el transportador está logueado y no ofertó antes.
+- **5 stats KPI personalizados**: Viajes con Netfleet, Km recorridos, Facturado (SUM flete_total finalizados), CO₂ evitado (fórmula EPA × 25% ahorro consolidación), Peso transportado. Filtrados por `proveedor ILIKE %empresa%`.
+- **Tabs agrupados en 3 bloques**: OFERTAS (Ofertar · Mis ofertas) · SEGUIMIENTO (Mis viajes · Flota) · CUENTA (Facturar · Documentos).
+- **Cards de viaje con altura pareja** (flex column + min-height 340px + footer `margin-top:auto`).
+- **Tab 🚛 Flota placeholder** — 2 cards (Conductores · Vehículos) con lista de docs por industria (curso sustancias peligrosas para agroquímicos, tarjeta propiedad + tecno + póliza para vehículos). Botón "Gestionar" disabled hasta que se construya el schema.
+- **Bug ofertas legacy arreglado**: la tabla ofertas en Supabase fue recreada por el Módulo 4 con `viaje_id UUID FK`, el frontend legacy todavía enviaba `viaje_rt TEXT + nombre/empresa/telefono`. Resolvemos `rt_total → supa_id` antes del INSERT.
 
 ## TL;DR de la sesión 2026-04-21
 

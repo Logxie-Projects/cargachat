@@ -648,3 +648,107 @@ Extensión post-update docs. Testeo end-to-end y 2 bugs encontrados al intentar 
 ### Próxima sesión — Prompt listo
 
 > "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. El panel mi-netfleet está funcional end-to-end (login + 3 tabs + uploads). Seguimos con: (1) deep-linking ?viaje_ref= en mi-netfleet para que el mail de AppSheet apunte directo al viaje; (2) modificar el Apps Script del mail SOLICITUD DE SERVICIOS para apuntar a Netfleet en vez de Google Form; (3) cuando eso esté probado, apagar el Form. Cuenta test: bernardojaristizabal@gmail.com / 123ABC (transportadora LOGISTICA Y SERVICIOS JR)."
+
+---
+
+## Sesión 2026-04-22 — Panel control como "panel de trabajo" + portal transportadora rediseñado
+
+Sesión larga (17 commits) con 2 grandes bloques de trabajo: **(A)** completar el flujo de bidding end-to-end en mi-netfleet (deep-link + fix bug schema ofertas + login inline) y **(B)** reestructurar el panel staff control.html como dashboard orientado al journey operativo con hooks para que LogxIA tome autopilot.
+
+### Bloque A — Portal transportadora (mi-netfleet.html)
+
+1. **Deep-link `?viaje_ref=`** (`ad7213c`) — al abrir URL con ese param: scroll a la card + pulse highlight + auto-abre modal de oferta si usuario logueado y no ofertó. Espera a que `cargarViajes` + `cargarMisOfertas` terminen antes de ejecutar (via `window.__viajesReady`). Preparamos el camino para que el mail de AppSheet enlace directo al viaje.
+
+2. **Fix crítico de schema ofertas** (`99d0798`) — el frontend mandaba `viaje_rt TEXT + nombre + empresa + telefono` al INSERT, pero la tabla ofertas real (recreada en Módulo 4) tiene `viaje_id UUID FK`. PostgREST devolvía PGRST204 y el user veía "Error al enviar" tanto al Aceptar como al Ofertar. Resolvemos `v.rt_total → v.supa_id` antes del INSERT, sacamos nombre/empresa/telefono (el staff resuelve via JOIN perfiles).
+
+3. **Portal rediseñado como operativo, no landing** (`fa1b389`, `52ce462`, `21cf8eb`, `506f5fe`, `c748873`):
+   - Saco hero gigante + mini-calculadora de flete + trust badges + CTA final de registro.
+   - **Login inline**: `mi-netfleet` sin sesión muestra card de login centrado (con marketing discreto: h1 + tagline + 3 bullets de valor), no redirige a `transportador.html`. Ahora la URL se puede compartir con transportadoras directamente.
+   - **5 stats KPI personalizados**: Viajes con Netfleet, Km recorridos, Facturado (SUM flete_total finalizados), CO₂ evitado (EPA 0.062 kg/ton·km × 25% ahorro por consolidación), Peso transportado. Todo filtrado por `proveedor ILIKE %empresa%`.
+   - **Tabs agrupados en 3 bloques**: OFERTAS (Ofertar · Mis ofertas) · SEGUIMIENTO (Mis viajes · Flota) · CUENTA (Facturar · Documentos) — con labels uppercase arriba.
+   - **Cards de viaje con altura pareja**: flex column + `min-height: 340px` + footer `margin-top:auto`. Antes las cards con destino corto se encogían.
+   - **Tab 🚛 Flota placeholder**: 2 cards (Conductores · Vehículos) con lista de docs por industria (curso sustancias peligrosas para agroquímicos). Botones Gestionar disabled.
+   - **Fix mapa**: `mapaLeaflet.invalidateSize()` al volver al tab Ofertar (sin esto, los tiles quedaban con dimensiones viejas y el listado se superponía).
+   - **2 regresiones detectadas y arregladas**: (a) null pointer en `stat-disponibles.textContent` de stats-bar vieja que cortaba la ejecución y dejaba el listado vacío, (b) `ccCalc()` tiraba null pointer en `#cc-km.value` porque la calculadora fue removida del HTML — la función JS quedó viva sin DOM. Removemos ccCalc completo.
+
+### Bloque B — Panel control (control.html) — panel de trabajo para autopilot
+
+4. **Bloque tracking visible en viajes activos** (`1b51415`) — replica el patrón "Mis viajes" de mi-netfleet dentro de cada card de viaje activo: timeline horizontal de 4 steps (Llegué cargue → Salí → Llegué descargue → Descargué) con check verde si completo, lista de pedidos con badge individual de estado (✓ Entregado / ⚠ Intento fallido / ⏳ En ruta / 🔙 Devuelto). Sin expandir — visible siempre. Usa `state.intentos` + timestamps del viaje ya fetchados.
+
+5. **Link al cumplido 1-clic** (`acbfd7b` → `7c2d7c8` → `c2dca08` → `d8489cf`) — badges 📷 Foto / 📄 PDF junto al estado de cada pedido entregado. Evolución:
+   - v1: Drive search por filename (2 clics).
+   - v2: Drive API habilitada en proyecto nuevo **NETFLEET** (Cloud Console), key nueva `AIzaSyBo3eh8YWuP-tdcIYBl_NbWxjqATTa5Tyc` restringida a Drive API + referrers netfleet.app/* + localhost.
+   - v3: `resolverCumplidosAsync` hace batch lookup (paralelismo 6) de cada filename en Drive, cachea en `_fileIdCache`, devuelve URL `drive.google.com/file/d/<id>/view`.
+   - v4: fix `(folder_a OR folder_b) in parents` daba 403 insufficientFilePermissions sin OAuth — cambiamos a queries por folder separadas en paralelo.
+   - Folders compartidas "Anyone with the link" en cuenta proyectos@avgust.com.co (ya estaban). Ahora 1 clic abre el archivo directo.
+
+6. **Dashboard Inicio en 2 bloques + badges de piloto** (`ec7b402`) — reorganiza los 6 KPIs mezclados en 2 bloques explícitos:
+   - 📥 PEDIDOS (unidad atómica): Revisar nuevos 🟡, Listos para consolidar 🟢, Con novedad 🔴 (NUEVO — cuenta devuelto_bodega + entregado_novedad + intentos fallidos sin éxito).
+   - 🚚 VIAJES (consolidación): Borradores 🟡, Publicados sin proveedor 🟢, En ruta 🟢, Entregados pendiente cerrar 🟢.
+   - Cada tile con badge 🟢/🟡/🔴 (rutina / supervisada / decisión humana) + tooltip sobre qué puede manejar LogxIA en autopilot. Leyenda compacta arriba. El diseño está listo para activar toggles auto cuando LogxIA llegue — sin rediseñar UI.
+
+7. **Ofertas visibles** (`2a2e9ba`) — el testeo con cuenta JR en sesión anterior dejó ofertas "escondidas" que el operador no veía.
+   - Dashboard: el KPI "Publicados sin proveedor" muestra badge verde con pulse animation `💰 N con ofertas pendientes de adjudicar` cuando hay alguna.
+   - Tab Subasta: cards con ofertas tienen borde verde + línea gradient verde arriba + banner prominente `N ofertas recibidas · mejor $XXX · clic para ver y adjudicar`. Sin expandir, visible siempre.
+
+8. **Workspace nuevo 🏢 Catálogo** (`e3bc403`) — 3 sub-tabs:
+   - 🏭 Clientes: CRUD con nombre, NIT, email, nivel_ingesta (email/sheet/formulario/webhook), plan_bpo, sheet_id, sheet_tab, email_origen, webhook_secret. Conteo de pedidos por cliente. Soft delete via `activo=false`. Filtro "mostrar inactivos".
+   - 🚛 Transportadoras: CRUD con nombre, NIT, email, teléfono, WhatsApp, zonas_operadas (array CSV), tipos_vehiculos (array CSV), notas. Conteo de viajes asignados. Soft delete.
+   - 👥 Usuarios staff: placeholder (requiere Edge Function con service_role para crear auth.users).
+   - RLS `staff_all` ya existía en las 2 tablas. `recargarTodo` ahora trae `SELECT *` en vez de solo id+nombre (necesario para mostrar todos los campos del catálogo).
+
+9. **Tab Pedidos rediseñado como panel de trabajo** (`8d18571`) — diálogo largo con Bernardo:
+   - Inicialmente propuse "4 pistas de trabajo" reemplazando la tabla, pero él pidió **mantener la tabla como protagonista** porque le sirve para detectar patrones manualmente (misma ruta, mismo origen).
+   - Implementación final: tira de pistas compacta arriba (3 chips clickeables) + tabla con upgrade: selector **Agrupar por: Ruta (default) | Origen | Destino** — la agrupación por ruta (origen→destino) es la vista que él pidió para detectar consolidaciones.
+   - Sub-totales por estado en cada group-row (pills): `4 nuevos · 10 listos · 5 en ruta · 2 entregados · 1 novedad`.
+   - Hint contextual por grupo: LogxIA sugiere "buen candidato para consolidar" si ≥3 listos + ≥500kg, "se puede armar viaje" si ≥2, "esperar más" si 1.
+   - Grupos ordenados: consolidables arriba (más "listos" primero).
+
+10. **Tab Viajes con el mismo framing** (`c8e47b8`) — consistencia entre workspaces:
+    - Tab Subasta: pistas `✏️ borradores · 💰 con ofertas · 🤝 sin ofertas · ⏳ stale +2d`.
+    - Tab Activos: pistas `📍 esperando cargue · 🚛 en ruta · 📬 listos cerrar · ⚠️ con novedad`.
+    - Hint contextual por card: "Borrador falta publicar", "Publicado hace Xh esperando ofertas", "+Xd sin ofertas — revisar precio", "N ofertas — adjudicar", "Esperando cargue", "En ruta", "Listo para cerrar".
+
+### Decisiones de producto/arquitectura tomadas
+
+- **Framework de piloto en 3 zonas** (🟢 rutina / 🟡 supervisada / 🔴 humana): cada KPI y cada hint en el panel tiene asignado un color que mapea a cómo LogxIA podrá operar en autopilot. Principio: diseñamos HOY con el framework visible, cuando llegue la IA solo activamos toggles — sin rediseñar UI.
+- **Tabla como inteligencia humana**: Bernardo insiste que la tabla es su herramienta para detectar patrones que LogxIA aún no ve. La vista agrupada por ruta apalanca su intuición.
+- **Agrupar por ruta = origen→destino** default, más útil que agrupar solo por origen porque refleja cómo piensa un operador logístico (qué tengo Funza→Cali hoy).
+- **Proyecto NETFLEET en Google Cloud** dedicado solo a Netfleet. No un proyecto por cliente — los clientes comparten folders públicas; Netfleet solo necesita key con Drive API habilitada.
+- **Deep-link mi-netfleet** reemplaza el Google Form de bidding legacy. Falta modificar el Apps Script del mail AppSheet para apuntar a `netfleet.app/mi-netfleet?viaje_ref=<ID>` en vez del Form.
+- **Catálogo Clientes y Transportadoras CRUD-able desde UI** — elimina la dependencia de Supabase Dashboard para sumar un cliente nuevo.
+
+### Commits de la sesión
+
+- `ad7213c` feat: deep-linking ?viaje_ref= en mi-netfleet
+- `99d0798` fix: ofertas usa schema M4 (viaje_id UUID)
+- `fa1b389` feat: mi-netfleet como portal real — login inline + stats KPI + Flota placeholder
+- `52ce462` fix: regresión del rediseño — null pointer en stats viejas
+- `21cf8eb` fix: 2 bugs que cortaban el script (ccCalc + cargarDocumentos)
+- `506f5fe` feat: tabs en 3 grupos + cards altura pareja + invalidateSize mapa
+- `c748873` feat(flota): docs específicos por industria en el placeholder
+- `1b51415` feat(control): bloque tracking visible en viajes activos
+- `acbfd7b` feat(control): link al cumplido (foto/PDF)
+- `7c2d7c8` feat(control): resolver Drive API para cumplidos
+- `c2dca08` fix(control): Drive API key del proyecto NETFLEET
+- `d8489cf` fix(control): Drive API resolver consulta folders por separado
+- `ec7b402` feat(control): dashboard Inicio en 2 bloques + badges de piloto
+- `2a2e9ba` feat(control): ofertas visibles (alert dashboard + highlight cards)
+- `e3bc403` feat(control): workspace Catálogo — CRUD clientes y transportadoras
+- `8d18571` feat(control): tab Pedidos pistas + agrupar RUTA + sub-totales + hints
+- `c8e47b8` feat(control): tab Viajes con framing LogxIA (pistas + hints)
+
+### Estado operativo al cierre
+
+- `netfleet.app/control.html` — panel staff reestructurado end-to-end, orientado a autopilot.
+- `netfleet.app/mi-netfleet` — portal transportadora operativo, con login inline, deep-link para bidding desde mail, 5 KPIs personalizados.
+- Cuenta test: `bernardojaristizabal@gmail.com` / `123ABC` (transportadora LOGISTICA Y SERVICIOS JR).
+- Drive API operativo: 1 clic abre el cumplido directo desde control.
+
+### Para abrir sesión siguiente
+
+Prompt recomendado:
+
+> "Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md. El panel control y mi-netfleet quedaron reestructurados como panel de trabajo con framework de piloto (🟢🟡🔴) preparado para LogxIA autopilot. Lo próximo es [elegir uno]: (A) Workspace Reportes en control (ranking transportadoras, top rutas, flete por cliente, % on-time, evolución mensual); (B) Modificar Apps Script del mail SOLICITUD DE SERVICIOS en AppSheet para apuntar a netfleet.app/mi-netfleet?viaje_ref=<ID> y apagar el Google Form de bidding; (C) Schema Supabase del módulo Flota (conductores + vehículos + docs_flota polimórfica + storage bucket + RLS); (D) Implementar Fase 1 de autopilot LogxIA — empezar con 'cerrar viajes entregados' (regla: todos pedidos entregado + factura subida → cerrar auto); (E) Usuarios staff CRUD (requiere Edge Function con service_role)."
+
+Los pendientes concretos están en CLAUDE.md sección Pendientes.

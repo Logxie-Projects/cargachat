@@ -68,6 +68,38 @@
     .dash-card.urgente { border-color: var(--orange); background: #fff7ed; }
     .dash-card.urgente .dash-card-num { color: var(--orange); }
     .dash-card.zero { opacity: 0.5; }
+    .dash-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+
+    /* Bloque del dashboard (PEDIDOS / VIAJES) */
+    .dash-block { margin-bottom: 1.5rem; }
+    .dash-block-title {
+      display: flex; align-items: baseline; gap: 10px;
+      font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--navy);
+      margin-bottom: 10px; padding: 0 4px;
+    }
+    .dash-block-icon { font-size: 18px; line-height: 1; }
+    .dash-block-sub { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--gray-400); text-transform: none; margin-left: auto; }
+
+    /* Leyenda del piloto */
+    .piloto-legend {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
+      padding: 8px 12px; background: var(--gray-50); border: 1px dashed var(--gray-100);
+      border-radius: 10px; font-size: 11px; color: var(--gray-600); margin-bottom: 1.25rem;
+    }
+    .piloto-legend .piloto-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .piloto-legend .piloto-dot.rutina      { background: #16a34a; }
+    .piloto-legend .piloto-dot.supervisada { background: #eab308; }
+    .piloto-legend .piloto-dot.humana      { background: #dc2626; }
+    .piloto-note { margin-left: auto; font-style: italic; color: var(--gray-400); }
+
+    /* Badge de piloto en la card */
+    .piloto-badge {
+      display: inline-block; width: 16px; height: 16px; font-size: 12px; line-height: 1;
+      text-align: center; cursor: help; opacity: 0.85; user-select: none;
+    }
+    @media (max-width: 600px) {
+      .piloto-note { margin-left: 0; width: 100%; margin-top: 4px; }
+    }
     .dashboard-stats {
       display: flex; gap: 20px; padding: 0.75rem 1rem;
       background: var(--gray-50); border-radius: 10px;
@@ -487,50 +519,107 @@
       </button>
     </div>
 
-    <!-- ═══ TAB: INICIO (dashboard con KPIs clickeables) ═══ -->
+    <!-- ═══ TAB: INICIO (dashboard con KPIs clickeables, agrupados en 2 bloques) ═══ -->
     <div class="tab-section active" id="tab-inicio">
       <div class="dashboard-header">
         <div class="dashboard-greeting" id="dash-greeting">Hola 👋</div>
         <div class="dashboard-subtitle">¿Qué necesitás hacer hoy?</div>
       </div>
-      <div class="dashboard-cards">
-        <div class="dash-card" onclick="irADashboard('pedidos-nuevos')">
-          <div class="dash-card-icon">📋</div>
-          <div class="dash-card-num" id="dash-pedidos-nuevos">—</div>
-          <div class="dash-card-lbl">pedidos nuevos<br><small>para revisar</small></div>
-          <div class="dash-card-cta">Revisar →</div>
+
+      <!-- Leyenda del piloto (una vez, arriba) -->
+      <div class="piloto-legend">
+        <span class="piloto-dot rutina"></span> rutina (auto)
+        <span class="piloto-dot supervisada"></span> supervisada
+        <span class="piloto-dot humana"></span> decisión humana
+        <span class="piloto-note">Los badges marcan qué puede manejar LogxIA en autopilot cuando se active.</span>
+      </div>
+
+      <!-- ══════════ BLOQUE A — PEDIDOS (unidad atómica) ══════════ -->
+      <div class="dash-block">
+        <div class="dash-block-title">
+          <span class="dash-block-icon">📥</span>
+          <span>PEDIDOS</span>
+          <span class="dash-block-sub">unidad atómica — cada pedido a cliente final</span>
         </div>
-        <div class="dash-card" onclick="irADashboard('pedidos-listos')">
-          <div class="dash-card-icon">📦</div>
-          <div class="dash-card-num" id="dash-pedidos-listos">—</div>
-          <div class="dash-card-lbl">listos<br><small>para consolidar</small></div>
-          <div class="dash-card-cta">Consolidar →</div>
-        </div>
-        <div class="dash-card" onclick="irADashboard('viajes-borrador')">
-          <div class="dash-card-icon">✏️</div>
-          <div class="dash-card-num" id="dash-viajes-borrador">—</div>
-          <div class="dash-card-lbl">borradores<br><small>sin publicar</small></div>
-          <div class="dash-card-cta">Publicar →</div>
-        </div>
-        <div class="dash-card" onclick="irADashboard('viajes-asignar')">
-          <div class="dash-card-icon">🤝</div>
-          <div class="dash-card-num" id="dash-viajes-asignar">—</div>
-          <div class="dash-card-lbl">sin proveedor<br><small>por adjudicar</small></div>
-          <div class="dash-card-cta">Asignar →</div>
-        </div>
-        <div class="dash-card" onclick="irADashboard('viajes-ruta')">
-          <div class="dash-card-icon">🚛</div>
-          <div class="dash-card-num" id="dash-viajes-ruta">—</div>
-          <div class="dash-card-lbl">en ruta<br><small>rodando</small></div>
-          <div class="dash-card-cta">Seguir →</div>
-        </div>
-        <div class="dash-card" onclick="irADashboard('viajes-entregado')">
-          <div class="dash-card-icon">📬</div>
-          <div class="dash-card-num" id="dash-viajes-entregado">—</div>
-          <div class="dash-card-lbl">entregados<br><small>pendiente cerrar</small></div>
-          <div class="dash-card-cta">Cerrar →</div>
+        <div class="dashboard-cards">
+          <div class="dash-card" onclick="irADashboard('pedidos-nuevos')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">📋</div>
+              <span class="piloto-badge supervisada" title="Supervisada — LogxIA valida campos, te muestra solo los raros">🟡</span>
+            </div>
+            <div class="dash-card-num" id="dash-pedidos-nuevos">—</div>
+            <div class="dash-card-lbl">pedidos nuevos<br><small>para revisar</small></div>
+            <div class="dash-card-cta">Revisar →</div>
+          </div>
+          <div class="dash-card" onclick="irADashboard('pedidos-listos')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">📦</div>
+              <span class="piloto-badge rutina" title="Rutina — LogxIA agrupa por zona+fecha+peso según regla">🟢</span>
+            </div>
+            <div class="dash-card-num" id="dash-pedidos-listos">—</div>
+            <div class="dash-card-lbl">pedidos listos<br><small>para consolidar</small></div>
+            <div class="dash-card-cta">Consolidar →</div>
+          </div>
+          <div class="dash-card" onclick="irADashboard('pedidos-novedad')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">⚠️</div>
+              <span class="piloto-badge humana" title="Decisión humana — cada novedad requiere tu juicio">🔴</span>
+            </div>
+            <div class="dash-card-num" id="dash-pedidos-novedad">—</div>
+            <div class="dash-card-lbl">pedidos con novedad<br><small>intento fallido o devuelto bodega</small></div>
+            <div class="dash-card-cta">Revisar →</div>
+          </div>
         </div>
       </div>
+
+      <!-- ══════════ BLOQUE B — VIAJES (consolidados) ══════════ -->
+      <div class="dash-block">
+        <div class="dash-block-title">
+          <span class="dash-block-icon">🚚</span>
+          <span>VIAJES</span>
+          <span class="dash-block-sub">consolidación — camiones con N pedidos agrupados</span>
+        </div>
+        <div class="dashboard-cards">
+          <div class="dash-card" onclick="irADashboard('viajes-borrador')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">✏️</div>
+              <span class="piloto-badge supervisada" title="Supervisada — LogxIA arma el viaje con Ridge, vos confirmás antes de publicar">🟡</span>
+            </div>
+            <div class="dash-card-num" id="dash-viajes-borrador">—</div>
+            <div class="dash-card-lbl">viajes borrador<br><small>sin publicar</small></div>
+            <div class="dash-card-cta">Publicar →</div>
+          </div>
+          <div class="dash-card" onclick="irADashboard('viajes-asignar')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">🤝</div>
+              <span class="piloto-badge rutina" title="Rutina — LogxIA adjudica según regla (menor precio / preferido / presupuesto)">🟢</span>
+            </div>
+            <div class="dash-card-num" id="dash-viajes-asignar">—</div>
+            <div class="dash-card-lbl">viajes publicados<br><small>sin proveedor adjudicado</small></div>
+            <div class="dash-card-cta">Adjudicar →</div>
+          </div>
+          <div class="dash-card" onclick="irADashboard('viajes-ruta')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">🚛</div>
+              <span class="piloto-badge rutina" title="Monitoreo — LogxIA hace ping automático; si se atrasa escala a decisión humana">🟢</span>
+            </div>
+            <div class="dash-card-num" id="dash-viajes-ruta">—</div>
+            <div class="dash-card-lbl">viajes en ruta<br><small>rodando</small></div>
+            <div class="dash-card-cta">Seguir →</div>
+          </div>
+          <div class="dash-card" onclick="irADashboard('viajes-entregado')">
+            <div class="dash-card-top">
+              <div class="dash-card-icon">📬</div>
+              <span class="piloto-badge rutina" title="Rutina — LogxIA cierra si todos cumplidos OK + factura subida">🟢</span>
+            </div>
+            <div class="dash-card-num" id="dash-viajes-entregado">—</div>
+            <div class="dash-card-lbl">viajes entregados<br><small>pendientes de cerrar</small></div>
+            <div class="dash-card-cta">Cerrar →</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer: totales históricos (contexto, no accionables) -->
       <div class="dashboard-stats">
         <div class="dash-stat"><span id="dash-total-pedidos">—</span> pedidos totales</div>
         <div class="dash-stat"><span id="dash-total-viajes">—</span> viajes totales</div>
@@ -1021,22 +1110,46 @@
   // ═════════════ DASHBOARD INICIO ═════════════
   function renderDashboard() {
     // KPIs — count real basado en state
+
+    // ── PEDIDOS ──
     const pedNuevos = state.pedidos.filter(esNuevo).length;
     // "Listos para consolidar" — incluye Especiales (también son parte del flujo)
     const pedListos = state.pedidos.filter(p =>
       p.estado === 'sin_consolidar' && p.revisado_at
     ).length;
+    // "Con novedad" — pedido con intento fallido sin haber sido devuelto (o entregado con novedad),
+    // o estado devuelto_bodega / rechazado pendiente de acción.
+    const pedsConIntentoFallido = new Set(
+      (state.intentos || [])
+        .filter(i => i.exitoso === false)
+        .map(i => i.pedido_id)
+    );
+    const pedsEntregados = new Set(
+      (state.intentos || [])
+        .filter(i => i.exitoso === true)
+        .map(i => i.pedido_id)
+    );
+    const pedNovedad = state.pedidos.filter(p => {
+      if (p.estado === 'devuelto_bodega') return true;
+      // intento fallido sin haber completado entrega exitosa
+      if (pedsConIntentoFallido.has(p.id) && !pedsEntregados.has(p.id) && p.estado !== 'cancelado') return true;
+      if (p.estado === 'entregado_novedad') return true;
+      return false;
+    }).length;
+
+    // ── VIAJES ──
     const vBorrador = state.viajes.filter(v => v.estado === 'pendiente' && !v.publicado_at && v.fuente === 'netfleet').length;
     const vAsignar = state.viajes.filter(v => v.estado === 'pendiente' && v.publicado_at).length;
     const vRuta = state.viajes.filter(v => v.estado === 'en_ruta' || v.estado === 'confirmado').length;
     const vEntregado = state.viajes.filter(v => v.estado === 'entregado').length;
 
-    setVal('dash-pedidos-nuevos', pedNuevos, 'pedidos-nuevos');
-    setVal('dash-pedidos-listos', pedListos, 'pedidos-listos');
-    setVal('dash-viajes-borrador', vBorrador, 'viajes-borrador');
-    setVal('dash-viajes-asignar', vAsignar, 'viajes-asignar');
-    setVal('dash-viajes-ruta', vRuta, 'viajes-ruta');
-    setVal('dash-viajes-entregado', vEntregado, 'viajes-entregado');
+    setVal('dash-pedidos-nuevos',   pedNuevos,   'pedidos-nuevos');
+    setVal('dash-pedidos-listos',   pedListos,   'pedidos-listos');
+    setVal('dash-pedidos-novedad',  pedNovedad,  'pedidos-novedad');
+    setVal('dash-viajes-borrador',  vBorrador,   'viajes-borrador');
+    setVal('dash-viajes-asignar',   vAsignar,    'viajes-asignar');
+    setVal('dash-viajes-ruta',      vRuta,       'viajes-ruta');
+    setVal('dash-viajes-entregado', vEntregado,  'viajes-entregado');
 
     // Stats footer
     document.getElementById('dash-total-pedidos').textContent = fmtNum(state.pedidos.length);
@@ -1079,6 +1192,16 @@
         irATab('pedidos');
         state.filtroEstados = new Set(['sin_consolidar']);
         document.querySelectorAll('[data-est]').forEach(b => b.classList.toggle('active', b.getAttribute('data-est') === 'sin_consolidar'));
+        state.fltSinViaje = false; state.fltInconsist = false;
+        renderPedidos();
+        break;
+      case 'pedidos-novedad':
+        // Filtra pedidos con estado devuelto_bodega / entregado_novedad.
+        // Los que tienen intento fallido pero estado no-terminal quedan en "asignado":
+        // mostramos esos 3 estados juntos para que el operador vea todas las novedades.
+        irATab('pedidos');
+        state.filtroEstados = new Set(['devuelto_bodega', 'entregado_novedad', 'rechazado']);
+        document.querySelectorAll('[data-est]').forEach(b => b.classList.toggle('active', state.filtroEstados.has(b.getAttribute('data-est'))));
         state.fltSinViaje = false; state.fltInconsist = false;
         renderPedidos();
         break;

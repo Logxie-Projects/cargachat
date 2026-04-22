@@ -1,6 +1,171 @@
 # Estado actual Netfleet
 
 > Foto del proyecto al **2026-04-22 (sesión noche — Flota + RLS aislamiento)**.
+
+---
+
+## 🗓️ Próximas sesiones (en orden recomendado)
+
+> Cuando abras nueva sesión, revisá acá qué bloque sigue. Cada bloque es una sesión independiente, commit-atómico end-to-end. Copiá el prompt tal cual al chat de Claude.
+
+### 🎯 Sesión siguiente (A): **Sub-tab 👥 Usuarios en Catálogo** — ~1h 50min
+
+**Objetivo**: Bernardo crea y administra cuentas de transportadoras y staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios (hoy placeholder). Edge Function con `service_role` + UI inline. Cierra el onboarding — a partir de acá el link `netfleet.app/mi-netfleet.html` se puede compartir por WhatsApp con credenciales.
+
+**Criterios de done**:
+- [ ] Desde Catálogo creo cuenta JEIMMY@ENTRAPETROL con 1 clic, copio password generado, pego en WhatsApp
+- [ ] Puedo resetear password de cualquier cuenta
+- [ ] Puedo suspender/reactivar cuenta (cambio `perfiles.estado`)
+- [ ] Puedo eliminar cuenta (hard delete con doble confirmación)
+- [ ] Gate: solo `logxie_staff` puede invocar la Edge Function (validado via JWT)
+- [ ] Con cuenta nueva, login en mi-netfleet funciona y RLS aísla correctamente
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md + docs/CONTEXTO_OPERATIVO.md obligatorios (si tocás schema,
+también docs/ARQUITECTURA.md).
+
+OBJETIVO: completar el sub-tab 👥 Usuarios en el workspace 🏢 Catálogo de
+control.html (hoy es placeholder). Yo (staff) debo poder crear, resetear,
+suspender y eliminar cuentas de transportadoras y staff desde control.html
+— sin salir del producto ni ir al Dashboard de Supabase.
+
+QUÉ EXISTE HOY (no re-construir):
+- Workspace Catálogo en control.html con 2 sub-tabs funcionando (🏭 Clientes,
+  🚛 Transportadoras) + sub-tab 👥 Usuarios placeholder (solo texto
+  "requiere Edge Function con service_role").
+- perfiles.transportadora_id FK + RLS endurecido en viajes_consolidados +
+  pedidos (commit 67383c1). Cada cuenta nueva que cree va a nacer aislada.
+- Las 7 transportadoras seed en tabla `transportadoras` con email_contacto.
+- Helper `is_logxie_staff()` ya existe para gate.
+
+QUÉ FALTA:
+1. Edge Function `admin_user` (Deno/TS) en supabase/functions/admin_user/:
+   - Gate: validar caller es logxie_staff (via JWT del header Authorization)
+   - Acciones: create_user · reset_password · toggle_active · delete_user
+   - create_user: admin.auth.admin.createUser() con email_confirm=true,
+     handle_new_user crea perfil, después UPDATE perfiles SET tipo,
+     estado='aprobado', transportadora_id (si tipo='transportador')
+   - reset_password: admin.auth.admin.updateUserById({password})
+   - toggle_active: UPDATE perfiles SET estado (aprobado ↔ rechazado)
+   - delete_user: admin.auth.admin.deleteUser() (hard delete)
+2. Deploy: guiarme step-by-step para `supabase functions deploy admin_user`
+   (preguntarme primero si ya tengo Supabase CLI instalado)
+3. UI en control.html sub-tab 👥 Usuarios:
+   - Tabla con Email · Nombre · Tipo (transportador/staff) · Transportadora ·
+     Estado · Últ login · Acciones
+   - Modal "+ Nueva cuenta" con radio Tipo (transportador necesita selector
+     de transportadora; staff no necesita)
+   - Auto-generar password (`Netfleet-` + 6 chars random) mostrado UNA vez
+     en toast con botón "Copiar"
+   - Por fila: 🔑 Resetear (genera nueva, muestra para copiar) · ⊘ Suspender
+     / ↻ Reactivar · 🗑 Eliminar (doble confirm)
+
+ALCANCE: una sesión. Mostrame PLAN con tiempos antes de código. Commits
+chicos end-to-end (Edge Function + deploy + UI + test). Si algún paso se
+va de tiempo estimado, cerralo bien y lo continuamos en otra sesión.
+
+DECISIONES YA TOMADAS (no volver a discutir):
+- Password auto-generado aleatorio mostrado una vez para copiar
+- Modal permite crear transportador + staff (radio tipo)
+- Eliminar: hard delete con doble confirmación (vs suspender con 1 clic)
+- Gate server-side estricto: solo logxie_staff via JWT
+- NO magic link por ahora (password-based es más práctico para el caso)
+
+Cuenta test: usar bernardoaristizabal@logxie.com (staff) para probar que
+puedo crear nuevas cuentas. Validar aislamiento con una cuenta test nueva.
+```
+
+---
+
+### 🎯 Sesión después (B): **Asignar vehículo+conductor al viaje adjudicado** — ~45-60min
+
+**Objetivo**: Bloque 2 del customer journey de la transportadora. En mi-netfleet tab 🚚 Mis viajes, cuando recibe un viaje confirmado, tiene selectores de conductor y vehículo (dropdown de su Flota activa) para asignar quién ejecutará el viaje. Sin retipeo. Sin esto, la Flota existe pero no se usa en la operación real.
+
+**Criterios de done**:
+- [ ] En card de viaje adjudicado (mi-netfleet → Mis viajes), hay bloque "Asignación de recursos" al top
+- [ ] 2 selects: conductor (activos de mi transportadora) + vehículo (activos)
+- [ ] Botón "Asignar" persiste en `viajes_consolidados`: `placa` · `conductor_nombre` · `conductor_id` (UUID del conductor)
+- [ ] Si hay docs vencidos del conductor/vehículo elegido, warning suave (no bloquea)
+- [ ] CTA destacado "⚠ Asignar antes de cargar" si viaje está confirmado pero sin asignación
+- [ ] Post-asignación, timestamps (cargue/descargue) siguen funcionando igual
+- [ ] Si flota vacía → link directo al tab 🚛 Flota
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md + docs/CONTEXTO_OPERATIVO.md obligatorios. Si tocás schema,
+también docs/ARQUITECTURA.md.
+
+OBJETIVO: Bloque 2 del customer journey de la transportadora — asignar
+conductor + vehículo al viaje ADJUDICADO, desde mi-netfleet tab "🚚 Mis
+viajes". Usa la Flota que ya cargaron en tab 🚛 Flota (commit 49219b7).
+
+QUÉ EXISTE HOY (no re-construir):
+- Tablas `conductores` + `vehiculos` con CRUD operativo en mi-netfleet
+  tab 🚛 Flota (transportadora_id FK, activo flag, docs).
+- Tab 🚚 Mis viajes muestra viajes WHERE proveedor ILIKE empresa + estado
+  IN (confirmado, en_ruta, entregado). Card tiene 4 timestamps (llegada/
+  salida cargue+descargue) + pedidos con botón cumplido.
+- `viajes_consolidados` tiene columnas: placa (text), conductor_nombre
+  (text), conductor_id (text — legacy AppSheet id), transportadora_id.
+- RLS endurecido: cada transportadora ve solo sus viajes asignados.
+
+QUÉ FALTA:
+1. Schema — evaluar si agregar conductor_uuid UUID FK + vehiculo_uuid UUID
+   FK a viajes_consolidados (mantener legacy text por compat) o reusar
+   conductor_id text. Mi voto: agregar FK nuevos con ON DELETE SET NULL,
+   así se mantiene integridad al borrar/desactivar flota.
+2. RPC fn_viaje_asignar_recursos(p_viaje_id, p_conductor_id, p_vehiculo_id)
+   - Gate: solo la transportadora dueña del viaje
+   - Lee nombre del conductor + placa del vehículo
+   - Persiste placa + conductor_nombre + conductor_id (uuid) + conductor_uuid
+     + vehiculo_uuid
+   - Audit acciones_operador
+3. UI en mi-netfleet tab Mis viajes:
+   - Bloque "Asignación" al top del card (antes de timestamps)
+   - Estado: mostrar asignación actual si hay, "⚠ Asignar antes de cargar"
+     si vacía
+   - 2 <select> con conductores/vehículos activos de la transportadora
+   - Warning color-coded si conductor/vehículo tiene docs vencidos (usa
+     docsBadgeHTML de flota)
+   - Botón "Guardar asignación"
+   - Si flota vacía: mensaje con CTA "Ir a Flota para agregar"
+
+ALCANCE: una sesión. Plan con tiempos antes de código. Commits chicos.
+
+DECISIONES YA TOMADAS:
+- Asignación NO va en la oferta, va POST-adjudicación (Bernardo 2026-04-22)
+- Docs vencidos = warning, NO bloqueo (permite operar, flagea)
+- Conductor/vehículo se puede cambiar después de asignado (no es irrevocable)
+- Guardar en viajes_consolidados los 5 campos: placa text + conductor_nombre
+  text + conductor_id text (legacy) + conductor_uuid FK + vehiculo_uuid FK
+
+Test: logueado como bernardojaristizabal@gmail.com (JR LOGÍSTICA), asignar
+Juan Pérez + XYZ789 (la flota que ya cargué en sesión Flota) a uno de los
+viajes confirmados de JR (hay 9). Verificar persistencia + que otros viajes
+quedan intactos.
+```
+
+---
+
+### 🎯 Sesión futura (C): **Resumen ejecutable del viaje + PDF + mapa LogxIA** — ~60min
+
+Al recibir viaje adjudicado, la transportadora tiene card expandible mail-style (clientes, direcciones, horarios, pedidos, contactos) + botón "📄 Generar PDF" (para compartir con conductor) + botón "🗺 Ver mapa sugerido por LogxIA" → abre `analizador-rutas.html?viaje=<id>`. Cierra el **Bloque 3 del journey**.
+
+---
+
+### 📌 Notas operativas para todas las sesiones
+
+- **Abrir Claude Code en `D:\NETFLEET`**: CLAUDE.md se carga automáticamente.
+- **Primera lectura obligatoria**: `docs/CONTEXTO_OPERATIVO.md` (este archivo) — el TL;DR + secciones de la sesión anterior.
+- **Si tocás schema o políticas**: también `docs/ARQUITECTURA.md`.
+- **Cuenta test transportadora**: `bernardojaristizabal@gmail.com` / `123ABC` (estado aprobado, transportadora_id=JR LOGÍSTICA).
+- **Cuenta staff**: `bernardoaristizabal@logxie.com` (logxie_staff).
+- **Timebox**: cada sesión tiene estimado. Si un bloque se va +50% over, cerrá lo verificado y abrí otra sesión para el resto.
+- **Commits chicos**: un bloque = un commit end-to-end (schema + UI + test + docs). No acumular 1000+ líneas en un solo push.
+
+---
+
 >
 > **Lo nuevo vs. bloque anterior (Flota):** **RLS endurecido** en `viajes_consolidados` + `pedidos` — cada transportadora ahora ve SOLO sus viajes (los asignados a ella + subastas abiertas + invitaciones activas). Antes `authenticated_all` dejaba a cualquier transportador logueado hacer `fetch('/rest/v1/viajes_consolidados')` y ver TODOS los viajes con flete/proveedor/valor de la competencia + pedidos con cliente final, dirección, teléfono. Backfill de 1145 viajes legacy (7 transportadoras seed) via substring match. Test end-to-end PASS con JWT auth: staff ve 1311, JR user ve 236 (todos suyos, 0 ajenos).
 

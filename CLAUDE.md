@@ -8,6 +8,7 @@
 - **Claude Code:** este archivo se carga automáticamente al abrir el repo en `D:\NETFLEET`
 - **Claude chat:** adjuntar este archivo o escribir "lee CLAUDE.md y continuemos"
 - **Primer pase obligatorio:** después de este archivo, leer `docs/CONTEXTO_OPERATIVO.md` para el estado vivo del día (qué está en producción, qué está a medias, próximos pasos). Complementa — no reemplaza — CLAUDE.md.
+- **🗓️ Próxima sesión ya planeada:** ver sección **"Próximas sesiones"** al top de `docs/CONTEXTO_OPERATIVO.md` — tiene los prompts listos para copiar al chat.
 - **Al terminar cada sesión:**
   - Actualizar sección Pendientes: marcar ítems completados con `✅ hecho YYYY-MM-DD` (no borrarlos, son trazabilidad)
   - Actualizar `docs/CONTEXTO_OPERATIVO.md` si cambió el estado operativo

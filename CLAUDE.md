@@ -147,6 +147,7 @@ D:\NETFLEET\
 │   ├── scenarios_viaje_patch_constraint.sql → Patch extender CHECK acciones_operador con scenario_*
 │   ├── link_pedidos_viajes_v3.sql → linker v3 regex (aliases no rangos) — pase 1
 │   ├── link_pedidos_viajes_v4.sql → linker v4 substring BUSCARX-style — pase 2 (97.3% combinado)
+│   ├── link_pedidos_viajes_v5.sql → linker v5 reconsolidación (pedido activo en viaje cancelado → re-link a no-cancelado)
 │   ├── smoke_test_modulo4.sql  → E2E test del ciclo completo M4
 │   ├── sync_from_csv.py        → Python CLI para backfill + ETL manual desde CSV
 │   ├── run_migration.py        → Script ejecutor de .sql contra Supabase
@@ -470,6 +471,7 @@ La ruta `/` redirige a `transportador.html` por default. El servidor sirve cualq
 ### Producto
 - [x] ✅ hecho 2026-04-22 — **Capa Scenarios (Módulo 4)** — un pedido puede estar en N scenarios tentativos mientras siga sin_consolidar. Schema `scenarios_viaje` + `scenarios_viaje_pedidos`, 6 Postgres functions (`fn_scenario_crear/agregar_pedido/quitar_pedido/descartar/limpiar_consumidos/promover`), RLS staff-only. Sub-tab 🧪 Scenarios en control.html + modal dual (scenario/directo/promover), badge 🧪 N en fila de pedido. Ver [db/scenarios_viaje.sql](db/scenarios_viaje.sql), [docs/LOGXIA_JOURNEY.md](docs/LOGXIA_JOURNEY.md).
 - [x] ✅ hecho 2026-04-22 — **Analizador-rutas migrado a Supabase** — lee `viajes_consolidados` + `scenarios_viaje` en vez del CSV. Selector dual 🚚 Viaje / 🧪 Scenario, deep-link `?scenario=<id>` / `?viaje=<id>`, parser simple del campo `horario` texto → v1/v2. Fallback CSV legacy con `?legacy=1`. Botón "🗺 Analizar ruta" desde cards de scenario en control.html.
+- [x] ✅ hecho 2026-04-22 — **Linker v5: reconsolidación sistémica** — pedidos activos (estado ≠ cancelado) linkeados a un viaje cancelado se re-linquean automáticamente al viaje no-cancelado más reciente que los lista en consecutivos. Fix para el caso "pedido viaja primero en viaje A, A se cancela, el pedido se reconsolida en B". `fn_link_v5_relink_reconsolidados()` standalone + integrado al chain `fn_run_linkers()` (v3 → v4 → v5). También ejecutado por `sync_from_csv.py`. Primer run arregló 10 pedidos (incluido RM-73281 que Bernardo detectó). Ver [db/link_pedidos_viajes_v5.sql](db/link_pedidos_viajes_v5.sql).
 - [x] ✅ hecho 2026-04-22 — **Badge zona inline + sub-split por zona en modo "Agrupar por Origen"** — 13 colores canónicos (BOYACÁ, VALLE, etc.) junto al destino. Dentro de un grupo de origen, separa automáticamente los consolidables (ej. Funza→Boyacá) de los no-consolidables (ej. Funza→Pasto). Elimina filtrado mental del operador.
 - [ ] **Regla #1 Fase 1 — Auto-swap destino↔dirección** (80 h/año estimadas). Requiere centralizar catálogo CIUDADES en netfleet-core.js primero. Ver [docs/LOGXIA_JOURNEY.md](docs/LOGXIA_JOURNEY.md).
 - [ ] **Rating implícito Fase 0** — calcular desde datos existentes (% on-time, % entregado_ok, % cumplidos a tiempo). Prerequisito del panel comparativo de ofertas.

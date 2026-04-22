@@ -358,10 +358,12 @@ def main():
     if not args.skip_post:
         print("\n→ Post-migration: backfill cliente_id + restaurar NOT NULL")
         run_sql_file(conn, 'db/post_migration.sql')
-        print("\n→ Linker v2: re-vincular pedidos a viajes")
+        print("\n→ Linker v3: regex parser (aliases intra-token)")
         run_sql_file(conn, 'db/link_pedidos_viajes_v3.sql')
         print("\n→ Linker v4: pase substring (rescate BUSCARX-style)")
         run_sql_file(conn, 'db/link_pedidos_viajes_v4.sql')
+        print("\n→ Linker v5: re-linkeo de pedidos reconsolidados (activos en viajes cancelados)")
+        run_sql_file(conn, 'db/link_pedidos_viajes_v5.sql')
 
     conn.close()
     print("\n✓ DONE")

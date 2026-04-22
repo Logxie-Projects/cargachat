@@ -1,6 +1,49 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-22 (sesión noche — Flota transportadoras end-to-end)**.
+> Foto del proyecto al **2026-04-22 (sesión noche — Flota + RLS aislamiento)**.
+>
+> **Lo nuevo vs. bloque anterior (Flota):** **RLS endurecido** en `viajes_consolidados` + `pedidos` — cada transportadora ahora ve SOLO sus viajes (los asignados a ella + subastas abiertas + invitaciones activas). Antes `authenticated_all` dejaba a cualquier transportador logueado hacer `fetch('/rest/v1/viajes_consolidados')` y ver TODOS los viajes con flete/proveedor/valor de la competencia + pedidos con cliente final, dirección, teléfono. Backfill de 1145 viajes legacy (7 transportadoras seed) via substring match. Test end-to-end PASS con JWT auth: staff ve 1311, JR user ve 236 (todos suyos, 0 ajenos).
+
+## TL;DR de la sesión 2026-04-22 (noche — RLS aislamiento)
+
+### Bloque RLS endurecido — cerrar fuga antes del onboarding
+
+- **Motivación**: preparando onboarding de las 7 transportadoras (dar credenciales + link `netfleet.app/mi-netfleet`), descubrí que `viajes_consolidados` y `pedidos` tenían policy `authenticated_all` (`USING (true) WITH CHECK (true)`). Cualquier transportador logueado hacía DevTools → Network → fetch raw → veía competencia completa. UI filtraba pero DB no. Bloqueante para "cada una ve lo suyo".
+- **Demostración del gap (antes del fix)**: logueado como JR, un simple `fetch('/rest/v1/viajes_consolidados')` devolvía:
+  - ENTRAPETROL: $1.370.000 en Funza→Villavicencio (valor mercancía $99.8M)
+  - TRASAMER: $1.170.000 en Funza→Montería
+  - TRANSPORTE NUEVA COLOMBIA: $1.250.000 en Yumbo→Espinal
+  - 1300+ pedidos con cliente final, bodega, teléfono, valor
+- **Backfill** — pre-requisito crítico: 1300 viajes legacy (`sheet_asignados` source) tienen `proveedor` texto pero `transportadora_id=NULL`. Si ponés RLS `transportadora_id = _mi_transportadora_id()` sin backfill, JR no ve sus 236 viajes históricos.
+  - Mapping explícito por substring upper (conservador) de 7 seed:
+    | Patrón LIKE | Seed |
+    |---|---|
+    | `%ENTRAPETROL%` | ENTRAPETROL → 359 viajes |
+    | `%LOGISTICA Y SERVICIOS JR%` / `%JR LOGIS%` | JR LOGÍSTICA → 236 |
+    | `%TRASAMER%` | TRASAMER → 180 |
+    | `%NUEVA COLOMBIA%` | TRANS NUEVA COLOMBIA → 171 |
+    | `%PRACARGO%` | PRACARGO → 137 |
+    | `%GLOBAL LOG%` | GLOBAL LOGÍSTICA → 41 |
+    | `%VIGIA%` / `%VIGÍA%` | VIGÍA → 21 |
+  - Cobertura: **1145 / 1300 viajes con FK (88.1%)**. Los 155 restantes: 84 "TR REEMPLAZADA" (placeholder legacy) + 71 de 9 transportadoras no-seed que no tienen fila en `transportadoras` (AGROMARK, MULTITRANS VVL, AGROEXPRESS, etc.). Esos quedan solo visibles para staff — es correcto, no tienen cuenta de usuario.
+- **Policies nuevas** en [db/modulo4_rls_aislamiento.sql](../db/modulo4_rls_aislamiento.sql):
+  - `viajes_consolidados`:
+    - DROP `authenticated_all`
+    - `viajes_staff_all` (ALL) — `is_logxie_staff()`
+    - `viajes_transp_ver_propios` (SELECT) — `transportadora_id = _mi_transportadora_id()`
+    - `viajes_transp_ver_subasta` (SELECT) — `estado=pendiente AND proveedor IS NULL AND subasta_tipo='abierta' AND publicado_at IS NOT NULL`
+    - `viajes_transp_ver_invitados` (SELECT) — `id IN (SELECT viaje_id FROM invitaciones_subasta WHERE transportadora_id = _mi_transportadora_id())`
+    - Se mantienen intactos: `anon_select_publicos` (landing pública) + `service_role_all`
+  - `pedidos`:
+    - DROP `authenticated_all`
+    - `pedidos_staff_all` (ALL) — `is_logxie_staff()`
+    - `pedidos_transp_ver_propios` (SELECT) — `viaje_id IN (SELECT id FROM viajes_consolidados WHERE transportadora_id = _mi_transportadora_id())`
+  - Detalle sensible (cliente final, dirección, tel, valor_mercancia) NUNCA expuesto antes de ganar la subasta.
+- **Test end-to-end PASS** (JWT claims emulados bajo `SET ROLE authenticated`):
+  - **Staff** `fa822bae-…` (Bernardo logxie): `is_logxie_staff()=true`, viajes_consolidados 1311, pedidos 3839 ✓
+  - **Transportador JR** `e2269e48-…`: `is_logxie_staff()=false`, `_mi_transportadora_id()=JR`, viajes visibles 236 (todos suyos, 0 ajenos), pedidos 785 (todos de sus 236 viajes)
+- **Prereqs verificados**: `fn_adjudicar_oferta` y `fn_asignar_transportadora_directo` ya setean `viajes_consolidados.transportadora_id` (viajes nuevos post-adjudicación quedan visibles al ganador). `fn_reabrir_viaje` lo pone a NULL correctamente.
+- **Próximo bloque**: sub-tab 👥 Usuarios en Catálogo (control.html) — Edge Function + UI para que Bernardo cree/resetee/desactive cuentas de transportadoras desde el panel. Con RLS ya endurecido, las cuentas nuevas son seguras desde el momento 0.
 >
 > **Lo nuevo vs. cierre anterior:** **Módulo 4 Flota** — tab 🚛 Flota en mi-netfleet deja de ser placeholder. Schema `conductores` + `vehiculos` + `documentos_flota` (polimórfico) + bucket Storage privado `flota-docs` + 6 Postgres fns CRUD + RLS por transportadora. UI completa en mi-netfleet.html con 2 sub-tabs, CRUD inline, modal de docs con upload + color-coded estado vencimiento (🟢/🟡/🔴/⚪). `perfiles.transportadora_id FK` nuevo + test user linkeado a JR LOGÍSTICA. Smoke test end-to-end PASS: crear conductor, crear vehículo, subir doc con vence_at, verificar Storage + DB + audit trail.
 

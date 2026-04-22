@@ -146,6 +146,7 @@ D:\NETFLEET\
 │   ├── scenarios_viaje.sql     → Capa tentativa: 2 tablas + 6 fns (crear/agregar/quitar/descartar/limpiar/promover)
 │   ├── scenarios_viaje_patch_constraint.sql → Patch extender CHECK acciones_operador con scenario_*
 │   ├── modulo4_flota.sql       → Flota transportadoras: tablas conductores/vehiculos/documentos_flota (polimórfico) + bucket privado flota-docs + 6 fns CRUD + RLS + perfiles.transportadora_id FK
+│   ├── modulo4_rls_aislamiento.sql → Endurece RLS en viajes_consolidados + pedidos (cada transportadora ve SOLO lo suyo vía _mi_transportadora_id). Backfill de 1145 viajes legacy (7 seed via substring match) + 6 policies granulares
 │   ├── link_pedidos_viajes_v3.sql → linker v3 regex (aliases no rangos) — pase 1
 │   ├── link_pedidos_viajes_v4.sql → linker v4 substring BUSCARX-style — pase 2 (97.3% combinado)
 │   ├── link_pedidos_viajes_v5.sql → linker v5 reconsolidación (pedido activo en viaje cancelado → re-link a no-cancelado)

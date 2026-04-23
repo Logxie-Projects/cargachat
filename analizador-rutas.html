@@ -1567,6 +1567,9 @@ function parseFecha(str){const parts=str.split('/');if(parts.length===3)return n
 
 function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing){
   const numDests=destConditions.length;
+  // dateFechaBase se calcula también acá (renderResults es separada de runAnalysis)
+  const fechaInputR=document.getElementById('inFechaCargue')?.value;
+  const dateFechaBase=fechaInputR?new Date(fechaInputR+'T12:00:00'):(trip.fecha?parseFecha(trip.fecha):new Date());
   // Pernoctas REALES = días entre cargue y última entrega (no solo las marcadas como 'pernocta').
   // Ej: cargue Vie + última entrega Lun = 3 pernoctas (Vie→Sáb, Sáb→Dom, Dom→Lun), aunque
   // el loop principal solo marque 1 'pernocta' visible en el timeline.

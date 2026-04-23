@@ -1487,7 +1487,29 @@ async function runAnalysis(){
       
       clock=eff+descMin;
     }
-    
+
+    // Si quedaron destinos saltados (ventana >1d de espera) y no había stop de retorno
+    // que los reprogramara, los programamos acá al final — cada uno al día de su próx
+    // apertura a las 8 AM. Sin esto quedaban huérfanos ("se sigue" sin entrega).
+    if(skippedDests.length > 0){
+      timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
+        action:`[!] ${skippedDests.length} destino${skippedDests.length>1?'s':''} reprogramado${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — se entregan en su próxima apertura`,dur:0});
+      for(const sk of skippedDests){
+        stopNum++;
+        const etaMin = sk.nextOpenDay*24*60 + 8*60;
+        timeline.push({time:etaMin,day:sk.nextOpenDay,type:'dest',city:sk.city+' (reprogramado)',
+          idx:stopNum,cumKm:Math.round(cumKm),dur:sk.descMin,destIdx:sk.destIdx});
+        const etaEl=document.getElementById(`deta-${sk.destIdx}`);
+        const dateEl=document.getElementById(`ddate-${sk.destIdx}`);
+        if(etaEl) etaEl.textContent=minToTime(etaMin);
+        if(dateEl){
+          const dd=new Date(dateFechaBase);dd.setDate(dd.getDate()+sk.nextOpenDay);
+          dateEl.textContent=dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})+' (reprogramado)';
+          dateEl.className='late';
+        }
+      }
+    }
+
     // ── RENDER ──
     renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing);
     // Save data globally for PDF export
@@ -1591,7 +1613,9 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   // Alerts
   h+='<div class="alerts">';
   if(missing.length)h+=`<div class="al al-i">Sin coords: ${missing.join(', ')}</div>`;
-  if(totalKm>trip.km*1.5)h+=`<div class="al al-w">Ruta OSRM ${fmt(totalKm)} km (+${Math.round(totalKm/trip.km*100-100)}% vs sheet ${trip.km} km)</div>`;
+  // Si hay km base del sheet y la ruta calculada es >50% más larga → warning
+  if(trip.km>0 && totalKm>trip.km*1.5)h+=`<div class="al al-w">Ruta OSRM ${fmt(totalKm)} km (+${Math.round(totalKm/trip.km*100-100)}% vs sheet ${trip.km} km)</div>`;
+  else if(!trip.km && totalKm>0)h+=`<div class="al al-i">Ruta ${fmt(totalKm)} km (sin baseline — scenario nuevo o viaje sin km previo)</div>`;
   if(pernoctaCount>0)h+=`<div class="al al-d">${pernoctaCount} pernocta — viáticos ~${ccFmt(pernoctaCount*100000)}</div>`;
   h+=`<div class="al al-i">Rango mercado (${rango.label}): ${ccFmt(rango.p25)} — ${ccFmt(rango.p75)}</div>`;
   h+='</div>';

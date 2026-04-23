@@ -302,165 +302,13 @@ input[type="number"]{font-family:var(--mono)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="supabase.min.js"></script>
+<!-- NETFLEET CORE — CIUDADES + geocoding helpers (módulo compartido) -->
+<script src="./netfleet-core.js"></script>
 <script>
 // ================================================================
-// NETFLEET CORE — Diccionario, Geocoding, Pricing (idéntico a index.html)
+// NETFLEET CORE — Pricing Ridge (CIUDADES + geocoding en netfleet-core.js)
 // ================================================================
-const CIUDADES = {
-  'funza':[4.7132,-74.1966],'yumbo':[3.5928,-76.4944],'espinal':[4.1544,-74.8864],
-  'bogota':[4.7110,-74.0721],'bogotá':[4.7110,-74.0721],
-  'cali':[3.4516,-76.5319],'medellin':[6.2442,-75.5812],'medellín':[6.2442,-75.5812],
-  'barranquilla':[10.9685,-74.7813],'cartagena':[10.3910,-75.4794],
-  'cucuta':[7.8939,-72.5078],'cúcuta':[7.8939,-72.5078],
-  'bucaramanga':[7.1253,-73.1198],'santa marta':[11.2408,-74.2110],
-  'monteria':[8.7575,-75.8906],'montería':[8.7575,-75.8906],
-  'valledupar':[10.4631,-73.2532],'riohacha':[11.5444,-72.9072],
-  'sincelejo':[9.3047,-75.3978],'neiva':[2.9273,-75.2820],
-  'ibague':[4.4389,-75.2322],'ibagué':[4.4389,-75.2322],
-  'villavicencio':[4.1420,-73.6266],'aguachica':[8.3081,-73.6189],
-  'manizales':[5.0703,-75.5138],'pereira':[4.8087,-75.6906],
-  'armenia':[4.5339,-75.6811],'cartago':[4.7454,-75.9120],
-  'la virginia':[4.9000,-75.8833],'dosquebradas':[4.8378,-75.6742],
-  'santa rosa de cabal':[4.8680,-75.6256],'santa rosa':[4.8680,-75.6256],
-  'chinchina':[4.9815,-75.6091],'chinchiná':[4.9815,-75.6091],
-  'calarca':[4.5225,-75.6437],'calarcá':[4.5225,-75.6437],
-  'montenegro':[4.5662,-75.7497],'quimbaya':[4.6227,-75.7636],
-  'belalcazar':[4.9936,-75.8131],'belalcázar':[4.9936,-75.8131],
-  'tunja':[5.5353,-73.3678],'duitama':[5.8281,-73.0297],
-  'sogamoso':[5.7150,-72.9267],'paipa':[5.7833,-73.1167],
-  'ramiriqui':[5.4000,-73.3333],'ramiriquí':[5.4000,-73.3333],
-  'chiquinquira':[5.6167,-73.8167],'chiquinquirá':[5.6167,-73.8167],
-  'buenavista':[5.7167,-73.9667],'ventaquemada':[5.4167,-73.5167],
-  'sachica':[5.6667,-73.6833],
-  'jenesano':[5.3833,-73.4167],'jenessano':[5.3833,-73.4167],
-  'jenesano de boyaca':[5.3833,-73.4167],'jenesano boyaca':[5.3833,-73.4167],
-  'tuta':[5.6667,-73.2000],'toca':[5.5667,-73.1667],
-  'tibana':[5.3167,-73.3833],'tibaná':[5.3167,-73.3833],
-  'arcabuco':[5.7667,-73.4333],'macheta':[5.0333,-73.8333],
-  'umbita':[5.3000,-73.5167],'aquitania':[5.5167,-72.8833],
-  'saboya':[5.7000,-73.7667],'samaca':[5.4833,-73.4833],'samacá':[5.4833,-73.4833],
-  'sutamarchan':[5.6333,-73.7833],
-  'simijaca':[5.5061,-73.8483],
-  'miraflores':[5.1981,-73.1456],
-  'soraca':[5.5069,-73.3342],'soracá':[5.5069,-73.3342],
-  'siberia':[4.8856,-74.1483],'cabrera':[3.9847,-74.4856],
-  'fusagasuga':[4.3367,-74.3644],'fusagasugá':[4.3367,-74.3644],
-  'silvania':[4.4000,-74.4833],'sibate':[4.4878,-74.2597],'sibaté':[4.4878,-74.2597],
-  'san bernardo':[4.1833,-74.4333],'usme':[4.4367,-74.1322],
-  'subachoque':[4.9167,-74.2667],'fomeque':[4.4833,-73.9000],'fómeque':[4.4833,-73.9000],
-  'ortigal':[3.2798,-76.3449],'tenjo':[4.8714,-74.1436],
-  // Municipios rurales Cundinamarca (añadidos 2026-04-22 — faltaban para scenarios de Bernardo)
-  'choconta':[5.1436,-73.6853],'chocontá':[5.1436,-73.6853],
-  'villapinzon':[5.2167,-73.5833],'villapinzón':[5.2167,-73.5833],
-  'cogua':[5.0611,-73.9794],'sasaima':[4.9667,-74.4333],
-  'susa':[5.4500,-73.8167],'nocaima':[5.0667,-74.3833],
-  'quipile':[4.7458,-74.5311],'cachipay':[4.7333,-74.4333],
-  'la mesa':[4.6333,-74.4667],'sopo':[4.9137,-73.9411],'sopó':[4.9137,-73.9411],
-  'guasca':[4.8683,-73.8767],'ubate':[5.3150,-73.8169],'ubaté':[5.3150,-73.8169],
-  'simijaca':[5.5022,-73.8508],'guatavita':[4.9358,-73.8319],
-  'junin':[4.7889,-73.6667],'junín':[4.7889,-73.6667],
-  'tausa':[5.1972,-73.8903],'pacho':[5.1333,-74.1667],
-  'caqueza':[4.4053,-73.9406],'cáqueza':[4.4053,-73.9406],
-  'une':[4.4028,-73.9922],'choachi':[4.5289,-73.9228],'choachí':[4.5289,-73.9228],
-  'ubaque':[4.4833,-73.9333],'fosca':[4.3411,-73.9403],
-  'nemocon':[5.0711,-73.8778],'nemocón':[5.0711,-73.8778],
-  'lenguazaque':[5.3072,-73.7114],'machetá':[5.0850,-73.6103],'macheta':[5.0850,-73.6103],
-  // Municipios rurales Boyacá
-  'samaca':[5.4925,-73.4856],'samacá':[5.4925,-73.4856],
-  'ventaquemada':[5.3681,-73.5194],
-  'garagoa':[5.0833,-73.3500],'moniquira':[5.8775,-73.5728],'moniquirá':[5.8775,-73.5728],
-  'puerto boyaca':[5.9753,-74.5875],'puerto boyacá':[5.9753,-74.5875],
-  'tenza':[5.0792,-73.4244],'guateque':[5.0025,-73.4711],
-  'ramiriqui':[5.4000,-73.3333],'ramiriquí':[5.4000,-73.3333],
-  'santa rosa de viterbo':[5.8742,-72.9814],'saboya':[5.6975,-73.7633],'saboyá':[5.6975,-73.7633],
-  'otanche':[5.6556,-74.1833],'jenesano':[5.3850,-73.3694],
-  'tibasosa':[5.7447,-72.9983],'nobsa':[5.7689,-72.9397],
-  'ciénega':[5.4111,-73.2889],'cienega':[5.4111,-73.2889],
-  'zipaquira':[5.0228,-74.0061],'zipaquirá':[5.0228,-74.0061],
-  'facatativa':[4.8142,-74.3597],'facatativá':[4.8142,-74.3597],
-  'mosquera':[4.7066,-74.2303],'madrid':[4.7339,-74.2644],
-  'soacha':[4.5797,-74.2167],'chia':[4.8614,-73.9314],'chía':[4.8614,-73.9314],
-  'cajica':[4.9186,-74.0028],'cajicá':[4.9186,-74.0028],
-  'tocancipa':[4.9678,-73.9139],'tocancipá':[4.9678,-73.9139],'gachancipa':[4.9969,-73.8717],
-  'barrancabermeja':[7.0653,-73.8546],'giron':[7.0725,-73.1686],'girón':[7.0725,-73.1686],
-  'floridablanca':[7.0639,-73.0880],'piedecuesta':[6.9868,-73.0522],
-  'lebrija':[7.1167,-73.2167],'san gil':[6.5567,-73.1356],
-  'socorro':[6.5133,-73.2642],'velez':[6.0125,-73.6778],'vélez':[6.0125,-73.6778],
-  'barbosa':[5.9364,-73.6189],
-  'yopal':[5.3378,-72.3952],'arauca':[7.0897,-70.7617],
-  'acacias':[3.9894,-73.7597],'granada':[3.5461,-73.7229],
-  'aguazul':[5.1739,-72.5506],'puerto lopez':[4.0847,-72.9583],
-  'restrepo':[4.2572,-73.5703],'cumaral':[4.2708,-73.4864],
-  'pasto':[1.2136,-77.2811],'popayan':[2.4448,-76.6147],'popayán':[2.4448,-76.6147],
-  'mocoa':[1.1520,-76.6481],'florencia':[1.6144,-75.6062],
-  'el tigre':[0.3500,-75.1833],'puerto asis':[0.5000,-76.5000],'puerto asís':[0.5000,-76.5000],
-  'orito':[0.6667,-76.8667],'la hormiga':[0.0833,-76.9000],
-  'sibundoy':[1.2000,-76.9167],'villagarzon':[1.0333,-76.6167],'villagarzón':[1.0333,-76.6167],
-  'leticia':[-4.2153,-69.9401],'mitu':[1.2531,-70.2333],
-  'puerto inirida':[3.8653,-67.9239],'san jose del guaviare':[2.5694,-72.6416],
-  'quibdo':[5.6919,-76.6583],'quibdó':[5.6919,-76.6583],'puerto carreno':[6.1893,-67.4841],
-  'palmira':[3.5394,-76.3036],'buga':[3.9006,-76.3032],
-  'tulua':[4.0847,-76.1992],'tuluá':[4.0847,-76.1992],'girardot':[4.3022,-74.8020],
-  'rionegro':[6.1553,-75.3742],
-};
-const geocodeCache={};
-const GMAPS_KEY='AIzaSyBSDer_Cdp3pNhZrebp6h5OWDfHQkWJifo';
-
-function normalizarNombre(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.\-_()]/g,' ').replace(/\s+/g,' ').trim()}
-function variantes(nombre){
-  const base=normalizarNombre(nombre),partes=base.split(' '),vs=[base],sw=['de','del','la','el','los','las','y'];
-  for(let i=1;i<partes.length;i++){if(sw.includes(partes[i-1])||sw.includes(partes[i])){vs.push(partes.slice(0,i).join(' '));vs.push(partes.slice(i+1).join(' '));}}
-  if(partes[0].length>4)vs.push(partes[0]);
-  return[...new Set(vs.filter(Boolean))];
-}
-function getCoordenadas(ciudad){
-  if(!ciudad)return null;
-  const cands=variantes(ciudad);
-  // Pass 1: exact match (evita "santa" matchear "santa marta" por substring)
-  for(const c of cands){for(const[nombre,coords]of Object.entries(CIUDADES)){if(normalizarNombre(nombre)===c)return coords;}}
-  // Pass 2: substring match solo para candidatos específicos (>=5 chars)
-  for(const c of cands){if(c.length<5)continue;for(const[nombre,coords]of Object.entries(CIUDADES)){const n=normalizarNombre(nombre);if(n.includes(c)||c.includes(n))return coords;}}
-  return null;
-}
-async function geocodeCiudad(ciudad){
-  if(!ciudad)return null;const key=ciudad.toLowerCase().trim();
-  if(geocodeCache[key])return geocodeCache[key];
-  // Timeout de 6s para no colgar el flujo si Google no responde
-  try{
-    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), 6000);
-    const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ciudad+', Colombia')}&key=${GMAPS_KEY}`, {signal:ctrl.signal});
-    clearTimeout(t);
-    const d=await r.json();
-    if(d.results&&d.results.length>0){const l=d.results[0].geometry.location;const c=[l.lat,l.lng];geocodeCache[key]=c;return c;}
-  }catch(e){ console.warn('[geocode] timeout/error para', ciudad, e.message); }
-  return null;
-}
-async function getCoords(ciudad){return getCoordenadas(ciudad)||await geocodeCiudad(ciudad)}
-function geo(name){const c=getCoordenadas(name);return c?{lat:c[0],lng:c[1],name:name.trim()}:null}
-
-// Extrae la ciudad real desde un destino verbose tipo "CENTRO OCOBOS ESPINAL"
-// o "PPAL 3PL SAN DIEGO FUNZA" buscando dentro de los tokens cuál matchea una
-// ciudad conocida. Fallback: el texto original (dejá que Google intente).
-function extraerCiudad(destino){
-  if(!destino) return '';
-  const completo = getCoordenadas(destino);
-  if(completo) return destino;
-  // Normalizar y separar en palabras de ≥3 chars (ignorar prefijos tipo "3PL", "PPAL")
-  const tokens = destino.split(/[\s,;\/()\-]+/).filter(t => t && t.length >= 3);
-  // Probar combinaciones de 2 tokens (para "santa marta", "san diego", etc.)
-  for(let i=0;i<tokens.length-1;i++){
-    const par = tokens[i]+' '+tokens[i+1];
-    if(getCoordenadas(par)) return par;
-  }
-  // Probar tokens sueltos empezando por el ÚLTIMO (las ciudades suelen ir al final)
-  for(let i=tokens.length-1;i>=0;i--){
-    if(getCoordenadas(tokens[i])) return tokens[i];
-  }
-  return destino;  // no matcheó nada — que lo intente Google
-}
-
-// Pricing Ridge R²=0.919
-const CC_ZONA_AJUSTE={'HUB':0,'ANTIOQUIA':15759,'BOYACA':87756,'CENTRO':22045,'CUNDINAMARCA':65602,'EJE CAFETERO':-18794,'LLANOS':159210,'NORTE':79189,'OCCIDENTE':10720,'ORIENTE':-176447,'SANTANDERES':-213483,'SUR':79189,'TOLHUIL':-18146,'VALLE':34226};
+// Pricing Ridge R²=0.919 — CC_ZONA_AJUSTE viene de netfleet-core.js (window global)
 const CC_ZONAS_CIUDADES={'LLANOS':['villavicencio','yopal','arauca','acacias','granada','puerto lopez','restrepo','cumaral','aguazul','tauramena','trinidad','paz de ariporo','orocue','san martin'],'BOYACA':['tunja','duitama','sogamoso','chiquinquira','paipa','villa de leyva','samaca','ventaquemada','tibasosa','nobsa'],'SANTANDERES':['bucaramanga','cucuta','giron','floridablanca','piedecuesta','san gil','barrancabermeja','pamplona','ocana','los patios'],'ORIENTE':['bucaramanga','cucuta','giron','floridablanca','piedecuesta','pamplona'],'CUNDINAMARCA':['zipaquira','chia','facatativa','soacha','mosquera','madrid','cajica','cota','tenjo','tabio','la calera','fusagasuga','silvania','tocancipa'],'EJE CAFETERO':['virginia','cartago','armenia','manizales','santa rosa','chinchina','pereira','dosquebradas','la virginia','calarca','montenegro','quimbaya','belalcazar'],'VALLE':['cali','palmira','buga','tulua','yumbo','jamundi','candelaria','ginebra','la union'],'ANTIOQUIA':['medellin','rionegro','envigado','itagui','bello','sabaneta','la ceja','marinilla','guarne','caucasia','apartado','turbo'],'CENTRO':['ibague','girardot','melgar','honda','mariquita','flandes','guamo'],'TOLHUIL':['neiva','garzon','pitalito','campoalegre','la plata','san agustin','espinal','natagaima','purificacion'],'OCCIDENTE':['cali','palmira','buga','tulua','sevilla','buenaventura','jamundi','candelaria','ginebra','el cerrito','dagua'],'NORTE':['monteria','valledupar','barranquilla','cartagena','santa marta','sincelejo','riohacha','lorica','cerete','magangue','mompox','el banco','aguachica'],'SUR':['pasto','ipiales','tumaco','popayan','mocoa','el tigre','puerto asis','orito','la hormiga','sibundoy','villagarzon','santander de quilichao','miranda','patia','florencia','belen de los andaquies']};
 const CC_RANGOS=[{label:'< 100 km',min:0,max:100,p25:380000,p75:800000},{label:'100–300 km',min:100,max:300,p25:900000,p75:1695000},{label:'300–600 km',min:300,max:600,p25:1500000,p75:2602500},{label:'600–1000 km',min:600,max:1000,p25:1040025,p75:4506945},{label:'≥ 1000 km',min:1000,max:9999,p25:4250000,p75:11030000}];
 function ccNorm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
@@ -1366,16 +1214,45 @@ async function runAnalysis(){
     // Always use OSRM /route with our fixed order (nearest-neighbor or user-defined)
     const coords=osrmStops.map(s=>`${s.lng},${s.lat}`).join(';');
     console.log('[analizador] OSRM request:', osrmStops.length, 'stops');
-    const ctrl=new AbortController(); const tmo=setTimeout(()=>ctrl.abort(), 45000); // 45s timeout (el público a veces es lento)
-    let r;
-    try{
-      r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, {signal:ctrl.signal});
-    }catch(fe){
-      clearTimeout(tmo);
-      if(fe.name==='AbortError') throw new Error('OSRM tardó >45s (servidor público saturado). Reintentá.');
-      throw fe;
+
+    // Retry con backoff + fallback a servidor alterno si el principal se satura
+    const OSRM_SERVERS = [
+      'https://router.project-osrm.org',           // principal (público, a veces saturado)
+      'https://routing.openstreetmap.de/routed-car' // fallback (Geofabrik, público)
+    ];
+    async function osrmFetch(base, timeoutMs){
+      const ctrl=new AbortController(); const tmo=setTimeout(()=>ctrl.abort(), timeoutMs);
+      try{
+        const resp=await fetch(`${base}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`, {signal:ctrl.signal});
+        clearTimeout(tmo);
+        return resp;
+      }catch(fe){
+        clearTimeout(tmo);
+        if(fe.name==='AbortError') throw new Error('timeout');
+        throw fe;
+      }
     }
-    clearTimeout(tmo);
+    // Intenta: [server1 30s], [server1 30s tras 2s], [server2 30s]
+    const attempts=[
+      {server:OSRM_SERVERS[0], timeout:30000, wait:0,     label:'principal'},
+      {server:OSRM_SERVERS[0], timeout:30000, wait:2000,  label:'principal (reintento)'},
+      {server:OSRM_SERVERS[1], timeout:30000, wait:1000,  label:'fallback Geofabrik'}
+    ];
+    let r=null, lastErr=null;
+    const btnLbl=btn.textContent;
+    for(let i=0;i<attempts.length;i++){
+      const a=attempts[i];
+      if(a.wait) await new Promise(res=>setTimeout(res, a.wait));
+      btn.textContent=`Calculando OSRM... (${a.label})`;
+      try{
+        r=await osrmFetch(a.server, a.timeout);
+        if(r && r.ok){ console.log('[analizador] OSRM OK via',a.label); break; }
+        lastErr=new Error('HTTP '+(r?r.status:'?'));
+        r=null;
+      }catch(e){ lastErr=e; console.warn('[analizador] OSRM falla '+a.label+':', e.message); r=null; }
+    }
+    btn.textContent=btnLbl;
+    if(!r) throw new Error('OSRM no respondió tras 3 intentos ('+ (lastErr?lastErr.message:'desconocido') +'). El servidor público está saturado. Intentá en 1-2 minutos.');
     const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
     tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
     ordered=osrmStops;

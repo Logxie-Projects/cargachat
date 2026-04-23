@@ -296,6 +296,29 @@
     .scen-action.ok:hover { background: #15803d; }
     .scen-action .ico { margin-right: 4px; }
 
+    /* ── LogxIA regla 5: candidatos on-route ── */
+    .logxia-cand-hint { display: flex; align-items: center; gap: 10px; padding: 6px 12px; margin-top: 4px; background: #fef9c3; border: 1px dashed #eab308; border-radius: 6px; font-size: 12px; color: #78350f; }
+    .logxia-cand-toggle { margin-left: auto; background: #eab308; border: 0; color: white; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .logxia-cand-toggle:hover { background: #ca8a04; }
+    .logxia-cand-box { margin-top: 6px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px; }
+    .logxia-cand-title { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #92400e; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .logxia-cand-row { display: grid; grid-template-columns: 100px 130px 1fr 80px 110px 60px 80px; gap: 8px; align-items: center; padding: 5px 6px; border-bottom: 1px solid #fef3c7; font-size: 11px; }
+    .logxia-cand-row:last-child { border-bottom: 0; }
+    .logxia-cand-row.selected { background: #dcfce7; }
+    .logxia-cand-ref { font-weight: 700; color: var(--navy); }
+    .logxia-cand-cli { color: var(--gray-700); font-size: 10px; }
+    .logxia-cand-ruta { color: var(--gray-600); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logxia-cand-peso { color: var(--gray-800); font-weight: 600; text-align: right; }
+    .logxia-cand-tipo { font-size: 10px; padding: 2px 6px; border-radius: 3px; text-align: center; }
+    .logxia-cand-tipo.drop   { background: #dbeafe; color: #1e40af; }
+    .logxia-cand-tipo.pickup { background: #fce7f3; color: #9f1239; }
+    .logxia-cand-desvio { color: var(--gray-500); text-align: right; font-variant-numeric: tabular-nums; }
+    .logxia-cand-btn { background: #16a34a; color: white; border: 0; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .logxia-cand-btn:hover { background: #15803d; }
+    .logxia-cand-btn.sel { background: #dc2626; }
+    .logxia-cand-btn.sel:hover { background: #b91c1c; }
+    .logxia-cand-mas { font-size: 10px; color: var(--gray-500); text-align: center; padding: 6px; font-style: italic; }
+
     /* ── SUB-GRUPO POR ZONA (solo en modo "Agrupar por Origen") ── */
     .sub-group-row { background: #fafbfc; }
     .sub-group-row td { padding: 5px 14px 5px 34px !important; border-bottom: 1px dashed var(--gray-100) !important; }
@@ -1578,6 +1601,7 @@
     clientes: [],
     transportadoras: [],
     perfiles: [],                  // perfiles de ofertantes (usuarios que hicieron ofertas) — para resolver nombre cuando ofertas.transportadora_id es NULL
+    logxiaCandExpandidos: new Set(),  // keys de grupos LogxIA con candidatos on-route expandidos (regla 5)
     usuarios: [],                  // cargado lazy al entrar a sub-tab Usuarios
     scenarios: [],                 // rows de scenarios_viaje
     scenariosPedidos: [],          // rows de scenarios_viaje_pedidos
@@ -2454,6 +2478,89 @@
     return `${origenCanon || '(sin origen)'} → ${rutaTxt || '(sin destino)'}`;
   }
 
+  // Regla 5 — Parada intermedia. Dados origen O, destino D y un punto X,
+  // devuelve si X está "on-route" entre O y D usando triangle inequality.
+  // Tolerancia default 15% (X está sobre la línea si el desvío es ≤15%).
+  function estaEnRuta(oCanon, dCanon, xCanon, tolerancia = 0.15) {
+    const o = getCoordenadas(oCanon);
+    const d = getCoordenadas(dCanon);
+    const x = getCoordenadas(xCanon);
+    if (!o || !d || !x) return { onRoute: false, desvio: null };
+    const directo  = haversineKm(o, d);
+    const via      = haversineKm(o, x) + haversineKm(x, d);
+    const desvio   = directo > 0 ? (via - directo) / directo : 0;
+    return { onRoute: via <= directo * (1 + tolerancia), desvio };
+  }
+
+  // Para un grupo LogxIA devuelve pedidos de OTROS grupos que están
+  // geográficamente on-route. 2 casos:
+  //   drop    = mismo origen, destino intermedio (ej. Yumbo→Espinal en Yumbo→Funza)
+  //   pickup  = origen intermedio, mismo destino (ej. Espinal→Funza en Yumbo→Funza)
+  function candidatosOnRoute(grupo, todosPedidos) {
+    if (grupo.tipo !== 'logxia' || !grupo.origenCanon) return [];
+    const oCoords = getCoordenadas(grupo.origenCanon);
+    if (!oCoords) return [];
+
+    // Representante: destino más lejano del grupo (extremo de la ruta)
+    const destinosGrupo = new Set();
+    let destRep = null, destRepDist = 0;
+    grupo.pedidos.forEach(p => {
+      String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean).forEach(parte => {
+        const c = canonizarNodo(parte);
+        if (!c) return;
+        destinosGrupo.add(c);
+        const cc = getCoordenadas(c);
+        if (cc) {
+          const km = haversineKm(oCoords, cc);
+          if (km > destRepDist) { destRep = c; destRepDist = km; }
+        }
+      });
+    });
+    if (!destRep) return [];
+
+    const idsGrupo = new Set(grupo.pedidos.map(p => p.id));
+    const cands = [];
+
+    todosPedidos.forEach(p => {
+      if (idsGrupo.has(p.id)) return;
+      if (p.estado !== 'sin_consolidar') return;
+      if ((p.contenedores || 0) > 0) return; // contenedores = no consolidables
+
+      const oP = canonizarNodo(p.origen);
+      if (!oP) return;
+      // Destino del pedido puede ser multi-ciudad, tomo el primero canonizable
+      let dP = null;
+      String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean).some(parte => {
+        const c = canonizarNodo(parte);
+        if (c) { dP = c; return true; }
+        return false;
+      });
+      if (!dP) return;
+
+      // Caso A (drop): mismo origen canónico, destino P está entre O y destRep
+      if (oP === grupo.origenCanon && !destinosGrupo.has(dP)) {
+        const chk = estaEnRuta(grupo.origenCanon, destRep, dP);
+        if (chk.onRoute) {
+          cands.push({ pedido: p, tipo: 'drop', desvio: chk.desvio, punto: dP });
+          return;
+        }
+      }
+      // Caso B (pickup): destino P coincide con algún destino del grupo, y
+      // el origen de P está entre grupo.origen y ese destino
+      if (destinosGrupo.has(dP) && oP !== grupo.origenCanon) {
+        const chk = estaEnRuta(grupo.origenCanon, dP, oP);
+        if (chk.onRoute) {
+          cands.push({ pedido: p, tipo: 'pickup', desvio: chk.desvio, punto: oP });
+          return;
+        }
+      }
+    });
+
+    // Orden: menor desvío primero (mejor candidato)
+    cands.sort((a, b) => a.desvio - b.desvio);
+    return cands;
+  }
+
   // Estima flete Ridge para un grupo LogxIA de pedidos.
   // Devuelve { flete, km, paradas, costPorKg, costPorKm, pctValor } — todos null si no se puede.
   function estimarFleteGrupo(origenCanon, corredor, pedidos) {
@@ -2741,6 +2848,7 @@
 
       // Métricas Ridge para LogxIA: $/kg, $/km, %flete-valor (color-coded rojo si >3%)
       let logxiaMetrics = '';
+      let logxiaCandBloque = '';
       if (modoAgrup === 'logxia' && grupo.tipo === 'logxia') {
         const m = estimarFleteGrupo(grupo.origenCanon, grupo.zonaDest, pedidos);
         if (m.flete) {
@@ -2754,6 +2862,46 @@
             · <strong>${fmtCOP(m.costPorKm)}</strong>/km
             ${pctTxt ? ' · ' + pctTxt : ''}
           </div>`;
+        }
+        // Regla 5 — Candidatos on-route (pedidos en otros grupos que cuadran geográficamente)
+        const cands = candidatosOnRoute(grupo, state.pedidos || []);
+        if (cands.length > 0) {
+          const expandido = state.logxiaCandExpandidos.has(key);
+          const resumen = (() => {
+            const g = new Map();
+            cands.forEach(c => {
+              const k = `${c.tipo === 'drop' ? 'drop→' : 'pickup←'}${c.punto}`;
+              g.set(k, (g.get(k) || 0) + 1);
+            });
+            return [...g.entries()].map(([k, n]) => `${n} ${k}`).join(' · ');
+          })();
+          const filas = expandido
+            ? `<div class="logxia-cand-box">
+                 <div class="logxia-cand-title">Candidatos on-route (menor desvío primero)</div>
+                 ${cands.slice(0, 20).map(c => {
+                   const p = c.pedido;
+                   const desvPct = (c.desvio * 100).toFixed(1);
+                   const tipoLbl = c.tipo === 'drop' ? `drop en ${c.punto}` : `pickup en ${c.punto}`;
+                   const selected = state.seleccionados.has(p.id);
+                   return `<div class="logxia-cand-row${selected ? ' selected' : ''}">
+                     <span class="logxia-cand-ref">${p.pedido_ref || '—'}</span>
+                     <span class="logxia-cand-cli">${p.cliente_nombre || p.empresa || '—'}</span>
+                     <span class="logxia-cand-ruta">${(p.origen||'—').substring(0,28)} → ${(p.destino||'—').substring(0,28)}</span>
+                     <span class="logxia-cand-peso">${fmtNum(p.peso_kg)} kg</span>
+                     <span class="logxia-cand-tipo ${c.tipo}">${tipoLbl}</span>
+                     <span class="logxia-cand-desvio" title="desvío vs línea recta origen→destino">+${desvPct}%</span>
+                     <button class="logxia-cand-btn ${selected ? 'sel' : ''}" onclick="togglePedido('${p.id}');renderPedidos()">${selected ? '✓ sumado' : '+ sumar'}</button>
+                   </div>`;
+                 }).join('')}
+                 ${cands.length > 20 ? `<div class="logxia-cand-mas">+${cands.length-20} más candidatos (refinar con filtros)</div>` : ''}
+               </div>`
+            : '';
+          logxiaCandBloque = `
+            <div class="logxia-cand-hint">
+              <span>💡 <strong>${cands.length}</strong> candidato${cands.length!==1?'s':''} on-route · <span style="color:var(--gray-500)">${resumen}</span></span>
+              <button class="logxia-cand-toggle" onclick="toggleCandidatos('${key.replace(/'/g,"\\'")}')">${expandido ? 'Ocultar ▲' : 'Ver ▼'}</button>
+            </div>
+            ${filas}`;
         }
       }
 
@@ -2772,6 +2920,7 @@
               <button class="g-action" onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">Seleccionar grupo</button>
             </div>
             ${logxiaMetrics}
+            ${logxiaCandBloque}
           </td>
         </tr>`);
 
@@ -2819,6 +2968,16 @@
 
     // Aplicar indeterminate a los checkboxes del grupo (no se puede via HTML)
     document.querySelectorAll('.g-chk[data-state="indeterminate"]').forEach(chk => chk.indeterminate = true);
+  }
+
+  // Regla 5 — Toggle expansión del bloque de candidatos on-route por grupo
+  function toggleCandidatos(grupoKey) {
+    if (state.logxiaCandExpandidos.has(grupoKey)) {
+      state.logxiaCandExpandidos.delete(grupoKey);
+    } else {
+      state.logxiaCandExpandidos.add(grupoKey);
+    }
+    renderPedidos();
   }
 
   function toggleGrupo(grupoKey) {

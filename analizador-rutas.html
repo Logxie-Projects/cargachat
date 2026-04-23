@@ -1252,9 +1252,43 @@ async function runAnalysis(){
       }catch(e){ lastErr=e; console.warn('[analizador] OSRM falla '+a.label+':', e.message); r=null; }
     }
     btn.textContent=btnLbl;
-    if(!r) throw new Error('OSRM no respondió tras 3 intentos ('+ (lastErr?lastErr.message:'desconocido') +'). El servidor público está saturado. Intentá en 1-2 minutos.');
-    const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
-    tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
+    // Fallback haversine cuando OSRM público está saturado — en vez de colgar la UI,
+    // mostramos ruta aproximada (línea recta × factor 1.25 vía carretera, velocidad prom 70 km/h).
+    // El mapa se dibuja, Bernardo puede seguir trabajando. Se indica visualmente que es aproximado.
+    if(!r){
+      console.warn('[analizador] OSRM no respondió — usando fallback haversine aproximado');
+      const hav = (a, b) => {
+        const R = 6371000; // metros
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLng = (b.lng - a.lng) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+        const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2) * Math.sin(dLng/2)**2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      };
+      const FACTOR_RUTA = 1.25; // línea recta → aproximación ruta real
+      const VEL_PROM = 30;       // km/h promedio (realista para Colombia — vías secundarias montañosas + tráfico)
+      let totalDist = 0, totalDur = 0;
+      const legs = [];
+      for (let i = 0; i < osrmStops.length - 1; i++) {
+        const dLinea = hav(osrmStops[i], osrmStops[i+1]);
+        const d = dLinea * FACTOR_RUTA;
+        const dur = (d / 1000) / VEL_PROM * 3600;
+        totalDist += d; totalDur += dur;
+        legs.push({ distance: d, duration: dur, summary: `${osrmStops[i].name} → ${osrmStops[i+1].name}`, steps: [] });
+      }
+      // Geometry: GeoJSON LineString conectando stops (recto — sin curvas por calle)
+      const geometry = { type: 'LineString', coordinates: osrmStops.map(s => [s.lng, s.lat]) };
+      tripData = { distance: totalDist, duration: totalDur, geometry, legs, _fallback: true };
+      // Warning visible en la UI para que Bernardo sepa que no es ruteo real
+      const errBar = document.getElementById('errorBar') || document.querySelector('.status-bar, #status');
+      if (errBar) {
+        errBar.innerHTML = '⚠ OSRM saturado — usando distancia aproximada (línea recta × 1.25). <button onclick="runAnalysis()" style="margin-left:8px">Reintentar</button>';
+        errBar.style.cssText = 'background:#fef3c7;color:#92400e;padding:8px 12px;border:1px solid #fcd34d;border-radius:6px;margin-bottom:8px;display:block';
+      }
+    } else {
+      const data=await r.json();if(data.code!=='Ok')throw new Error(data.code);
+      tripData={distance:data.routes[0].distance,duration:data.routes[0].duration,geometry:data.routes[0].geometry,legs:data.routes[0].legs};
+    }
     ordered=osrmStops;
     
     // Only overwrite suggestedOrder on the FIRST calculation (when user hasn't reordered).

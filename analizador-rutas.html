@@ -204,6 +204,13 @@ input[type="number"]{font-family:var(--mono)}
         <div class="sb-lbl" id="trip-selector-lbl">Seleccionar viaje</div>
         <select id="tripSelect"><option value="">Cargando...</option></select>
       </div>
+      <div class="sb-row">
+        <div class="sb-lbl">Buscar por RT</div>
+        <div style="display:flex;gap:4px">
+          <input type="text" id="inBuscarRT" placeholder="RT-TOTAL-..." style="flex:1;font-size:11px;padding:4px 6px" onkeydown="if(event.key==='Enter')buscarViajePorRT()">
+          <button type="button" onclick="buscarViajePorRT()" style="padding:4px 8px;font-size:11px;cursor:pointer">🔍</button>
+        </div>
+      </div>
       <div class="trip-meta" id="tripMeta" style="display:none">
         <span>Fecha:</span><strong id="tmFecha">—</strong>
         <span>Peso:</span><strong id="tmPeso">—</strong>
@@ -730,6 +737,52 @@ async function loadFromSupabase(){
     st.style.color='var(--danger)';
   }
 }
+
+// Busca un viaje por RT (viaje_ref) en cualquier estado, lo carga al analizador
+// bypaseando el limit/filter del fetch inicial. Ideal para consultar histórico.
+async function buscarViajePorRT(){
+  const inp = document.getElementById('inBuscarRT');
+  const q = String(inp?.value || '').trim();
+  const st = document.getElementById('sheetStatus');
+  if (!q) { if(st){ st.textContent='Ingresá un RT'; st.style.color='var(--danger)'; } return; }
+  if(st){ st.textContent=`Buscando "${q}"...`; st.style.color=''; }
+  try {
+    // Permitir búsqueda exacta o parcial (ILIKE)
+    const { data, error } = await sbAnal.from('viajes_consolidados').select('*')
+      .or(`viaje_ref.eq.${q},viaje_ref.ilike.%${q}%`)
+      .order('fecha_cargue', { ascending: false, nullsFirst: false })
+      .limit(10);
+    if (error) throw error;
+    if (!data || !data.length) {
+      if(st){ st.textContent=`No encontré viaje "${q}"`; st.style.color='var(--danger)'; }
+      return;
+    }
+    // Tomamos el primero (más reciente). Fetch sus pedidos.
+    const v = data[0];
+    const { data: peds, error: ePeds } = await sbAnal.from('pedidos').select('*')
+      .eq('viaje_id', v.id).limit(500);
+    if (ePeds) throw ePeds;
+    // Mergea al state existente sin duplicar
+    if (!VIAJES_ROWS.some(x => x.id === v.id)) VIAJES_ROWS = [v, ...VIAJES_ROWS];
+    (peds || []).forEach(p => PEDIDOS_INDEX.set(p.id, p));
+    // Cambia a modo viaje, rebuild y selecciona
+    if (MODO_FUENTE !== 'viaje') setModoFuente('viaje');
+    else { buildTripsFromCurrentData(); populateSelect(); }
+    const idx = TRIPS.findIndex(t => t.id === v.id);
+    const sel = document.getElementById('tripSelect');
+    if (idx >= 0 && sel) {
+      sel.value = idx;
+      sel.onchange && sel.onchange();
+      if(st){ st.textContent=`${v.viaje_ref} · ${(peds||[]).length} pedidos · ${v.estado}`; st.style.color='var(--green)'; }
+    } else {
+      if(st){ st.textContent=`Viaje cargado pero no aparece en dropdown — bug raro`; st.style.color='var(--danger)'; }
+    }
+  } catch(e) {
+    console.error('[analizador] buscarViajePorRT error:', e);
+    if(st){ st.textContent='Error: '+(e.message||e); st.style.color='var(--danger)'; }
+  }
+}
+window.buscarViajePorRT = buscarViajePorRT;
 
 function buildTripsFromCurrentData(){
   TRIPS=[];

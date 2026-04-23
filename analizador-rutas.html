@@ -566,10 +566,28 @@ async function loadFromSupabase(){
       const peds=await fetchInBatches('pedidos','*','id',pedIds);
       PEDIDOS_INDEX=new Map(peds.map(p=>[p.id,p]));
       VIAJES_ROWS=[];
-      // Background: todos los scenarios activos + viajes recientes para que AMBOS toggles funcionen
+      // Background: todos los scenarios activos + sus pedidos + viajes recientes para que AMBOS toggles funcionen
+      // Bug anterior: traía los 100 scenarios pero NO sus scenarios_viaje_pedidos, entonces
+      // el dropdown solo mostraba el scenario inicial (los otros tenían peds.length === 0 → skip).
       sbAnal.from('scenarios_viaje').select('*').in('estado',['borrador','conflictivo','promovido']).order('created_at',{ascending:false}).limit(100)
-        .then(({data})=>{
-          if(data && data.length){ SCENARIOS_ROWS=data; if(MODO_FUENTE==='scenario'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); } }
+        .then(async ({data})=>{
+          if(data && data.length){
+            SCENARIOS_ROWS=data;
+            // Traer TODOS los scenarios_viaje_pedidos para los N scenarios, no solo el inicial
+            const allScenIds = data.map(s => s.id);
+            try {
+              const newScenPeds = await fetchInBatches('scenarios_viaje_pedidos','*','scenario_id', allScenIds);
+              SCEN_PEDIDOS_ROWS = newScenPeds;
+              // Rellenar pedidos que no tenemos en el índice
+              const pedIdsTodos = [...new Set(newScenPeds.map(sp => sp.pedido_id))];
+              const pedFaltantes = pedIdsTodos.filter(id => !PEDIDOS_INDEX.has(id));
+              if (pedFaltantes.length) {
+                const newPeds = await fetchInBatches('pedidos','*','id', pedFaltantes);
+                newPeds.forEach(p => PEDIDOS_INDEX.set(p.id, p));
+              }
+            } catch(e) { console.warn('[analizador] fetch scen pedidos extra falló:', e); }
+            if(MODO_FUENTE==='scenario'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); }
+          }
         }).catch(e=>console.warn('[analizador] fetch scenarios extra falló:',e));
       sbAnal.from('viajes_consolidados').select('*').in('estado',['pendiente','confirmado','en_ruta','entregado']).order('fecha_cargue',{ascending:false,nullsFirst:false}).limit(50)
         .then(async ({data})=>{
@@ -1232,11 +1250,12 @@ async function runAnalysis(){
         throw fe;
       }
     }
-    // Intenta: [server1 30s], [server1 30s tras 2s], [server2 30s]
+    // Intenta: [server1 10s], [server1 10s tras 2s], [server2 10s]
+    // Tiempos cortos para no colgar UI — si todo falla, haversine kick-in en ~30s max.
     const attempts=[
-      {server:OSRM_SERVERS[0], timeout:30000, wait:0,     label:'principal'},
-      {server:OSRM_SERVERS[0], timeout:30000, wait:2000,  label:'principal (reintento)'},
-      {server:OSRM_SERVERS[1], timeout:30000, wait:1000,  label:'fallback Geofabrik'}
+      {server:OSRM_SERVERS[0], timeout:10000, wait:0,     label:'principal'},
+      {server:OSRM_SERVERS[0], timeout:10000, wait:2000,  label:'principal (reintento)'},
+      {server:OSRM_SERVERS[1], timeout:10000, wait:1000,  label:'fallback Geofabrik'}
     ];
     let r=null, lastErr=null;
     const btnLbl=btn.textContent;

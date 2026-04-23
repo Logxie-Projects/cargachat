@@ -467,13 +467,37 @@ function parseHorarioLibre(txt){
   const out={v1Desde:'08:00',v1Hasta:'17:00',v2Desde:'',v2Hasta:''};
   if(!txt) return out;
   const s=String(txt).trim();
-  // Extraer todas las ventanas HH:MM-HH:MM o HH-HH
-  const regexVen=/(\d{1,2})(?::(\d{2}))?\s*(?:a|-|\s-\s|hasta)\s*(\d{1,2})(?::(\d{2}))?/gi;
+  // Helper: aplica AM/PM al hour
+  function to24(h, suf) {
+    if (!suf) return h;
+    const S = suf.replace(/\./g, '').toUpperCase();
+    if (S === 'PM' && h < 12) return h + 12;
+    if (S === 'AM' && h === 12) return 0;
+    return h;
+  }
+  // Regex que maneja AM/PM + "M" (mediodía colombiano = 12:00): "8:00 AM - 3:30 PM",
+  // "8:00 A.M A 5:00 P.M", "8:00 A.M A 12:00 M"
+  const regexVen=/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|m)?\s*(?:a|-|\s-\s|—|hasta)\s*(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|m)?/gi;
   const vents=[];
   let m; while((m=regexVen.exec(s))!==null){
-    const h1=('0'+m[1]).slice(-2), m1=m[2]||'00';
-    const h2=('0'+m[3]).slice(-2), m2=m[4]||'00';
-    vents.push([`${h1}:${m1}`,`${h2}:${m2}`]);
+    let h1=parseInt(m[1]); const m1=m[2]||'00'; const suf1=m[3];
+    let h2=parseInt(m[4]); const m2=m[5]||'00'; const suf2=m[6];
+    // Aplicar suffix solo si explícito (sin fallback cruzado — evita interpretar
+    // "12:00 M" como AM y convertirlo a 00:00 cuando es mediodía).
+    // "M" solo (meridiano Colombia) = 12:00 mediodía → PM cuando h=12.
+    const fix = (h, suf) => {
+      if (!suf) return h;
+      const S = suf.replace(/\./g, '').toUpperCase();
+      if (S === 'M') return 12;            // "12 M" = mediodía
+      if (S === 'PM' && h < 12) return h + 12;
+      if (S === 'AM' && h === 12) return 0;
+      return h;
+    };
+    h1=fix(h1, suf1); h2=fix(h2, suf2);
+    // Si la end es menor que start (ej. "8 a 5" sin AM/PM) asumir PM en el end
+    if (h2 < h1 && !suf2) h2 += 12;
+    const h1s=('0'+h1).slice(-2), h2s=('0'+h2).slice(-2);
+    vents.push([`${h1s}:${m1}`,`${h2s}:${m2}`]);
   }
   if(vents.length>=1){out.v1Desde=vents[0][0];out.v1Hasta=vents[0][1];}
   if(vents.length>=2){out.v2Desde=vents[1][0];out.v2Hasta=vents[1][1];}
@@ -482,9 +506,14 @@ function parseHorarioLibre(txt){
 
 // Adaptador: row de pedidos (Supabase) → objeto pedido del analizador
 function pedidoSupabaseAAnalizador(p, meta={}){
-  const hr=parseHorarioLibre(p.horario);
+  // Las ventanas pueden venir en `horario` (campo estructurado del parser n8n) o
+  // estar embebidas en `observaciones` (mayoría de pedidos legacy Avgust:
+  // "RECIBEN DE L-V DE 8:00 A.M A 3:30 P.M"). Intentar horario primero, fallback
+  // a observaciones. Si ninguno parsea una ventana, queda default 8-17.
+  const horaSrc=p.horario||p.observaciones||'';
+  const hr=parseHorarioLibre(horaSrc);
   // diasAtencion: heurística desde texto — LV default, LS si menciona "sab", LDFS si "dom"/"festivo"
-  const hs=(p.horario||'').toLowerCase();
+  const hs=horaSrc.toLowerCase();
   let diasAtencion='LV';
   if(hs.includes('sab')||hs.includes('sáb')) diasAtencion='LS';
   if(hs.includes('dom')||hs.includes('fest')||hs.includes('ldfs')) diasAtencion='LDFS';
@@ -589,7 +618,7 @@ async function loadFromSupabase(){
             if(MODO_FUENTE==='scenario'){ buildTripsFromCurrentData(); populateSelect(); handleDeepLinkAnalizador(); }
           }
         }).catch(e=>console.warn('[analizador] fetch scenarios extra falló:',e));
-      sbAnal.from('viajes_consolidados').select('*').in('estado',['pendiente','confirmado','en_ruta','entregado']).order('fecha_cargue',{ascending:false,nullsFirst:false}).limit(50)
+      sbAnal.from('viajes_consolidados').select('*').in('estado',['pendiente','confirmado','en_ruta','entregado','finalizado']).order('fecha_cargue',{ascending:false,nullsFirst:false}).limit(100)
         .then(async ({data})=>{
           if(data && data.length){
             VIAJES_ROWS=data;
@@ -643,9 +672,9 @@ async function loadFromSupabase(){
     st.textContent='Cargando recientes…';
     const {data:viajes,error:eV}=await sbAnal.from('viajes_consolidados')
       .select('*')
-      .in('estado',['pendiente','confirmado','en_ruta','entregado'])
+      .in('estado',['pendiente','confirmado','en_ruta','entregado','finalizado'])
       .order('fecha_cargue',{ascending:false,nullsFirst:false})
-      .limit(50);
+      .limit(100);
     if(eV) throw eV;
     VIAJES_ROWS=viajes||[];
 
@@ -1512,9 +1541,39 @@ async function runAnalysis(){
           if (curDay < sk.nextOpenDay) {
             reprogClock = dayOpen8AM;
           }
-          // Log drive leg (invisible en UI pero consistente en el timeline)
+          // Log drive leg
           timeline.push({time: reprogClock, day: Math.floor(reprogClock/(24*60)), type:'drive', city:'',
             action: `${driveMin} min / ${Math.round(kmRuta*10)/10} km`, cumKm: Math.round(reprogCumKm)});
+        }
+
+        // ── RESPETAR VENTANAS DEL DESTINO ──
+        // Si llegamos fuera de ventana (ej: 12:34 PM cuando el cliente cierra al mediodía),
+        // esperar hasta la siguiente ventana del día, o saltar al próximo día abierto.
+        {
+          let effDay = Math.floor(reprogClock / (24 * 60));
+          let mod = reprogClock % (24 * 60);
+          let wins = getWinsForDest(sk.destIdx, effDay);
+          // Si el día está cerrado, avanzar al próximo día abierto
+          let safetyMax = 14; // previene loop infinito
+          while ((!wins || wins.length === 0 || (mod > wins[wins.length-1].to)) && safetyMax-- > 0) {
+            const nxt = findNextOpenDay(sk.destIdx, effDay + 1);
+            if (nxt === effDay) break;
+            effDay = nxt;
+            const nw = getWinsForDest(sk.destIdx, effDay);
+            reprogClock = effDay * 24 * 60 + (nw[0]?.from || 8*60);
+            mod = reprogClock % (24 * 60);
+            wins = nw;
+          }
+          // Si hay ventanas hoy pero estamos fuera (ej: entre v1 y v2, o antes de v1), esperar
+          if (wins && wins.length && !isInWins(wins, mod)) {
+            const nxtStart = nextWinStart(wins, mod);
+            if (nxtStart !== -1) {
+              const wait = nxtStart - mod;
+              timeline.push({ time: reprogClock, day: effDay, type: 'wait', city: '',
+                action: `Espera ${wait} min — ${sk.city} cerrado hasta ${Math.floor(nxtStart/60)}:${String(nxtStart%60).padStart(2,'0')}`, dur: wait });
+              reprogClock += wait;
+            }
+          }
         }
         stopNum++;
         timeline.push({time: reprogClock, day: Math.floor(reprogClock/(24*60)), type:'dest',

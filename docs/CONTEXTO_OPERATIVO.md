@@ -354,7 +354,64 @@ Cuenta staff: bernardoaristizabal@logxie.com (logxie_staff).
 ---
 
 >
-> **Lo nuevo vs. bloque anterior (RLS aislamiento):** **Sub-tab 👥 Usuarios operativo en Catálogo** — Bernardo ya puede crear/resetear/suspender/eliminar cuentas de transportadoras + staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios. Edge Function `admin_user` deployada (5 acciones · service_role + gate `logxie_staff` via JWT · log a `acciones_operador`). Campo nuevo `perfiles.rol_transportadora` enum `comercial|operativo|facturacion` — informativo hoy, preparado para gate de tabs en mi-netfleet en sesión futura. Password auto-generado `Netfleet-XXXXXX` con botón "📱 Copiar para WhatsApp" que arma mensaje completo con link + email + pass. Onboarding listo: crear transportadora en Catálogo → crear N usuarios linkeados (uno por rol) → mandar credenciales por WhatsApp.
+> **Lo nuevo vs. bloque anterior (Catálogo Usuarios):** **LogxIA v1 en tab Pedidos + panel "Quién ofertó" inline en Viajes**. Tab Pedidos tiene 4ª opción "🤖 LogxIA" que canoniza bodegas (92 variantes YUMBO → 1 grupo), agrupa destinos por corredor logístico real (BOYACA-CUNDINAMARCA, EJE CAFETERO, SUR — no por zona administrativa que miente), filtra contenedores a banda separada, mezcla AVGUST+FATECO cuando corredor coincide, muestra ruta ordenada geográficamente y stats Ridge ($/kg, $/km, %flete-valor rojo si >3%). En Viajes, cards con ofertas muestran panel "Quién ofertó" sin expandir con KPIs históricos por transportadora. Validado con 1.297 viajes: Tunja-Villapinzón juntos 18x, Armenia-Chinchiná 43x — los corredores emergen de la operación real. Umbrales por corredor (BOYACA-CUND=10, EJE CAF=5) en tabla `zonas_umbrales`.
+
+## TL;DR de la sesión 2026-04-23 (tarde — LogxIA v1 + Ofertantes inline)
+
+### Bloque 1 — Panel "Quién ofertó" inline en Viajes (customer journey adjudicación)
+
+- **Motivación**: Bernardo veía el banner verde "1 oferta recibida · mejor \$X" pero al expandir la card la tabla mostraba `—` en la columna transp. Problema doble: (a) bug de datos (ofertas legacy insert desde mi-netfleet no grababa `transportadora_id`), (b) UX — tenía que expandir card para ver ofertas + no había KPIs por transportadora para decidir adjudicación.
+
+- **Fix render** — [control.html](../control.html):
+  - Helper `resolverOfertante(o)` con fallback chain: `ofertas.transportadora_id → usuario_id → perfiles.transportadora_id → transportadoras.nombre → perfiles.empresa → email → '—'`. Resuelve bien aunque el insert desde mi-netfleet no haya grabado el FK.
+  - Fetch `perfiles?select=id,nombre,email,empresa,transportadora_id` en `recargarTodo` (state.perfiles) para el fallback.
+  - Panel `.ofertantes-panel` visible sin expandir (entre head y body). Por card con ofertas muestra: transportadora · precio · Δ vs mejor · KPIs (# viajes · ticket prom · últ viaje) · botón Adjudicar.
+  - Helper `kpisOfertante(o)` calcula desde `state.viajes` filtered por `transportadora_id + estado IN (finalizado, entregado)` → count, avg flete, últ fecha. Usa 1145 viajes backfilled post-RLS.
+  - Helper `hace(iso)` formato tiempo relativo.
+  - Fix defensivo: si hay oferta `aceptada` en el viaje, las activas muestran "ya hay ganador" en vez de botón Adjudicar (previene inconsistencia como RT-TOTAL-1776821879387 donde se insertó oferta post-adjudicación porque Netfleet adjudicó pero el sync del Sheet pisó `estado=pendiente`).
+
+- **Decisión pendiente**: con "ofertas es solo visual hasta migrar asignación de AppSheet a Netfleet" (Bernardo), el botón Adjudicar en Netfleet crea riesgo de inconsistencia. Se deja operativo con fix defensivo. Decisión final (ocultar botón vs confirm reforzado) queda abierta para próxima sesión de audit Viajes.
+
+### Bloque 2 — LogxIA v1 en tab Pedidos (agrupar inteligente)
+
+- **Motivación**: en tab Pedidos, las 3 opciones "Agrupar por" (Ruta/Origen/Destino) usan el texto crudo → las 92 variantes de "PPAL 3PL LA CARBONERA YUMBO / OCCIDENTE ENTREGAS YUMBO / …" se veían como rutas distintas. Bernardo quería que LogxIA aplicara **reglas de consolidación** que él aplica hoy mental: bodegas mismas físicas agrupadas, cross-client BPO, corredores geográficos reales (no zonas administrativas), contenedores separados, umbrales por corredor.
+
+- **4 opciones en el selector ahora**: `Ruta · Origen · Destino · 🤖 LogxIA`.
+
+- **Pre-work: CIUDADES centralizado parcial**. Solo `control.html` ahora incluye `<script src="netfleet-core.js">`. Los otros 4 HTMLs (index, transportador, analizador, viaje) quedan con copia local hasta Sesión D (regla #1 auto-swap). Opción B del path (atajo) para no bloquear LogxIA.
+
+- **`netfleet-core.js` — nuevos exports globales**:
+  - `canonizarNodo(texto)` — usa `getCoordenadas` existente + resuelve nombre canónico en mayúsculas sin tildes. Ej: `PPAL 3PL LA CARBONERA YUMBO → YUMBO`. 191 ciudades curadas.
+  - `CORREDORES` — map 193 ciudades → 10 corredores: `VALLE · EJE CAFETERO · BOYACA-CUNDINAMARCA · HUILA-TOLIMA · SANTANDERES · LLANOS · SUR · COSTA · ANTIOQUIA · REMOTO`. Key insight: **Villapinzón (Cund) y Tunja (Boy) comparten corredor BOYACA-CUNDINAMARCA** porque la ruta real pasa por ambos. Validado con pares frecuentes del histórico (Tunja-Villapinzón 18x, Armenia-Chinchiná 43x, Pasto-Popayán 29x).
+  - `corredorDe(texto)` = `CORREDORES[canonizarNodo(texto).lower()]`.
+  - `estimarPrecioRidge(km, kg, paradas, corredor)` — fórmula Ridge portada verbatim desde `transportador.html` (R²=0.919). Con `CC_ZONA_AJUSTE` (14 zonas tradicionales) + mapping `CORREDOR_A_AJUSTE` (10 corredores → zona Ridge). Ej: BOYACA-CUNDINAMARCA usa ajuste 'BOYACA' (+87K, el más caro rural).
+  - **Cleanup pre-sesión**: el archivo tenía código legacy de landing (hero cards + FAB toggle). Se trimmeó a solo helpers reutilizables. -1521 líneas.
+
+- **Schema DB** — [db/zonas_umbrales.sql](../db/zonas_umbrales.sql):
+  - `zonas_umbrales(zona PK, min_pedidos, min_flete_pct=3, notas, updated_at, updated_by)` — RLS staff-only.
+  - Seed: `BOYACA-CUNDINAMARCA=10` · `EJE CAFETERO=5`. Umbrales restantes se completan iterativamente conforme Bernardo los defina.
+  - Carga a `state.zonasUmbrales` + `state.zonasUmbralesMap` en `recargarTodo` para lookup O(1) en el render.
+
+- **UI — `control.html` tab Pedidos en modo 🤖 LogxIA**:
+  - **Regla 0 — banda separada**: pedidos con `contenedores > 0` (100% Buenaventura, discriminador perfecto validado con DB: 101 con contenedores + 3756 sin) → banda arriba "📦 Vehículo completo — se ofertan solos". No consolidables.
+  - **Regla 1 — canonización**: `keyFor` usa `canonizarNodo(origen) → YUMBO`, `corredorDe(destino) → EJE CAFETERO`. Las 92 variantes de YUMBO → 1 grupo. `FUNZA → BOYACA-CUNDINAMARCA` mezcla 8 pedidos AVGUST (Boyacá) + 2 FATECO (Cundinamarca) cross-client.
+  - **Regla 2 — cross-client BPO**: implícito en la canonización. AVGUST + FATECO mezclan naturalmente si comparten `(origen_canon, corredor)`. No hace falta lookup de `plan_bpo` en esta v1 — el grouping funciona para cualquier cliente cuyo nombre de bodega mapee a ciudad canónica.
+  - **Regla 3 — umbrales por corredor**: hint verde si `N pedidos listos ≥ zonas_umbrales.min_pedidos` (señal A) OR `peso ≥ 4.000kg` (señal B). Amarillo si falta cerca. Gris si lejos.
+  - **Ruta ordenada** en label del grupo — `rutaOrdenada(origenCanon, pedidos)`: destinos únicos canonicalizados sorted by haversine desde origen. Max 5 visibles + "+N más". Ej: `YUMBO → ESPINAL → FUNZA → TUNJA`.
+  - **Stats Ridge por grupo** — línea secundaria con `estimarFleteGrupo(origenCanon, corredor, pedidos)`: `flete ≈ $X · N km (~línea) · P paradas · $/kg · $/km · %flete-valor` (rojo si >3%). Km usa haversine al destino más lejano × factor 1.25 (aprox ruta real vs línea recta).
+  - **Selección de grupo**: `toggleGrupo` extendido para matchear por `(canonizarNodo(origen), corredorDe(destino))` en modo logxia + banda especial `__LOGXIA_CONTENEDORES__`. Permite seleccionar todo el grupo de una (antes había que hacerlo 1x1 en logxia mode).
+
+- **E2E verificado**: 8 tests de `canonizarNodo` + 13 tests de `corredorDe` (TUNJA, VILLAPINZON, CARTAGO, ARMENIA, PASTO, MEDELLIN, ESPINAL, YUMBO, FUNZA, VILLAVICENCIO, BUCARAMANGA) + test de Ridge (Yumbo→Eje 5000kg 200km = \$1.568K / \$314/kg / \$7.840/km) + test toggle grupo. Todos PASS.
+
+- **Pendientes del módulo LogxIA**:
+  - Regla 5 (parada intermedia): detectar pedidos on-route (ej. Villapinzón en ruta Funza→Tunja) y flaguearlos como "candidato parada".
+  - Regla 6 (hub routing): Yumbo→Boyacá via Funza (marcar el hub intermedio).
+  - Persistir sugerencias a tabla `logxia_sugerencias` para learning loop Fase 1 (dashboard precisión: "LogxIA sugirió N consolidaciones, aceptaste M — ajustar umbral Y → X").
+  - Completar umbrales de los 8 corredores restantes conforme Bernardo los defina.
+  - Agregar ancho de UI para la 2da línea de stats Ridge (actualmente comprime en groupe-row-inner — revisar CSS).
+
+>
+> **Lo de la sesión anterior (Catálogo Usuarios):** **Sub-tab 👥 Usuarios operativo en Catálogo** — Bernardo ya puede crear/resetear/suspender/eliminar cuentas de transportadoras + staff desde `control.html` → 🏢 Catálogo → 👥 Usuarios. Edge Function `admin_user` deployada (5 acciones · service_role + gate `logxie_staff` via JWT · log a `acciones_operador`). Campo nuevo `perfiles.rol_transportadora` enum `comercial|operativo|facturacion` — informativo hoy, preparado para gate de tabs en mi-netfleet en sesión futura. Password auto-generado `Netfleet-XXXXXX` con botón "📱 Copiar para WhatsApp" que arma mensaje completo con link + email + pass. Onboarding listo: crear transportadora en Catálogo → crear N usuarios linkeados (uno por rol) → mandar credenciales por WhatsApp.
 
 ## TL;DR de la sesión 2026-04-23 (Catálogo · Usuarios)
 

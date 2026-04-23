@@ -1408,6 +1408,8 @@ async function runAnalysis(){
             timeline.push({time:nextOpen*24*60+8*60,day:nextOpen,type:'dest',city:sk.city+' (reprogramado)',
               idx:stopNum,cumKm:Math.round(cumKm),dur:sk.descMin,destIdx:sk.destIdx});
           }
+          // Limpiar — ya se reprogramaron acá, no queremos que el fallback post-loop los dup.
+          skippedDests.length = 0;
         }
         timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'return',city:to.name,idx:'R',cumKm:Math.round(cumKm)});
         break;

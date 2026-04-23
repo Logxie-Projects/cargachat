@@ -762,6 +762,24 @@ async function buscarViajePorRT(){
     const { data: peds, error: ePeds } = await sbAnal.from('pedidos').select('*')
       .eq('viaje_id', v.id).limit(500);
     if (ePeds) throw ePeds;
+    // BONUS: viajes duplicados/reconsolidados — el linker pudo haber asignado los
+    // pedidos a un viaje "hermano" con consecutivos similares. Fetch también por
+    // pedido_ref extraídos de consecutivos, así traigo los pedidos con sus horarios
+    // aunque estén asignados a otro viaje.
+    if (v.consecutivos) {
+      const tokens = String(v.consecutivos).split(',').map(t => t.trim()).filter(t => t && t.length >= 4 && !/^devolucion$/i.test(t));
+      if (tokens.length) {
+        try {
+          const { data: pedsByRef } = await sbAnal.from('pedidos').select('*')
+            .in('pedido_ref', tokens).limit(500);
+          (pedsByRef || []).forEach(p => {
+            if (!PEDIDOS_INDEX.has(p.id) || !(peds || []).some(x => x.id === p.id)) {
+              PEDIDOS_INDEX.set(p.id, p);
+            }
+          });
+        } catch(e){ console.warn('[analizador] fetch pedidos by ref falló:', e); }
+      }
+    }
     // Mergea al state existente sin duplicar
     if (!VIAJES_ROWS.some(x => x.id === v.id)) VIAJES_ROWS = [v, ...VIAJES_ROWS];
     (peds || []).forEach(p => PEDIDOS_INDEX.set(p.id, p));
@@ -832,8 +850,21 @@ function buildTripsFromCurrentData(){
     });
     VIAJES_ROWS.forEach(v=>{
       const rawPeds=pedsPorViaje.get(v.id)||[];
-      // Fallback: viajes históricos donde cantidad_pedidos (18) > pedidos linkeados (7)
-      // por limitación del linker (rangos, refs typeados raro, etc.). Para no dibujar un
+      // Incluir pedidos "prestados": pedidos cuyo pedido_ref está mencionado en
+      // v.consecutivos pero el linker los asignó a otro viaje (ej. duplicados o
+      // reconsolidados). Así obtenemos horarios/observaciones de esos pedidos
+      // cuando analizamos el duplicado.
+      if (v.consecutivos) {
+        const tokens = new Set(String(v.consecutivos).split(',').map(t => t.trim()).filter(Boolean));
+        const yaIncluidos = new Set(rawPeds.map(p => p.id));
+        PEDIDOS_INDEX.forEach(p => {
+          if (yaIncluidos.has(p.id)) return;
+          if (!p.pedido_ref) return;
+          if (tokens.has(p.pedido_ref)) rawPeds.push(p);
+        });
+      }
+      // Fallback: viajes históricos donde cantidad_pedidos > pedidos linkeados por
+      // limitación del linker (rangos, refs typeados raro, etc.). Para no dibujar un
       // mapa incompleto, generamos pedidos sintéticos para las ciudades que aparecen en
       // v.destino pero no tienen pedido linkeado.
       const destinosViaje = String(v.destino || '').split(',').map(s => s.trim()).filter(Boolean);

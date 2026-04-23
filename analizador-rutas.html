@@ -1680,7 +1680,7 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
       return `${h}h${m > 0 ? ' ' + m + 'm' : ''} descargue`;
     })()}</div></div>
     <div class="kpi ${kw} ${kd}"><div class="kpi-l">Días</div><div class="kpi-v">${totalDays}</div><div class="kpi-s">${pernoctaCount} pernocta</div></div>
-    <div class="kpi"><div class="kpi-l">Precio publicado</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">n8n · ${trip.km} km</div></div>
+    <div class="kpi" style="border-left:2px solid var(--danger)"><div class="kpi-l" style="color:var(--danger)">Extracostos</div><div class="kpi-v" style="color:var(--danger)">${ccFmt(costoAdicional)}</div><div class="kpi-s">${pernoctaCount}N viáticos + ${standbyDays}d standby</div></div>
     <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ${routeLabel}</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
   </div>`;
   

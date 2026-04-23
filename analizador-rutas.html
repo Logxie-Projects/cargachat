@@ -466,7 +466,16 @@ function setModoFuente(m){
 function parseHorarioLibre(txt){
   const out={v1Desde:'08:00',v1Hasta:'17:00',v2Desde:'',v2Hasta:''};
   if(!txt) return out;
-  const s=String(txt).trim();
+  // Pre-process: eliminar patrones de direcciones/teléfonos que generan falsos
+  // positivos (ej. "CRA 12 # 7B - 04", "CLL 6 SUR # 10-146", "CEL: 3214791752").
+  // Se borran para que el regex no los capture como ventanas horarias.
+  let s = String(txt)
+    .replace(/\b(CR|CRA|CALLE|CLL|CL|AVENIDA|AV|DIAG|DIAGONAL|TRANSVERSAL|TV|TRANSV|CARRERA|KM)\.?\s+[^,\.\n]+/gi, ' ')
+    .replace(/#\s*\d+[\w\-\s]*/g, ' ')            // "# 7B - 04", "# 10-146"
+    .replace(/\bN[oº°\.]\s*\d[\w\-]*/gi, ' ')     // "N10-146", "No. 40"
+    .replace(/\b(?:CEL|TEL|TELEFONO|CELULAR)[:\s]*\d+/gi, ' ')  // "CEL: 3214791752"
+    .replace(/\b\d{7,}\b/g, ' ')                  // números largos (telefónicos)
+    .trim();
   // Helper: aplica AM/PM al hour
   function to24(h, suf) {
     if (!suf) return h;
@@ -493,9 +502,14 @@ function parseHorarioLibre(txt){
       if (S === 'AM' && h === 12) return 0;
       return h;
     };
-    h1=fix(h1, suf1); h2=fix(h2, suf2);
-    // Si la end es menor que start (ej. "8 a 5" sin AM/PM) asumir PM en el end
-    if (h2 < h1 && !suf2) h2 += 12;
+    // Inferir AM/PM faltante: "2-4PM" → 14:00-16:00 (aplica PM a ambos si solo h2 lo tiene)
+    let effSuf1 = suf1, effSuf2 = suf2;
+    if (!suf1 && suf2 && h1 < 12) effSuf1 = suf2;
+    if (!suf2 && suf1 && h2 < 12 && h2 >= h1) effSuf2 = suf1;
+    h1 = fix(h1, effSuf1);
+    h2 = fix(h2, effSuf2);
+    // Si end < start sin AM/PM, asumir PM en end (ej. "8 a 5" → 8 AM - 17:00)
+    if (h2 < h1 && !suf2 && !suf1) h2 += 12;
     const h1s=('0'+h1).slice(-2), h2s=('0'+h2).slice(-2);
     vents.push([`${h1s}:${m1}`,`${h2s}:${m2}`]);
   }

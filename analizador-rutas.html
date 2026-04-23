@@ -832,14 +832,36 @@ function buildTripsFromCurrentData(){
     });
     VIAJES_ROWS.forEach(v=>{
       const rawPeds=pedsPorViaje.get(v.id)||[];
-      if(!rawPeds.length) return;
-      const pedidos=rawPeds.map((p,i)=>pedidoSupabaseAAnalizador(p,{
+      // Fallback: viajes históricos donde cantidad_pedidos (18) > pedidos linkeados (7)
+      // por limitación del linker (rangos, refs typeados raro, etc.). Para no dibujar un
+      // mapa incompleto, generamos pedidos sintéticos para las ciudades que aparecen en
+      // v.destino pero no tienen pedido linkeado.
+      const destinosViaje = String(v.destino || '').split(',').map(s => s.trim()).filter(Boolean);
+      const destinosConPedido = new Set(rawPeds.map(p => String(p.destino||'').trim()));
+      const sinteticos = destinosViaje
+        .filter(d => !destinosConPedido.has(d))
+        .map((d, si) => ({
+          id: `synth-${v.id}-${si}`,
+          viaje_id: v.id,
+          destino: d,
+          origen: v.origen,
+          peso_kg: 0,
+          valor_mercancia: 0,
+          pedido_ref: '(sin pedido linkeado)',
+          observaciones: '',
+          horario: null,
+          cliente_nombre: v.empresa || '',
+          _synth: true,
+        }));
+      const allRawPeds = [...rawPeds, ...sinteticos];
+      if(!allRawPeds.length) return;
+      const pedidos=allRawPeds.map((p,i)=>pedidoSupabaseAAnalizador(p,{
         viajeId:v.id, numero:i+1,
         viajeEmpresas:v.empresa||'',
         viajeZonas:v.zona||'',
         viajeFechaCargue: v.fecha_cargue ? String(v.fecha_cargue).slice(0,10):'',
         viajePesoTotal: v.peso_kg, viajeValorTotal: v.valor_mercancia,
-        viajeCantPedidos: v.cantidad_pedidos||rawPeds.length,
+        viajeCantPedidos: v.cantidad_pedidos||allRawPeds.length,
       }));
       ALL_PEDIDOS.push(...pedidos);
       const origenes=[...new Set(pedidos.map(p=>p.origen).filter(Boolean))];

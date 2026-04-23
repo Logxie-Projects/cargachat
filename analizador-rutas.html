@@ -1538,9 +1538,40 @@ function parseFecha(str){const parts=str.split('/');if(parts.length===3)return n
 
 function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing){
   const numDests=destConditions.length;
-  const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
+  // Pernoctas REALES = días entre cargue y última entrega (no solo las marcadas como 'pernocta').
+  // Ej: cargue Vie + última entrega Lun = 3 pernoctas (Vie→Sáb, Sáb→Dom, Dom→Lun), aunque
+  // el loop principal solo marque 1 'pernocta' visible en el timeline.
+  const destEvents = timeline.filter(t => t.type === 'dest');
+  const lastDeliveryDay = destEvents.length ? Math.max(...destEvents.map(t => t.day)) : 0;
+  const totalDays = lastDeliveryDay + 1;
+  const pernoctaCount = Math.max(0, totalDays - 1);
+  // Standby: días sin entregas reales entre el primero y el último (ej: Sáb+Dom cerrados
+  // cuando los pedidos de Boyacá solo atienden L-V). Cuesta $500K/día al cliente.
+  const entregaDays = new Set(destEvents.map(t => t.day));
+  let standbyDays = 0;
+  for (let d = 1; d < lastDeliveryDay; d++) {
+    if (!entregaDays.has(d)) standbyDays++;
+  }
+  const VIATICO_NOCHE = 100000;
+  const STANDBY_DIA = 500000;
+  const costoViaticos = pernoctaCount * VIATICO_NOCHE;
+  const costoStandby = standbyDays * STANDBY_DIA;
+  const costoAdicional = costoViaticos + costoStandby;
+  // Duración total desde cargue hasta última entrega — más representativo para Bernardo
+  // que "conducción sin paradas" (ej: 11h7m da mala impresión cuando en realidad son 3 días
+  // con pernoctas y standby fines de semana).
+  const cargueEvt = timeline.find(t => t.type === 'cargue');
+  const cargueStart = cargueEvt?.time || 0;
+  let lastDeliveryEnd = cargueStart;
+  destEvents.forEach(d => {
+    const end = (d.time || 0) + (d.dur || 0);
+    if (end > lastDeliveryEnd) lastDeliveryEnd = end;
+  });
+  const durTotalMin = Math.max(0, lastDeliveryEnd - cargueStart);
+  const durDias = Math.floor(durTotalMin / (24 * 60));
+  const durHoras = Math.round((durTotalMin % (24 * 60)) / 60);
+  const durTotalStr = durDias > 0 ? `${durDias}d ${durHoras}h` : `${durHoras}h`;
   const lastEvt=timeline[timeline.length-1];
-  const totalDays=Math.floor((lastEvt?.time||0)/(24*60))+1;
   const zona=ccDetectarZona(trip.destinoStr,trip.origenStr);
   const precioRidge=estimarPrecio(totalKm,trip.peso,numDests,trip.destinoStr,trip.origenStr);
   const rango=ccRango(totalKm);
@@ -1582,8 +1613,12 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   const routeLabel=isUserReorder?'Tu orden':'Ruta sugerida';
   let h=`<div class="kpis">
     <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder?'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
-    <div class="kpi"><div class="kpi-l">Conducción</div><div class="kpi-v">${Math.floor(totalDriveMin/60)}h${totalDriveMin%60}m</div><div class="kpi-s">sin paradas</div></div>
-    <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${numDests}h desc. total</div></div>
+    <div class="kpi"><div class="kpi-l">Duración total</div><div class="kpi-v">${durTotalStr}</div><div class="kpi-s">cargue → últ entrega</div></div>
+    <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${(() => {
+      const totalDescMin = destConditions.reduce((s, c) => s + (c.descMin || 60), 0);
+      const h = Math.floor(totalDescMin / 60), m = totalDescMin % 60;
+      return `${h}h${m > 0 ? ' ' + m + 'm' : ''} descargue`;
+    })()}</div></div>
     <div class="kpi ${kw} ${kd}"><div class="kpi-l">Días</div><div class="kpi-v">${totalDays}</div><div class="kpi-s">${pernoctaCount} pernocta</div></div>
     <div class="kpi"><div class="kpi-l">Precio publicado</div><div class="kpi-v">${ccFmt(trip.precio)}</div><div class="kpi-s">n8n · ${trip.km} km</div></div>
     <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ${routeLabel}</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
@@ -1616,7 +1651,9 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   // Si hay km base del sheet y la ruta calculada es >50% más larga → warning
   if(trip.km>0 && totalKm>trip.km*1.5)h+=`<div class="al al-w">Ruta OSRM ${fmt(totalKm)} km (+${Math.round(totalKm/trip.km*100-100)}% vs sheet ${trip.km} km)</div>`;
   else if(!trip.km && totalKm>0)h+=`<div class="al al-i">Ruta ${fmt(totalKm)} km (sin baseline — scenario nuevo o viaje sin km previo)</div>`;
-  if(pernoctaCount>0)h+=`<div class="al al-d">${pernoctaCount} pernocta — viáticos ~${ccFmt(pernoctaCount*100000)}</div>`;
+  if(pernoctaCount>0)h+=`<div class="al al-d">${pernoctaCount} pernocta${pernoctaCount>1?'s':''} — viáticos ~${ccFmt(costoViaticos)} (${ccFmt(VIATICO_NOCHE)}/noche)</div>`;
+  if(standbyDays>0)h+=`<div class="al al-w">${standbyDays} día${standbyDays>1?'s':''} de standby (sin entregas) — ~${ccFmt(costoStandby)} (${ccFmt(STANDBY_DIA)}/día)</div>`;
+  if(costoAdicional>0)h+=`<div class="al al-d"><strong>Costos adicionales totales: ${ccFmt(costoAdicional)}</strong> (viáticos + standby)</div>`;
   h+=`<div class="al al-i">Rango mercado (${rango.label}): ${ccFmt(rango.p25)} — ${ccFmt(rango.p75)}</div>`;
   h+='</div>';
   
@@ -1735,15 +1772,23 @@ async function exportPdf(){
     pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);
     const fechaStr=fecha.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const numDests=conds.length;
-    const pernoctaCount=timeline.filter(t=>t.type==='pernocta').length;
-    const totalDays=Math.max(...timeline.map(t=>t.day||0))+1;
+    // Misma lógica que renderResults: duración real cargue → últ entrega
+    const destEvents=timeline.filter(t=>t.type==='dest');
+    const lastDeliveryDay=destEvents.length?Math.max(...destEvents.map(t=>t.day)):0;
+    const totalDays=lastDeliveryDay+1;
+    const pernoctaCount=Math.max(0,totalDays-1);
+    const cargueEvt=timeline.find(t=>t.type==='cargue');
+    let lastDeliveryEnd=cargueEvt?.time||0;
+    destEvents.forEach(d=>{const end=(d.time||0)+(d.dur||0);if(end>lastDeliveryEnd)lastDeliveryEnd=end;});
+    const durMin=Math.max(0,lastDeliveryEnd-(cargueEvt?.time||0));
+    const durStr=Math.floor(durMin/(24*60))+'d '+Math.round((durMin%(24*60))/60)+'h';
     const info=[
       ['Viaje ID:',trip.id,'Fecha cargue:',fechaStr],
       ['Origen:',trip.origenes[0],'Empresas:',trip.empresas||'-'],
       ['Zonas:',trip.zonas||'-','Pedidos:',String(trip.pedidos.length)],
       ['Destinos:',String(numDests),'Peso total:',(trip.pesoTotal||'-')+' kg'],
       ['Valor mercancia:','$'+(trip.valorTotal||'-'),'Km totales:',fmt(totalKm)+' km'],
-      ['Conduccion:',Math.floor(totalDriveMin/60)+'h '+(totalDriveMin%60)+'m','Dias estimados:',totalDays+' ('+pernoctaCount+' pernocta)']
+      ['Duracion total:',durStr+' (cargue → ult entrega)','Dias estimados:',totalDays+' ('+pernoctaCount+' pernocta'+(pernoctaCount!==1?'s':'')+')']
     ];
     for(const row of info){
       pdf.setFont('helvetica','bold');pdf.text(row[0],margin,y);

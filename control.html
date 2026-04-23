@@ -6,6 +6,9 @@
   <title>NETFLEET — Control</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Diccionario CIUDADES curado (~200) + helpers normalizarNombre/variantes/getCoordenadas -->
+  <!-- usado por "Agrupar por LogxIA" (canonizarNodo) y futuras reglas autopilot. -->
+  <script src="netfleet-core.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -527,6 +530,29 @@
       background: #f0fdf4; border-bottom: 1px solid #dcfce7;
       font-size: 12px; color: #15803d; font-weight: 700;
     }
+    /* Panel "Quién ofertó" visible sin expandir — una fila por oferta activa, con KPIs + Adjudicar */
+    .ofertantes-panel { background:#f0fdf4; border-top:1px solid #bbf7d0; padding: 0.75rem 1.25rem; }
+    .ofertantes-panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #15803d; margin-bottom: 8px; }
+    .ofertante-row { display:grid; grid-template-columns: minmax(160px, 1.5fr) minmax(110px, auto) 1fr auto; gap: 12px; align-items:center; padding: 8px 10px; background: white; border:1px solid #d1fae5; border-radius: 6px; margin-bottom: 6px; }
+    .ofertante-row:last-child { margin-bottom: 0; }
+    .ofertante-row.mejor { border-color:#22c55e; box-shadow: 0 0 0 1px #22c55e; }
+    .ofertante-row.aceptada { background:#f0fdf4; border-color:#16a34a; }
+    .ofertante-row.rechazada, .ofertante-row.cancelada { background:#fafafa; border-color:#e5e7eb; opacity: 0.65; }
+    .ofertante-name { font-weight:700; font-size:13px; color:var(--gray-800); }
+    .ofertante-precio { display:flex; align-items:baseline; gap:6px; }
+    .ofertante-precio strong { font-size:15px; color:#15803d; }
+    .ofertante-precio.no-mejor strong { color:var(--gray-700); }
+    .ofertante-delta { font-size:11px; font-weight:600; }
+    .ofertante-delta.up { color:#dc2626; }
+    .ofertante-kpis { font-size:11px; color:var(--gray-600); }
+    .ofertante-kpis strong { color:var(--gray-800); }
+    .ofertante-estado-tag { font-size:10px; padding: 2px 6px; border-radius:4px; margin-left:6px; text-transform:uppercase; letter-spacing:0.3px; }
+    .ofertante-estado-tag.aceptada { background:#dcfce7; color:#15803d; }
+    .ofertante-estado-tag.rechazada, .ofertante-estado-tag.cancelada { background:#f3f4f6; color:var(--gray-500); }
+    @media (max-width: 700px) {
+      .ofertante-row { grid-template-columns: 1fr; gap:4px; }
+      .ofertante-row button { justify-self: flex-start; }
+    }
     .ofertas-banner-badge {
       background: #22c55e; color: white; padding: 2px 8px; border-radius: 10px;
       font-size: 11px; font-weight: 800;
@@ -951,6 +977,7 @@
             <button class="agrup-btn active" data-agrup="ruta"    onclick="cambiarAgrupPedidos('ruta')"   title="Agrupa por ruta origen → destino — ideal para detectar consolidaciones">Ruta</button>
             <button class="agrup-btn"        data-agrup="origen"  onclick="cambiarAgrupPedidos('origen')" title="Agrupa solo por origen">Origen</button>
             <button class="agrup-btn"        data-agrup="destino" onclick="cambiarAgrupPedidos('destino')" title="Agrupa solo por destino">Destino</button>
+            <button class="agrup-btn"        data-agrup="logxia"  onclick="cambiarAgrupPedidos('logxia')"  title="LogxIA canoniza bodegas (YUMBO, FUNZA…), agrupa destinos por zona, mezcla AVGUST+FATECO, saca contenedores aparte">🤖 LogxIA</button>
           </div>
         </div>
         <div style="overflow-x:auto; max-height: 70vh; overflow-y: auto">
@@ -1550,6 +1577,7 @@
     ofertas: [],         // todas las ofertas
     clientes: [],
     transportadoras: [],
+    perfiles: [],                  // perfiles de ofertantes (usuarios que hicieron ofertas) — para resolver nombre cuando ofertas.transportadora_id es NULL
     usuarios: [],                  // cargado lazy al entrar a sub-tab Usuarios
     scenarios: [],                 // rows de scenarios_viaje
     scenariosPedidos: [],          // rows de scenarios_viaje_pedidos
@@ -1855,7 +1883,7 @@
   async function recargarTodo() {
     try {
       const pedidosCols = 'id,viaje_id,pedido_ref,origen,destino,zona,peso_kg,fecha_cargue,valor_mercancia,valor_factura,cliente_id,empresa,cliente_nombre,contacto_nombre,contacto_tel,direccion,horario,llamar_antes,prioridad,motivo_viaje,tipo_mercancia,contenedores,cajas,bidones,canecas,unidades_sueltas,vendedor,jefe_zona,coordinador,observaciones,estado,revisado_at,revisado_por,revision_notas,created_at';
-      const [clientes, transp, pedidosAll, viajes, ofertas, intentos, scenarios, scenPeds] = await Promise.all([
+      const [clientes, transp, pedidosAll, viajes, ofertas, intentos, scenarios, scenPeds, perfiles, zonasUmbrales] = await Promise.all([
         getJson('clientes?select=*&order=nombre.asc'),
         getJson('transportadoras?select=*&order=nombre.asc'),
         // TODOS los pedidos paginados (incluye los que no tienen viaje y no son sin_consolidar:
@@ -1868,12 +1896,22 @@
         getJsonPaginated('intentos_entrega?select=*&order=pedido_id,intento_num'),
         getJson('scenarios_viaje?select=*&order=created_at.desc&limit=500'),
         getJson('scenarios_viaje_pedidos?select=*&limit=5000'),
+        // Perfiles para resolver ofertantes cuando ofertas.transportadora_id es NULL (bug legacy insert desde mi-netfleet)
+        getJson('perfiles?select=id,nombre,email,empresa,transportadora_id&limit=1000'),
+        // Umbrales por zona para regla LogxIA "despacho por servicio" (ej. BOYACÁ=10, EJE CAFETERO=5)
+        getJson('zonas_umbrales?select=zona,min_pedidos,min_flete_pct').catch(() => []),
       ]);
       state.pedidos = pedidosAll;
       state.clientes = clientes;
       state.transportadoras = transp;
       state.viajes = viajes;
       state.ofertas = ofertas;
+      state.perfiles = perfiles;
+      state.zonasUmbrales = zonasUmbrales;
+      // Map indexado zona → min_pedidos para lookup O(1) en el render
+      state.zonasUmbralesMap = Object.fromEntries(
+        (zonasUmbrales || []).map(u => [String(u.zona).toUpperCase(), u])
+      );
       state.intentos = intentos;
       state.scenarios = scenarios;
       state.scenariosPedidos = scenPeds;
@@ -2379,6 +2417,98 @@
   }
 
   // ═════════════ TAB PEDIDOS (Sin consolidar — ya revisados) ═════════════
+  // ─── Helpers del modo "🤖 LogxIA" (agrupar por) ───
+  // Distancia haversine en km entre 2 puntos [lat, lon]
+  function haversineKm(a, b) {
+    if (!a || !b) return Infinity;
+    const R = 6371;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLon = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180, lat2 = b[0] * Math.PI / 180;
+    const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2) * Math.sin(dLon/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  // Ruta ordenada: "ORIGEN → DEST1 → DEST2 → +N más". Destinos canonizados
+  // únicos, ordenados por distancia desde el origen. Máx 5 visibles.
+  function rutaOrdenada(origenCanon, pedidos) {
+    const unicos = new Set();
+    pedidos.forEach(p => {
+      // Si el destino tiene múltiples ciudades separadas por coma, procesar c/u
+      const partes = String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean);
+      partes.forEach(parte => {
+        const c = canonizarNodo(parte);
+        if (c) unicos.add(c);
+      });
+    });
+    const oCoords = origenCanon ? getCoordenadas(origenCanon) : null;
+    const ordenados = [...unicos].map(d => ({ d, coords: getCoordenadas(d) }))
+      .sort((a, b) => {
+        if (!oCoords) return a.d.localeCompare(b.d);
+        return haversineKm(oCoords, a.coords) - haversineKm(oCoords, b.coords);
+      });
+    const MAX = 5;
+    const visibles = ordenados.slice(0, MAX).map(x => x.d);
+    const resto = ordenados.length - MAX;
+    const rutaTxt = visibles.join(' → ') + (resto > 0 ? ` · +${resto} más` : '');
+    return `${origenCanon || '(sin origen)'} → ${rutaTxt || '(sin destino)'}`;
+  }
+
+  // Estima flete Ridge para un grupo LogxIA de pedidos.
+  // Devuelve { flete, km, paradas, costPorKg, costPorKm, pctValor } — todos null si no se puede.
+  function estimarFleteGrupo(origenCanon, corredor, pedidos) {
+    const oCoords = origenCanon ? getCoordenadas(origenCanon) : null;
+    if (!oCoords) return { flete: null, km: null, paradas: 0, costPorKg: null, costPorKm: null, pctValor: null };
+
+    // Destinos únicos canonicalizados (de todas las partes del destino separadas por coma)
+    const destinos = new Set();
+    pedidos.forEach(p => {
+      String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean).forEach(parte => {
+        const c = canonizarNodo(parte);
+        if (c) destinos.add(c);
+      });
+    });
+    const paradas = destinos.size || 1;
+
+    // Km = distancia al destino más lejano del origen (aproximación haversine)
+    let kmMax = 0;
+    destinos.forEach(d => {
+      const dc = getCoordenadas(d);
+      if (!dc) return;
+      const km = haversineKm(oCoords, dc);
+      if (km > kmMax) kmMax = km;
+    });
+    const km = Math.round(kmMax * 1.25); // factor ~1.25 aproxima ruta real vs línea recta
+
+    const kg = Math.round(pedidos.reduce((s, p) => s + (+p.peso_kg || 0), 0));
+    const valor = pedidos.reduce((s, p) => s + (+p.valor_mercancia || 0), 0);
+    const flete = estimarPrecioRidge(km, kg, paradas, corredor);
+    if (!flete) return { flete: null, km, paradas, costPorKg: null, costPorKm: null, pctValor: null };
+
+    const costPorKg = kg > 0 ? Math.round(flete / kg) : null;
+    const costPorKm = km > 0 ? Math.round(flete / km) : null;
+    const pctValor  = valor > 0 ? (flete / valor) * 100 : null;
+    return { flete, km, paradas, costPorKg, costPorKm, pctValor };
+  }
+
+  // Hint LogxIA con señales A (# pedidos vs umbral zona) y B (peso ≥ 4000kg).
+  // Señal B flete/valor ≤3% queda para v2 cuando tengamos estimarPrecio en pedidos.
+  function hintLogxia(zonaDest, pedidosListos, kg) {
+    const umbralRow = state.zonasUmbralesMap?.[(zonaDest || '').toUpperCase()];
+    const umbralA = umbralRow?.min_pedidos || null;
+    const señalA = umbralA && pedidosListos >= umbralA;
+    const señalB = kg >= 4000;
+    if (señalA && señalB) return `<span class="grp-hint hint-ok">✅ Despachable (${pedidosListos}/${umbralA} pedidos ∧ ${fmtNum(kg)}kg ≥ 4000)</span>`;
+    if (señalB)           return `<span class="grp-hint hint-ok">✅ Peso OK (${fmtNum(kg)}kg) — consolidar</span>`;
+    if (señalA)           return `<span class="grp-hint hint-ok">✅ Volumen cumple (${pedidosListos}/${umbralA} ${zonaDest}) — despachar por servicio</span>`;
+    if (umbralA && pedidosListos >= umbralA * 0.7) {
+      return `<span class="grp-hint hint-wait">🟡 ${pedidosListos}/${umbralA} — falta ${umbralA - pedidosListos} para ${zonaDest}</span>`;
+    }
+    if (pedidosListos >= 3 && kg >= 500) return `<span class="grp-hint hint-ok">💡 ${pedidosListos} listos — buen candidato</span>`;
+    if (pedidosListos === 1)             return `<span class="grp-hint hint-wait">⏳ 1 listo — esperar más</span>`;
+    return '';
+  }
+
   function renderPedidos() {
     const filtrados = pedidosFiltrados();
 
@@ -2428,8 +2558,8 @@
       return;
     }
 
-    // ───── AGRUPACIÓN (nuevo: selector Ruta / Origen / Destino) ─────
-    const modoAgrup = state.agruparPedidosPor || 'ruta'; // 'ruta' | 'origen' | 'destino'
+    // ───── AGRUPACIÓN (selector Ruta / Origen / Destino / LogxIA) ─────
+    const modoAgrup = state.agruparPedidosPor || 'ruta'; // 'ruta' | 'origen' | 'destino' | 'logxia'
     const sinConMode = state.filtroEstados?.size === 1 && state.filtroEstados.has('sin_consolidar');
     const tablaEl = document.querySelector('.pedidos-table');
     if (tablaEl) tablaEl.classList.toggle('compact', sinConMode);
@@ -2440,12 +2570,47 @@
       const d = (p.destino || '(sin destino)').trim();
       if (modoAgrup === 'origen')  return { key: o.toUpperCase(),           label: o,                   origen: o, destino: null };
       if (modoAgrup === 'destino') return { key: d.toUpperCase(),           label: d,                   origen: null, destino: d };
+      if (modoAgrup === 'logxia') {
+        // Regla 0: contenedores > 0 → banda separada (no consolidables, van solos)
+        if ((p.contenedores || 0) > 0) {
+          return { key: '__LOGXIA_CONTENEDORES__',
+                   label: '📦 Vehículo completo (contenedores) — se ofertan solos',
+                   origen: null, destino: null, tipo: 'no_consolidable' };
+        }
+        // Regla 1: canonizar origen vía dict CIUDADES (YUMBO, FUNZA…)
+        // Regla 3: agrupar destino por CORREDOR LOGÍSTICO (no por zona administrativa) —
+        //   Villapinzón (Cund) y Tunja (Boy) caen en BOYACA-CUNDINAMARCA porque la ruta
+        //   real los atraviesa juntos; data histórica confirma 18 viajes donde fueron juntos.
+        //   Usa corredorDe() de netfleet-core.js (fuente de verdad única junto a CIUDADES).
+        const oCanon = canonizarNodo(o) || o.toUpperCase();
+        // Destino puede tener múltiples ciudades separadas por coma → tomo la primera
+        // que se pueda canonizar para decidir corredor (las demás caen en mismo corredor
+        // si son lógicamente adyacentes, por construcción del mapa).
+        let corrDest = null;
+        const partes = String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean);
+        for (const parte of partes) {
+          corrDest = corredorDe(parte);
+          if (corrDest) break;
+        }
+        // Fallback: zona administrativa (ej. ORNAMENTALES / IMPORTACIONES de AVGUST que
+        // son categorías de negocio, no geografía — caen en un bucket específico)
+        corrDest = corrDest || String(p.zona || 'SIN CORREDOR').toUpperCase().trim();
+        return { key: `${oCanon}|${corrDest}`,
+                 label: `${oCanon} → ${corrDest}`, // reemplazo con ruta ordenada al renderizar
+                 origen: oCanon, destino: null, origenCanon: oCanon, zonaDest: corrDest, tipo: 'logxia' };
+      }
       // ruta (default): origen → destino
       return { key: `${o.toUpperCase()}|${d.toUpperCase()}`, label: `${o} → ${d}`, origen: o, destino: d };
     };
     filtrados.forEach(p => {
       const k = keyFor(p);
-      if (!grupos.has(k.key)) grupos.set(k.key, { label: k.label, origen: k.origen, destino: k.destino, pedidos: [] });
+      if (!grupos.has(k.key)) {
+        grupos.set(k.key, {
+          label: k.label, origen: k.origen, destino: k.destino,
+          tipo: k.tipo, origenCanon: k.origenCanon, zonaDest: k.zonaDest,
+          pedidos: []
+        });
+      }
       grupos.get(k.key).pedidos.push(p);
     });
     // Orden interno de pedidos
@@ -2465,6 +2630,10 @@
       return pedidos.filter(p => p.estado === 'sin_consolidar' && p.revisado_at).length;
     }
     const gruposOrdenados = [...grupos.entries()].sort((a, b) => {
+      // En modo LogxIA, el banda "contenedores" siempre arriba (no-consolidables first)
+      const aContenedor = a[1].tipo === 'no_consolidable';
+      const bContenedor = b[1].tipo === 'no_consolidable';
+      if (aContenedor !== bContenedor) return aContenedor ? -1 : 1;
       const lA = pedsListosDelGrupo(a[1].pedidos);
       const lB = pedsListosDelGrupo(b[1].pedidos);
       if (lA !== lB) return lB - lA;
@@ -2535,7 +2704,12 @@
 
     const html = [];
     for (const [key, grupo] of gruposOrdenados) {
-      const { label, pedidos } = grupo;
+      const { pedidos } = grupo;
+      // En modo LogxIA, reemplazo el label por la ruta ordenada geográficamente.
+      // Ej: "YUMBO → PAIPA → TUNJA → DUITAMA · +2 más" en vez de "YUMBO → BOYACÁ"
+      const label = (grupo.tipo === 'logxia')
+        ? rutaOrdenada(grupo.origenCanon, pedidos) + ` <span style="color:var(--gray-500);font-weight:500">(${grupo.zonaDest})</span>`
+        : grupo.label;
       const { kg, val, st } = statsDe(pedidos);
       const fechas = pedidos.map(p => p.fecha_cargue).filter(Boolean).sort();
       const rango = fechas.length ? `${fmtFecha(fechas[0])}${fechas[0]!==fechas[fechas.length-1] ? ' → ' + fmtFecha(fechas[fechas.length-1]) : ''}` : '';
@@ -2552,9 +2726,36 @@
         st.novedad  ? `<span class="st-pill st-nov">${st.novedad} novedad</span>`       : '',
       ].filter(Boolean).join(' ');
 
-      // Hint del grupo: en modo 'origen' el hint útil vive en cada sub-zona,
-      // no en el grupo completo (porque el grupo mezcla zonas no consolidables entre sí).
-      const hint = (modoAgrup === 'ruta' || modoAgrup === 'destino') ? hintDe(st.listos, kg) : '';
+      // Hint del grupo: depende del modo.
+      //  - ruta/destino: hint clásico por count de listos
+      //  - origen: hint útil en cada sub-zona, no en el grupo completo
+      //  - logxia:
+      //     - contenedores: sin hint (son no-consolidables por regla)
+      //     - normal: hintLogxia con señales A (zona umbral) y B (peso ≥4000)
+      let hint = '';
+      if (modoAgrup === 'logxia') {
+        if (grupo.tipo === 'logxia') hint = hintLogxia(grupo.zonaDest, st.listos, kg);
+      } else if (modoAgrup === 'ruta' || modoAgrup === 'destino') {
+        hint = hintDe(st.listos, kg);
+      }
+
+      // Métricas Ridge para LogxIA: $/kg, $/km, %flete-valor (color-coded rojo si >3%)
+      let logxiaMetrics = '';
+      if (modoAgrup === 'logxia' && grupo.tipo === 'logxia') {
+        const m = estimarFleteGrupo(grupo.origenCanon, grupo.zonaDest, pedidos);
+        if (m.flete) {
+          const pctCol = (m.pctValor != null && m.pctValor > 3) ? 'color:var(--red);font-weight:700' : '';
+          const pctTxt = m.pctValor != null ? `<span style="${pctCol}">${m.pctValor.toFixed(1)}% flete/val</span>` : '';
+          logxiaMetrics = `<div class="g-stats" style="opacity:0.9;font-size:12px">
+            flete ≈ <strong>${fmtCOP(m.flete)}</strong>
+            · <strong>${m.km}</strong> km (~línea)
+            · <strong>${m.paradas}</strong> paradas
+            · <strong>${fmtCOP(m.costPorKg)}</strong>/kg
+            · <strong>${fmtCOP(m.costPorKm)}</strong>/km
+            ${pctTxt ? ' · ' + pctTxt : ''}
+          </div>`;
+        }
+      }
 
       html.push(`
         <tr class="group-row">
@@ -2570,6 +2771,7 @@
               ${hint}
               <button class="g-action" onclick="toggleGrupo('${key.replace(/'/g,"\\'")}')">Seleccionar grupo</button>
             </div>
+            ${logxiaMetrics}
           </td>
         </tr>`);
 
@@ -2620,14 +2822,30 @@
   }
 
   function toggleGrupo(grupoKey) {
-    // Matchea el group key según el modo de agrupación actual (ruta | origen | destino).
-    // En ruta la key es "ORIGEN|DESTINO".
+    // Matchea el group key según el modo de agrupación actual (ruta | origen | destino | logxia).
+    // En ruta la key es "ORIGEN|DESTINO". En logxia "ORIGEN_CANON|CORREDOR" con banda especial
+    // "__LOGXIA_CONTENEDORES__" para pedidos con contenedores > 0.
     const modo = state.agruparPedidosPor || 'ruta';
     const del = pedidosFiltrados().filter(p => {
       const o = (p.origen  || '(sin origen)').trim().toUpperCase();
       const d = (p.destino || '(sin destino)').trim().toUpperCase();
       if (modo === 'origen')  return o === grupoKey;
       if (modo === 'destino') return d === grupoKey;
+      if (modo === 'logxia') {
+        // Banda de contenedores (regla 0)
+        if ((p.contenedores || 0) > 0) return grupoKey === '__LOGXIA_CONTENEDORES__';
+        if (grupoKey === '__LOGXIA_CONTENEDORES__') return false;
+        // Misma lógica que keyFor logxia: (canonizarNodo(origen), corredorDe(primer destino))
+        const oCanon = canonizarNodo(p.origen) || o;
+        let corrDest = null;
+        const partes = String(p.destino || '').split(',').map(s => s.trim()).filter(Boolean);
+        for (const parte of partes) {
+          corrDest = corredorDe(parte);
+          if (corrDest) break;
+        }
+        corrDest = corrDest || String(p.zona || 'SIN CORREDOR').toUpperCase().trim();
+        return `${oCanon}|${corrDest}` === grupoKey;
+      }
       return `${o}|${d}` === grupoKey;
     });
     const todosSeleccionados = del.every(p => state.seleccionados.has(p.id));
@@ -2969,6 +3187,70 @@
     lista.innerHTML = pendientes.map(v => renderViajeCard(v, 'subasta')).join('');
   }
 
+  // Resuelve el transportadora_id del ofertante (mismo fallback chain que resolverOfertante, pero devuelve el UUID para lookups)
+  function resolverOfertanteId(o) {
+    if (o.transportadora_id) return o.transportadora_id;
+    if (o.usuario_id) {
+      const p = state.perfiles.find(x => x.id === o.usuario_id);
+      if (p && p.transportadora_id) return p.transportadora_id;
+    }
+    return null;
+  }
+
+  // KPIs históricos por ofertante — cuenta viajes terminados de esa transportadora
+  function kpisOfertante(o) {
+    const tId = resolverOfertanteId(o);
+    if (!tId) return { nViajes: 0, ticketProm: null, ultimo: null };
+    const viajesDone = state.viajes.filter(v =>
+      v.transportadora_id === tId && ['finalizado', 'entregado'].includes(v.estado)
+    );
+    const nViajes = viajesDone.length;
+    const fletes = viajesDone.map(v => Number(v.flete_total || 0)).filter(n => n > 0);
+    const ticketProm = fletes.length ? fletes.reduce((s,n)=> s+n, 0) / fletes.length : null;
+    const fechas = viajesDone.map(v => v.fecha_cargue).filter(Boolean).sort();
+    const ultimo = fechas.length ? fechas[fechas.length - 1] : null;
+    return { nViajes, ticketProm, ultimo };
+  }
+
+  // Tiempo relativo ("hace 3d", "hace 2m", "hoy")
+  function hace(fechaIso) {
+    if (!fechaIso) return '—';
+    const d = new Date(fechaIso);
+    if (isNaN(d)) return '—';
+    const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (dias < 0) return 'futuro';
+    if (dias < 1) return 'hoy';
+    if (dias < 30) return `hace ${dias}d`;
+    if (dias < 365) return `hace ${Math.floor(dias/30)}m`;
+    return `hace ${Math.floor(dias/365)}a`;
+  }
+
+  // Resuelve el nombre de quien ofertó, con fallback chain:
+  // 1) ofertas.transportadora_id (FK directo) → transportadoras.nombre
+  // 2) ofertas.usuario_id → perfiles.transportadora_id → transportadoras.nombre
+  // 3) perfiles.empresa (texto libre)
+  // 4) perfiles.nombre o email
+  // 5) '—'
+  function resolverOfertante(o) {
+    if (o.transportadora_id) {
+      const t = state.transportadoras.find(x => x.id === o.transportadora_id);
+      if (t && t.nombre) return t.nombre;
+    }
+    if (o.usuario_id) {
+      const p = state.perfiles.find(x => x.id === o.usuario_id);
+      if (p) {
+        if (p.transportadora_id) {
+          const t = state.transportadoras.find(x => x.id === p.transportadora_id);
+          if (t && t.nombre) return t.nombre;
+        }
+        if (p.empresa) return p.empresa;
+        if (p.nombre) return p.nombre;
+        if (p.email) return p.email;
+      }
+    }
+    return '—';
+  }
+
   // Render genérico viaje-card (reusable para subasta/activos/historial)
   function renderViajeCard(v, contexto) {
     const ofertas = state.ofertas.filter(o => o.viaje_id === v.id);
@@ -3088,6 +3370,44 @@
 
         <div class="viaje-chevron">▼</div>
       </div>
+
+      ${esSubasta && ofertas.length > 0 ? (() => {
+        // Panel "Quién ofertó" visible sin expandir — decisión de adjudicación al primer vistazo
+        const ofSorted = [...ofertas].sort((a,b) => (a.precio_oferta||0) - (b.precio_oferta||0));
+        const mejor = ofSorted.find(o => o.estado === 'activa');
+        const mejorPrecio = mejor ? Number(mejor.precio_oferta) : null;
+        const hayAceptada = ofSorted.some(o => o.estado === 'aceptada');
+        return `
+          <div class="ofertantes-panel" onclick="event.stopPropagation()">
+            <div class="ofertantes-panel-title">Quién ofertó (${ofSorted.length})</div>
+            ${ofSorted.map(o => {
+              const k = kpisOfertante(o);
+              const esMejor = mejorPrecio && Number(o.precio_oferta) === mejorPrecio && o.estado === 'activa';
+              const delta = (mejorPrecio && o.estado === 'activa' && Number(o.precio_oferta) > mejorPrecio)
+                ? `<span class="ofertante-delta up">+${Math.round(((Number(o.precio_oferta) - mejorPrecio) / mejorPrecio) * 100)}%</span>`
+                : '';
+              const kpiLine = k.nViajes
+                ? `<strong>${k.nViajes}</strong> viajes${k.ticketProm ? ` · ${fmtCOP(k.ticketProm)} prom` : ''}${k.ultimo ? ` · últ ${hace(k.ultimo)}` : ''}`
+                : `<em style="color:var(--gray-400)">sin historial</em>`;
+              const estadoTag = (o.estado === 'activa' ? '' :
+                `<span class="ofertante-estado-tag ${o.estado}">${o.estado}</span>`);
+              const accion = (o.estado === 'activa' && !hayAceptada)
+                ? `<button class="btn btn-success" onclick="adjudicarOferta('${o.id}')">Adjudicar</button>`
+                : (o.estado === 'activa' && hayAceptada)
+                  ? `<span class="hint" style="font-size:10px;color:var(--gray-500)">ya hay ganador</span>`
+                  : '';
+              return `
+                <div class="ofertante-row ${esMejor ? 'mejor' : ''} ${o.estado !== 'activa' ? o.estado : ''}">
+                  <div class="ofertante-name">${resolverOfertante(o)}${estadoTag}</div>
+                  <div class="ofertante-precio ${esMejor ? '' : 'no-mejor'}">
+                    <strong>${fmtCOP(o.precio_oferta)}</strong>${delta}
+                  </div>
+                  <div class="ofertante-kpis">${kpiLine}</div>
+                  <div>${accion}</div>
+                </div>`;
+            }).join('')}
+          </div>`;
+      })() : ''}
 
       ${esActivo ? (() => {
         // Bloque tracking visible SIN expandir para viajes activos
@@ -3280,15 +3600,13 @@
               <thead><tr><th>#</th><th>precio</th><th>transp</th><th>estado</th><th>comentario</th><th>acción</th></tr></thead>
               <tbody>
                 ${ofertas.sort((a,b) => a.precio_oferta - b.precio_oferta).map((o, i) => {
-                  const tNombre = o.transportadora_id
-                    ? (state.transportadoras.find(t => t.id === o.transportadora_id) || {}).nombre
-                    : '—';
+                  const tNombre = resolverOfertante(o);
                   const esMejor = o.estado === 'activa' && i === 0;
                   return `
                     <tr class="${o.estado === 'aceptada' ? 'winner' : ''}">
                       <td>${i+1}</td>
                       <td><strong style="color:${esMejor || o.estado==='aceptada' ? 'var(--green)' : 'var(--gray-800)'}">${fmtCOP(o.precio_oferta)}</strong></td>
-                      <td>${tNombre || '—'}</td>
+                      <td>${tNombre}</td>
                       <td><span class="badge ${o.estado === 'aceptada' ? 'entregado' : o.estado === 'rechazada' ? 'cancelado' : 'pendiente'}">${o.estado}</span></td>
                       <td style="font-size:11px;color:var(--gray-600)">${o.comentario || '—'}</td>
                       <td>

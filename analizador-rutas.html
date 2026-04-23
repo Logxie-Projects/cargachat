@@ -1537,6 +1537,29 @@ async function runAnalysis(){
       }
       // Propagar al cumKm y total general para que el header refleje la distancia extra
       cumKm = reprogCumKm;
+
+      // Si había retorno a origen, reposicionarlo DESPUÉS de los reprogs
+      // (antes quedaba en Día 2 pre-reprog y no sumaba el drive real desde la última
+      // reprog al origen — Bernardo: "el retorno toma horas y no pesa en duración").
+      const returnIdx = timeline.findIndex(t => t.type === 'return');
+      if (returnIdx >= 0 && prevStop) {
+        const returnEvt = timeline.splice(returnIdx, 1)[0];
+        const origenCoords = origin && origin.lat ? { lat: origin.lat, lng: origin.lng } : null;
+        if (origenCoords) {
+          const kmLinea = havKmSk(prevStop, origenCoords);
+          const kmRuta = kmLinea * FACTOR_RUTA_SK;
+          const driveMin = Math.round(kmRuta / VEL_REPROG * 60);
+          reprogClock += driveMin;
+          reprogCumKm += kmRuta;
+          timeline.push({ time: reprogClock, day: Math.floor(reprogClock/(24*60)), type: 'drive',
+            city: '', action: `${driveMin} min / ${Math.round(kmRuta*10)/10} km (retorno)`, cumKm: Math.round(reprogCumKm) });
+        }
+        returnEvt.time = reprogClock;
+        returnEvt.day = Math.floor(reprogClock/(24*60));
+        returnEvt.cumKm = Math.round(reprogCumKm);
+        timeline.push(returnEvt);
+        cumKm = reprogCumKm;
+      }
     }
 
     // ── RENDER ──
@@ -1589,17 +1612,22 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   const costoViaticos = pernoctaCount * VIATICO_NOCHE;
   const costoStandby = standbyDays * STANDBY_DIA;
   const costoAdicional = costoViaticos + costoStandby;
-  // Duración total desde cargue hasta última entrega — más representativo para Bernardo
-  // que "conducción sin paradas" (ej: 11h7m da mala impresión cuando en realidad son 3 días
-  // con pernoctas y standby fines de semana).
+  // Duración total desde cargue hasta última entrega (o retorno si existe) — más
+  // representativo que "conducción sin paradas". Incluye el return event para que
+  // el viaje con retorno marque la diferencia (retorno desde últ entrega toma horas).
   const cargueEvt = timeline.find(t => t.type === 'cargue');
   const cargueStart = cargueEvt?.time || 0;
-  let lastDeliveryEnd = cargueStart;
+  let lastEventEnd = cargueStart;
   destEvents.forEach(d => {
     const end = (d.time || 0) + (d.dur || 0);
-    if (end > lastDeliveryEnd) lastDeliveryEnd = end;
+    if (end > lastEventEnd) lastEventEnd = end;
   });
-  const durTotalMin = Math.max(0, lastDeliveryEnd - cargueStart);
+  // Return event (si lo hay) — su time es cuando el camión LLEGA al origen tras
+  // manejar desde la última entrega. Debe pesar en la duración total.
+  timeline.filter(t => t.type === 'return').forEach(r => {
+    if ((r.time || 0) > lastEventEnd) lastEventEnd = r.time;
+  });
+  const durTotalMin = Math.max(0, lastEventEnd - cargueStart);
   const durDias = Math.floor(durTotalMin / (24 * 60));
   const durHoras = Math.round((durTotalMin % (24 * 60)) / 60);
   const durTotalStr = durDias > 0 ? `${durDias}d ${durHoras}h` : `${durHoras}h`;

@@ -1389,28 +1389,9 @@ async function runAnalysis(){
       timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',action:`${driveMin} min / ${legKm} km`,cumKm:Math.round(cumKm)});
       
       if(to.type==='return'){
-        // Before returning, check if there are skipped destinations to deliver
-        if(skippedDests.length>0){
-          timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
-            action:`[!] ${skippedDests.length} destino${skippedDests.length>1?'s':''} pendiente${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — requiere ruta adicional o espera`,dur:0});
-          // Add skipped dests as pending deliveries at end
-          for(const sk of skippedDests){
-            const nextOpen=findNextOpenDay(sk.destIdx,Math.floor(clock/(24*60)));
-            const etaEl=document.getElementById(`deta-${sk.destIdx}`);
-            const dateEl=document.getElementById(`ddate-${sk.destIdx}`);
-            if(etaEl) etaEl.textContent='Pendiente';
-            if(dateEl){
-              const dd=new Date(dateFechaBase);dd.setDate(dd.getDate()+nextOpen);
-              dateEl.textContent=dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})+' (próx. apertura)';
-              dateEl.className='late';
-            }
-            stopNum++;
-            timeline.push({time:nextOpen*24*60+8*60,day:nextOpen,type:'dest',city:sk.city+' (reprogramado)',
-              idx:stopNum,cumKm:Math.round(cumKm),dur:sk.descMin,destIdx:sk.destIdx});
-          }
-          // Limpiar — ya se reprogramaron acá, no queremos que el fallback post-loop los dup.
-          skippedDests.length = 0;
-        }
+        // Solo registrar el retorno; la reprogramación de skippedDests la maneja
+        // el bloque post-loop con cálculo secuencial (drive + descargue reales),
+        // ambos caminos (con/sin retorno) usan la misma lógica.
         timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'return',city:to.name,idx:'R',cumKm:Math.round(cumKm)});
         break;
       }
@@ -1440,7 +1421,7 @@ async function runAnalysis(){
           // More than 1 day wait — SKIP this destination, continue with others
           timeline.push({time:eff,day:effDay,type:'wait',city:'',
             action:`[>>] ${to.name}: cerrado hoy (abre en ${daysUntilOpen} días) — se continúa con otros destinos`,dur:0});
-          skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
+          skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen,lat:to.lat,lng:to.lng});
           // Don't advance clock — next destination departs from current position
           clock=eff; // reset clock to not count the undelivered stop time
           continue;
@@ -1461,7 +1442,7 @@ async function runAnalysis(){
           if(daysUntilOpen>1){
             timeline.push({time:eff,day:effDay,type:'wait',city:'',
               action:`[>>] ${to.name}: ventana cerrada, próx. apertura en ${daysUntilOpen} días — se sigue`,dur:0});
-            skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen});
+            skippedDests.push({city:to.name,destIdx,descMin,nextOpenDay:nextOpen,lat:to.lat,lng:to.lng});
             clock=eff;
             continue;
           }
@@ -1491,25 +1472,71 @@ async function runAnalysis(){
     }
 
     // Si quedaron destinos saltados (ventana >1d de espera) y no había stop de retorno
-    // que los reprogramara, los programamos acá al final — cada uno al día de su próx
-    // apertura a las 8 AM. Sin esto quedaban huérfanos ("se sigue" sin entrega).
+    // que los reprogramara, los programamos acá al final. Cada uno se calcula
+    // SECUENCIAL con drive time real (haversine × 1.25 @ 40 km/h), no todos al mismo 8 AM.
     if(skippedDests.length > 0){
+      // Distancia en línea recta entre 2 puntos {lat, lng}
+      const havKmSk = (a, b) => {
+        if (!a || !b || !a.lat || !b.lat) return 0;
+        const R = 6371;
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLng = (b.lng - a.lng) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+        const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2) * Math.sin(dLng/2)**2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      };
+      const VEL_REPROG = 40;          // km/h promedio al reprogramar
+      const FACTOR_RUTA_SK = 1.25;    // línea recta → carretera
+
       timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
         action:`[!] ${skippedDests.length} destino${skippedDests.length>1?'s':''} reprogramado${skippedDests.length>1?'s':''}: ${skippedDests.map(s=>s.city).join(', ')} — se entregan en su próxima apertura`,dur:0});
+
+      let reprogClock = null; // minutos absolutos desde cargueStart
+      let prevStop = null;    // último punto visitado en la reprogramación
+      let reprogCumKm = cumKm;
+
       for(const sk of skippedDests){
+        const dayOpen8AM = sk.nextOpenDay * 24 * 60 + 8 * 60;
+        if (reprogClock === null) {
+          // Primer reprogramado — el camión arranca ese día a las 8 AM desde su ubicación cercana
+          reprogClock = dayOpen8AM;
+        } else {
+          // Siguientes — drive desde el anterior + descMin acumulado
+          const kmLinea = havKmSk(prevStop, sk);
+          const kmRuta = kmLinea * FACTOR_RUTA_SK;
+          const driveMin = Math.round(kmRuta / VEL_REPROG * 60);
+          reprogClock += driveMin;
+          reprogCumKm += kmRuta;
+          // Si el siguiente abre más adelante, saltar a ese día 8 AM
+          const curDay = Math.floor(reprogClock / (24 * 60));
+          if (curDay < sk.nextOpenDay) {
+            reprogClock = dayOpen8AM;
+          }
+          // Log drive leg (invisible en UI pero consistente en el timeline)
+          timeline.push({time: reprogClock, day: Math.floor(reprogClock/(24*60)), type:'drive', city:'',
+            action: `${driveMin} min / ${Math.round(kmRuta*10)/10} km`, cumKm: Math.round(reprogCumKm)});
+        }
         stopNum++;
-        const etaMin = sk.nextOpenDay*24*60 + 8*60;
-        timeline.push({time:etaMin,day:sk.nextOpenDay,type:'dest',city:sk.city+' (reprogramado)',
-          idx:stopNum,cumKm:Math.round(cumKm),dur:sk.descMin,destIdx:sk.destIdx});
+        timeline.push({time: reprogClock, day: Math.floor(reprogClock/(24*60)), type:'dest',
+          city: sk.city + ' (reprogramado)', idx: stopNum, cumKm: Math.round(reprogCumKm),
+          dur: sk.descMin, destIdx: sk.destIdx});
+
         const etaEl=document.getElementById(`deta-${sk.destIdx}`);
         const dateEl=document.getElementById(`ddate-${sk.destIdx}`);
-        if(etaEl) etaEl.textContent=minToTime(etaMin);
+        if(etaEl) etaEl.textContent = minToTime(reprogClock);
         if(dateEl){
-          const dd=new Date(dateFechaBase);dd.setDate(dd.getDate()+sk.nextOpenDay);
+          const d = Math.floor(reprogClock/(24*60));
+          const dd=new Date(dateFechaBase);dd.setDate(dd.getDate()+d);
           dateEl.textContent=dd.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'})+' (reprogramado)';
           dateEl.className='late';
         }
+
+        // Avanzar el clock post-descargue
+        reprogClock += sk.descMin;
+        prevStop = sk;
       }
+      // Propagar al cumKm y total general para que el header refleje la distancia extra
+      cumKm = reprogCumKm;
     }
 
     // ── RENDER ──
@@ -1626,12 +1653,23 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
     <div class="kpi" style="border-left:2px solid var(--cyan)"><div class="kpi-l">Precio ${routeLabel}</div><div class="kpi-v">${ccFmt(precioRidge)}</div><div class="kpi-s">${zona||'General'} · ${totalKm} km</div></div>
   </div>`;
   
-  // Timeline by day
+  // Timeline by day — mostrar TODOS los días del rango, incluso sin entregas (standby visible)
   h+='<div class="tl-wrap">';
   for(let d=0;d<totalDays;d++){
-    const de=timeline.filter(t=>t.day===d);if(!de.length)continue;
+    const de=timeline.filter(t=>t.day===d);
     const ds=de.filter(t=>t.type==='dest').length;
     const dc=`tl-d${Math.min(d+1,4)}`;
+    const esStandby = !de.length && d > 0 && d < lastDeliveryDay;
+    if (esStandby) {
+      // Día vacío entre primero y último — standby (camión espera, cuesta $500K/día)
+      const dd = new Date(dateFechaBase); dd.setDate(dd.getDate() + d);
+      const diaNom = dd.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'short' });
+      h+=`<div class="tl-day ${dc} tl-standby" style="opacity:0.7"><div class="tl-dh"><span>Día ${d+1} · <span style="color:#92400e">${diaNom}</span></span><span style="color:#92400e">💤 standby (sin entregas)</span></div>`;
+      h+=`<div class="tl-r tl-wait" style="background:#fef3c7;color:#92400e"><span></span><span></span><span>⏸ Camión espera — clientes cerrados todo el día · costo ~${ccFmt(STANDBY_DIA)}</span><span></span><span></span></div>`;
+      h+='</div>';
+      continue;
+    }
+    if(!de.length)continue; // día fuera del rango útil — skip
     h+=`<div class="tl-day ${dc}"><div class="tl-dh"><span>Día ${d+1}</span><span>${ds} entrega${ds!==1?'s':''}</span></div>`;
     for(const e of de){
       const t=minToTime(e.time);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LogxIA — Analizador de Rutas v2</title>
+<title>LogxIA — Analizador de Rutas BETA (multi-vehículo)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
@@ -181,13 +181,17 @@ input[type="number"]{font-family:var(--mono)}
 <div class="hdr">
   <div class="hdr-l">
     <div class="logo">Lx</div>
-    <h1>Logx<span>IA</span> — Analizador de rutas</h1>
+    <h1>Logx<span>IA</span> — Analizador de rutas <span style="background:#FFB800;color:#0E1B4D;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.5px;margin-left:6px;vertical-align:middle">BETA</span></h1>
   </div>
   <div class="hdr-r">
     <span id="sheetStatus">Conectando...</span>
-    <a href="analizador-rutas-beta.html" title="Versión experimental con multi-vehículo y tracking real" style="color:#FFB800;font-size:10px;text-decoration:none;border:1px solid #FFB800;padding:3px 8px;border-radius:4px;font-weight:600">🧪 BETA</a>
+    <a href="analizador-rutas.html" style="color:rgba(255,255,255,.7);font-size:10px;text-decoration:none;border:1px solid rgba(255,255,255,.25);padding:3px 8px;border-radius:4px">← Volver al estable</a>
     <button onclick="loadFromSupabase()">Recargar</button>
   </div>
+</div>
+<div id="betaBanner" style="background:#FFB800;color:#0E1B4D;padding:6px 20px;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:12px">
+  <span>🧪 <strong>BETA</strong> — Multi-vehículo experimental. Tu plan: definir tiempo máximo de entrega, ver si necesitás 1 o más vehículos, capturar tiempos reales. Para uso productivo seguí en <a href="analizador-rutas.html" style="color:#0E1B4D;text-decoration:underline">el estable</a>.</span>
+  <button onclick="document.getElementById('betaBanner').style.display='none'" style="background:transparent;border:1px solid rgba(14,27,77,.3);color:#0E1B4D;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px">Ocultar</button>
 </div>
 <div class="app">
   <!-- LEFT SIDEBAR -->
@@ -234,6 +238,16 @@ input[type="number"]{font-family:var(--mono)}
         <div class="sb-row"><div class="sb-lbl">Descargue/parada <span class="u">min</span></div><input type="number" id="inDescargue" value="60" min="15" max="180" step="15"></div>
       </div>
     </div>
+    <div class="sb-s" style="background:rgba(255,184,0,.06);border-left:3px solid #FFB800">
+      <div class="sb-t" style="color:#B07700">🧪 Multi-vehículo (BETA)</div>
+      <div class="input-2">
+        <div class="sb-row"><div class="sb-lbl">Deadline <span class="u">horas</span></div><input type="number" id="inDeadlineH" value="24" min="4" max="168" step="2"></div>
+        <div class="sb-row"><div class="sb-lbl">Capacidad/veh <span class="u">kg</span></div><input type="number" id="inCapKg" value="8500" min="1000" max="35000" step="500"></div>
+      </div>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px;line-height:1.3">
+        Si el plan no cabe en un solo vehículo (peso o tiempo), divide automáticamente. Defaults: sencillo 8500 kg, 24h.
+      </div>
+    </div>
     <div class="sb-s">
       <div class="sb-t">Ventanas default (L-V)</div>
       <div class="win-grid" id="winGrid">
@@ -255,32 +269,34 @@ input[type="number"]{font-family:var(--mono)}
       <div class="sb-row"><div class="sb-lbl">Conducción nocturna max</div><select id="inNocturno"><option value="18">Hasta 6 PM</option><option value="20">Hasta 8 PM</option><option value="22" selected>Hasta 10 PM</option><option value="24">Sin límite (24h)</option></select></div>
     </div>
     <div class="sb-s">
-      <button class="btn-run" id="btnRun" onclick="runAnalysis()">Calcular ruta sugerida</button>
+      <button class="btn-run" id="btnRun" onclick="runAnalysisMulti()">Calcular plan multi-vehículo</button>
       <button class="btn-run" id="btnPdf" onclick="exportPdf()" style="margin-top:8px;background:var(--cyan);color:var(--navy);display:none">📄 Exportar PDF</button>
       <button class="btn-run" id="btnCheck" onclick="openCheckRuta()" style="margin-top:6px;background:var(--green);color:#fff;display:none">📋 Check de Ruta</button>
     </div>
   </div>
 
-  <!-- CENTER: 2 route rows -->
+  <!-- CENTER: vehicle rows (V1 always; V2 shown if multi-vehicle needed) -->
   <div class="center">
-    <!-- ROW 1: Suggested route -->
-    <div class="route-row sug">
+    <!-- Multi-vehículo summary banner -->
+    <div id="multiSummary" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 12px;font-size:11px;color:var(--text2)"></div>
+    <!-- ROW 1: Vehículo 1 -->
+    <div class="route-row sug" id="rowVeh1">
       <div class="map-panel">
-        <div class="map-label">Ruta sugerida</div>
+        <div class="map-label" id="labelVeh1">🚚 Vehículo 1</div>
         <div class="map-el" id="mapSugerido"></div>
       </div>
       <div class="results" id="resultsSug">
-        <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular ruta sugerida</strong></div>
+        <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular plan multi-vehículo</strong></div>
       </div>
     </div>
-    <!-- ROW 2: User route -->
-    <div class="route-row usr" id="rowUsuario">
+    <!-- ROW 2: Vehículo 2 (oculto si no hace falta) -->
+    <div class="route-row usr" id="rowUsuario" style="display:none">
       <div class="map-panel">
-        <div class="map-label">Tu orden</div>
+        <div class="map-label" id="labelVeh2" style="background:#FFB800;color:#0E1B4D">🚚 Vehículo 2</div>
         <div class="map-el" id="mapUsuario"></div>
       </div>
       <div class="results" id="resultsUsr">
-        <div class="empty">Reordena destinos con ▲▼ y presiona <strong>Recalcular con tu orden</strong></div>
+        <div class="empty">Vehículo 2 (se muestra si la consolidación no cabe en uno solo)</div>
       </div>
     </div>
   </div>
@@ -1269,6 +1285,182 @@ function clearMap(target){
   if(target==='usr'||target==='both'){mapUsrLayers.forEach(l=>mapUsr.removeLayer(l));mapUsrLayers=[];}
 }
 
+// ================================================================
+// BETA — MULTI-VEHÍCULO
+// Orquesta la división de pedidos en N vehículos (sugerencia automática)
+// y reusa el motor de runAnalysis() para renderizar cada uno.
+// ================================================================
+let _multiVehNum = 0; // 0 = legacy single-vehicle mode, 1=Vehículo 1, 2=Vehículo 2
+
+function _havKm(a, b){
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Estima minutos totales de un set de destinos (ida + paradas + descargues + retorno).
+// Aproximación por nearest-neighbor + haversine × 1.25 / 40 km/h. Sirve para
+// el splitting; el rendering real usa OSRM como siempre.
+function _estimaMinutosSet(destSet, origin, descMinPerStop, includeReturn){
+  if(!destSet.length) return 0;
+  const F = 1.25, VEL = 40; // factor + km/h
+  let cur = origin, totalKm = 0;
+  const remaining = [...destSet];
+  while(remaining.length){
+    let nearest=0, minD=Infinity;
+    for(let i=0;i<remaining.length;i++){
+      const d = _havKm(cur, remaining[i]);
+      if(d<minD){ minD=d; nearest=i; }
+    }
+    totalKm += minD * F;
+    cur = remaining[nearest];
+    remaining.splice(nearest,1);
+  }
+  if(includeReturn) totalKm += _havKm(cur, origin) * F;
+  const driveMin = totalKm / VEL * 60;
+  const stopMin = destSet.length * descMinPerStop;
+  return Math.round(driveMin + stopMin);
+}
+
+// Greedy split: ordena por distancia desde origen, llena vehículo hasta saturar
+// peso o tiempo, abre el siguiente. Devuelve [[d, d, d], [d, d], ...].
+function splitVehicles(destGeo, capKg, deadlineMinPerVeh, origin, descMinPerStop, cargueMin, includeReturn){
+  if(!destGeo.length) return [];
+  // Ordenar por distancia del origen — agrupa naturalmente vecinos cercanos
+  const sorted = [...destGeo].sort((a,b)=>_havKm(origin,a) - _havKm(origin,b));
+  const subsets = [];
+  let current = [];
+  for(const d of sorted){
+    const wouldKg = current.reduce((s,x)=>s+(x.peso||0),0) + (d.peso||0);
+    const wouldMin = cargueMin + _estimaMinutosSet([...current, d], origin, descMinPerStop, includeReturn);
+    const overWeight = wouldKg > capKg;
+    const overTime = wouldMin > deadlineMinPerVeh;
+    if(current.length && (overWeight || overTime)){
+      subsets.push(current);
+      current = [d];
+    } else {
+      current.push(d);
+    }
+  }
+  if(current.length) subsets.push(current);
+  return subsets;
+}
+
+function renderMultiSummary(subsets, capKg, deadlineH, origin, descMinPerStop, cargueMin, includeReturn){
+  const el = document.getElementById('multiSummary');
+  if(!el) return;
+  if(!subsets.length){ el.style.display='none'; return; }
+  const rows = subsets.map((sub, i) => {
+    const kg = sub.reduce((s,x)=>s+(x.peso||0),0);
+    const minTotal = cargueMin + _estimaMinutosSet(sub, origin, descMinPerStop, includeReturn);
+    const h = Math.floor(minTotal/60), m = minTotal%60;
+    const fits = minTotal <= deadlineH*60 && kg <= capKg;
+    const color = fits ? '#0a8a3a' : '#c2410c';
+    return `<span style="display:inline-block;margin-right:14px;color:${color}"><strong>🚚 V${i+1}:</strong> ${sub.length} dest · ${fmt(kg)} kg · ~${h}h${m?' '+m+'m':''}</span>`;
+  }).join('');
+  let header;
+  if(subsets.length === 1){
+    header = `<strong style="color:#0a8a3a">✓ Cabe en 1 vehículo</strong>`;
+  } else if(subsets.length === 2){
+    header = `<strong style="color:#0E1B4D">🚚 ${subsets.length} vehículos sugeridos</strong>`;
+  } else {
+    header = `<strong style="color:#c2410c">⚠ ${subsets.length} vehículos necesarios</strong> — sesión 1 muestra V1 + V2 (los otros se rendererizan en sesión 2). Considerá aumentar capacidad o deadline.`;
+  }
+  el.innerHTML = `${header} &nbsp;·&nbsp; cap ${fmt(capKg)} kg · deadline ${deadlineH}h<br><div style="margin-top:4px">${rows}</div>`;
+  el.style.display = 'block';
+}
+
+async function runAnalysisMulti(){
+  const tripIdx = document.getElementById('tripSelect').value;
+  if(tripIdx === '') return alert('Selecciona un viaje');
+  if(!destConditions.length) return alert('No hay destinos cargados');
+  const btn = document.getElementById('btnRun');
+  const lbl = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Calculando split…';
+
+  try {
+    const trip = TRIPS[tripIdx];
+    const capKg = parseInt(document.getElementById('inCapKg').value) || 8500;
+    const deadlineH = parseInt(document.getElementById('inDeadlineH').value) || 24;
+    const cargueMin = parseInt(document.getElementById('inCargue').value) || 180;
+    const descMinPerStop = parseInt(document.getElementById('inDescargue').value) || 60;
+    const includeReturn = document.getElementById('inRetorno').value === 'yes';
+
+    // Geocode origen para el split
+    const origenCiudad = extraerCiudad(trip.origenes[0]);
+    let origin = geo(origenCiudad);
+    if(!origin){
+      const coords = await geocodeCiudad(origenCiudad || trip.origenes[0]);
+      if(coords) origin = {lat:coords[0], lng:coords[1], name:origenCiudad || trip.origenes[0]};
+    }
+    if(!origin){ alert('Sin coords para origen: '+trip.origenes[0]); return; }
+
+    // Geocodear cada destino con su peso
+    const destGeo = [];
+    for(let i=0; i<destConditions.length; i++){
+      const cond = destConditions[i];
+      const ciudadReal = extraerCiudad(cond.city);
+      let c = geo(ciudadReal);
+      if(!c){
+        const coords = await geocodeCiudad(ciudadReal || cond.city);
+        if(coords) c = {lat:coords[0], lng:coords[1], name:cond.city.trim()};
+      }
+      if(c) destGeo.push({...c, origIdx:i, peso:cond.peso||0});
+    }
+    if(!destGeo.length){ alert('Sin destinos con coordenadas — revisar consola'); return; }
+
+    // SPLIT
+    const subsets = splitVehicles(destGeo, capKg, deadlineH*60, origin, descMinPerStop, cargueMin, includeReturn);
+    renderMultiSummary(subsets, capKg, deadlineH, origin, descMinPerStop, cargueMin, includeReturn);
+    document.getElementById('rowUsuario').style.display = subsets.length >= 2 ? 'grid' : 'none';
+
+    // Backup destConditions
+    const fullDC = [...destConditions];
+
+    // ── Vehículo 1 (siempre) ──
+    _multiVehNum = 1;
+    btn.textContent = 'Calculando V1 (OSRM)…';
+    destConditions = subsets[0].map(d => fullDC[d.origIdx]);
+    userOrder = destConditions.map((_,i)=>i);
+    suggestedOrder = [];
+    userReorderedFlag = false;
+    suggestedKPIs = null;
+    document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — ${destConditions.length} dest · ${fmt(destConditions.reduce((s,c)=>s+(c.peso||0),0))} kg`;
+    await runAnalysis();
+
+    // ── Vehículo 2 (si hace falta) ──
+    if(subsets.length >= 2){
+      _multiVehNum = 2;
+      btn.textContent = 'Calculando V2 (OSRM)…';
+      destConditions = subsets[1].map(d => fullDC[d.origIdx]);
+      userOrder = destConditions.map((_,i)=>i);
+      suggestedOrder = [];
+      userReorderedFlag = false;
+      suggestedKPIs = null;
+      document.getElementById('labelVeh2').textContent = `🚚 Vehículo 2 — ${destConditions.length} dest · ${fmt(destConditions.reduce((s,c)=>s+(c.peso||0),0))} kg`;
+      await runAnalysis();
+    }
+
+    // Restore para que el right panel siga usando el set completo
+    _multiVehNum = 0;
+    destConditions = fullDC;
+    userOrder = fullDC.map((_,i)=>i);
+    userReorderedFlag = false;
+    suggestedKPIs = null;
+
+  } catch(e){
+    console.error('[multi] error:', e);
+    alert('Error: '+(e.message||e));
+  } finally {
+    _multiVehNum = 0;
+    btn.disabled = false;
+    btn.textContent = 'Calcular plan multi-vehículo';
+  }
+}
+
 // Panel toggle
 function togglePanel(panel){
   const el=document.querySelector('.'+panel);
@@ -1754,10 +1946,15 @@ async function runAnalysis(){
     window._lastRoute={trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,fecha:dateFechaBase,destConditions:[...destConditions],isUserOrder:userReorderedFlag};
     document.getElementById('btnPdf').style.display='block';
     document.getElementById('btnCheck').style.display='block';
-    // First run = suggested map (cyan), subsequent runs with reorder = user map (navy)
-    if(!userReorderedFlag){
+    // BETA multi-vehículo: _multiVehNum=1→sug, =2→usr. Si =0, comportamiento legacy.
+    if(_multiVehNum === 2){
+      renderMap(tripData,ordered,'usr');
+    } else if(_multiVehNum === 1){
       renderMap(tripData,ordered,'sug');
-      clearMap('usr'); // Clear user map since this is the suggested route
+      // No clear 'usr' acá — V2 puede venir después en el mismo runMulti
+    } else if(!userReorderedFlag){
+      renderMap(tripData,ordered,'sug');
+      clearMap('usr');
     } else {
       renderMap(tripData,ordered,'usr');
     }
@@ -1825,13 +2022,15 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   // Save KPIs on first run (suggested route)
   const currentKPIs={km:totalKm,driveMin:totalDriveMin,days:totalDays,precio:precioRidge,pernoctas:pernoctaCount};
   const isUserReorder=userReorderedFlag;
-  
+  // BETA multi-vehículo: hide compare bar (it's "user vs sug"; meaningless across vehicles).
+  const _multiActive = (_multiVehNum === 1 || _multiVehNum === 2);
+
   if(!suggestedKPIs){
     suggestedKPIs=currentKPIs;
   }
-  
-  // Fill compare bar
-  if(suggestedKPIs){
+
+  // Fill compare bar (skip in multi-vehículo mode)
+  if(suggestedKPIs && !_multiActive){
     document.getElementById('cmpKmS').textContent=fmt(suggestedKPIs.km)+' km';
     document.getElementById('cmpTimeS').textContent=Math.floor(suggestedKPIs.driveMin/60)+'h'+suggestedKPIs.driveMin%60+'m';
     document.getElementById('cmpPriceS').textContent=ccFmt(suggestedKPIs.precio);
@@ -1856,9 +2055,9 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   }
   
   const kw=totalDays>1?'kw':'';const kd=totalDays>2?'kd':'';
-  const routeLabel=isUserReorder?'Tu orden':'Ruta sugerida';
+  const routeLabel = _multiVehNum === 1 ? 'Vehículo 1' : _multiVehNum === 2 ? 'Vehículo 2' : (isUserReorder?'Tu orden':'Ruta sugerida');
   let h=`<div class="kpis">
-    <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder?'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
+    <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder && !_multiActive ? 'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
     <div class="kpi"><div class="kpi-l">Duración total</div><div class="kpi-v">${durTotalStr}</div><div class="kpi-s">cargue → últ entrega</div></div>
     <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${(() => {
       const totalDescMin = destConditions.reduce((s, c) => s + (c.descMin || 60), 0);
@@ -1916,8 +2115,13 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   
   const emptyEl=document.getElementById('emptyState');if(emptyEl)emptyEl.style.display='none';
   
-  // Render to the correct panel
-  if(isUserReorder){
+  // Render to the correct panel — BETA multi-vehículo override
+  if(_multiVehNum === 2){
+    document.getElementById('resultsUsr').innerHTML=h;
+    document.getElementById('rowUsuario').classList.add('active');
+  } else if(_multiVehNum === 1){
+    document.getElementById('resultsSug').innerHTML=h;
+  } else if(isUserReorder){
     document.getElementById('resultsUsr').innerHTML=h;
     document.getElementById('rowUsuario').classList.add('active');
   } else {

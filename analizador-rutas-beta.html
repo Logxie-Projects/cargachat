@@ -64,14 +64,16 @@ input[type="number"]{font-family:var(--mono)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
-/* ── CENTER: shared map on top + N stacked vehicle panels below ── */
+/* ── CENTER: summary banner on top, then map (left) + stacked vehicle panels (right) ── */
 .center{display:flex;flex-direction:column;overflow:hidden}
-/* Shared map — fixed height, all vehicles superimposed with palette colors */
-.map-row-shared{height:45vh;min-height:280px;position:relative;border-bottom:2px solid var(--border2);flex-shrink:0}
+/* Horizontal split: map on the left, vehicle panels on the right */
+.main-split{flex:1 1 0;min-height:0;display:flex;flex-direction:row;overflow:hidden}
+/* Shared map — left column, takes 60% width, full split height. Todos los vehículos superpuestos con paleta */
+.map-row-shared{flex:1 1 60%;min-width:320px;position:relative;border-right:2px solid var(--border2)}
 .map-row-shared .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:4px 10px;border-radius:4px;pointer-events:none;background:rgba(255,255,255,.94);color:var(--navy);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:calc(100% - 140px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .map-row-shared .map-el{width:100%;height:100%}
-/* Vehicle timeline panels — stacked, scrollable */
-.vehicles-stack{flex:1 1 0;min-height:200px;overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+/* Vehicle timeline panels — right column, stacked vertically, scrollable */
+.vehicles-stack{flex:1 1 40%;min-width:320px;overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
 .veh-panel{border-bottom:3px solid var(--border2);flex-shrink:0}
 .veh-panel:last-child{border-bottom:none}
 .veh-header{padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;color:#fff;display:flex;align-items:center;gap:10px;border-bottom:2px solid rgba(0,0,0,.15)}
@@ -284,21 +286,24 @@ input[type="number"]{font-family:var(--mono)}
   <div class="center">
     <!-- Multi-vehículo summary banner -->
     <div id="multiSummary" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 12px;font-size:11px;color:var(--text2);max-height:140px;overflow-y:auto;flex-shrink:0"></div>
-    <!-- Shared map: all vehicles draw here with palette colors -->
-    <div class="map-row-shared">
-      <div class="map-label" id="labelShared">🗺 Mapa unificado</div>
-      <div class="map-el" id="mapSugerido"></div>
-    </div>
-    <!-- Dynamic vehicle panels container. V1 always present; V2..Vn created by runAnalysisMulti -->
-    <div id="vehiclesStack" class="vehicles-stack">
-      <div class="veh-panel" id="vehPanel1" data-veh-n="1">
-        <div class="veh-header" id="vehHeader1" style="background:#00BFDF;color:#0E1B4D">
-          <span class="veh-badge">1</span>
-          <span class="veh-name">VEHÍCULO 1</span>
-          <span class="veh-stat" id="vehStat1"></span>
-        </div>
-        <div class="veh-results" id="resultsV1">
-          <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular plan multi-vehículo</strong></div>
+    <!-- Horizontal split: map on left, vehicle panels on right -->
+    <div class="main-split">
+      <!-- Shared map: all vehicles draw here with palette colors -->
+      <div class="map-row-shared">
+        <div class="map-label" id="labelShared">🗺 Mapa unificado</div>
+        <div class="map-el" id="mapSugerido"></div>
+      </div>
+      <!-- Dynamic vehicle panels container. V1 always present; V2..Vn created by runAnalysisMulti -->
+      <div id="vehiclesStack" class="vehicles-stack">
+        <div class="veh-panel" id="vehPanel1" data-veh-n="1">
+          <div class="veh-header" id="vehHeader1" style="background:#00BFDF;color:#0E1B4D">
+            <span class="veh-badge">1</span>
+            <span class="veh-name">VEHÍCULO 1</span>
+            <span class="veh-stat" id="vehStat1"></span>
+          </div>
+          <div class="veh-results" id="resultsV1">
+            <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular plan multi-vehículo</strong></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2451,9 +2456,10 @@ function renderMap(tripData,ordered,target){
     } else if(s.type==='dest'){
       destCounter++;
       const num=destCounter;
-      // Label "V{n}.{idx}" si multi-N, solo idx si single. Corto para caber en pin.
-      const labelTxt = _multiVehNum > 0 ? `${n}.${num}` : `${num}`;
-      const fontSize = labelTxt.length > 4 ? 8 : labelTxt.length > 3 ? 9 : labelTxt.length > 2 ? 11 : 13;
+      // Label = orden dentro del vehículo (1, 2, 3...). El color del pin ya indica qué V.
+      // Popup al hover muestra "V3 · #2" para desambiguar sin saturar el pin.
+      const labelTxt = `${num}`;
+      const fontSize = num > 99 ? 9 : num > 9 ? 11 : 13;
       const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:${fontSize}px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">${labelTxt}</div>`;
       const icon=L.divIcon({className:'num-marker',html,iconSize:[26,26],iconAnchor:[13,13]});
       const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:500+num});

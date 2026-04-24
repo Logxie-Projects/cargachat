@@ -1,6 +1,6 @@
 # Estado actual Netfleet
 
-> Foto del proyecto al **2026-04-23 (sesión — Catálogo · Usuarios con Edge Function)**.
+> Foto del proyecto al **2026-04-24 (tras overhaul analizador + doble confirm consolidar directo)**.
 
 ---
 
@@ -11,9 +11,70 @@
 ### ✅ Sesión A — COMPLETADA (2026-04-23): Sub-tab 👥 Usuarios en Catálogo
 Ver TL;DR abajo.
 
+### ✅ Sesión C — COMPLETADA (2026-04-23 tarde/noche): Overhaul analizador-rutas.html
+18 commits con fixes de KPIs, reprogramación secuencial, parser horario, pedidos sintéticos/prestados, OSRM fallback, input búsqueda RT. Ver TL;DR abajo.
+
 ---
 
-### 🎯 Sesión C — **Auditoría funcional Pedidos + Viajes (control.html)** — sin estimado, termina cuando ambos tabs queden claros
+### 🎯 Sesión E — **Ajustes adicionales al analizador** — sin estimado, sigue sobre lo que quedó abierto del overhaul
+
+**Objetivo**: atacar las deudas documentadas del analizador + cualquier ajuste que Bernardo encuentre al usarlo en producción con viajes reales.
+
+**Lo que YA ESTÁ hecho** (para no re-construir):
+- Canonización 191 ciudades + 10 corredores (netfleet-core.js)
+- KPIs realistas (duración total cargue→últ entrega, extracostos rojos con viáticos+standby, descargue real)
+- Reprogramación secuencial respetando ventanas de clientes (drive time, no todos a 8 AM)
+- Día standby visible entre primer y último día
+- Return event se mueve al final del timeline (suma drive real desde últ reprog al origen)
+- Parser horario con AM/PM/M/mediodía + fallback a observaciones + filtro de direcciones/teléfonos
+- Pedidos sintéticos para destinos en v.destino sin pedido linkeado
+- Pedidos "prestados" via v.consecutivos para viajes duplicados (TR REEMPLAZADA + real)
+- OSRM fallback haversine a 30 km/h con banner "⚠ aproximado"
+- Input "Buscar por RT" en sidebar (bypasa limit 100, ILIKE)
+- Ediciones manuales (priority/descMin/ventanas/días) marcan userReorderedFlag=true
+
+**Deudas abiertas documentadas**:
+1. **Parser sabatino** — cuando observación dice `"L-V 8am-5:30pm. Sábado 8am-11am"` el parser toma las 2 primeras ventanas sin distinguir día (v2 queda como Sábado incorrectamente). Requiere segmentación por día (sección L-V vs Sábado).
+2. **Linker v6 TR REEMPLAZADA** — 84 viajes legacy con `proveedor='TR REEMPLAZADA'` (placeholders del AppSheet). El linker v3/v4 a veces asigna pedidos al TR REEMPLAZADA en lugar del viaje real hermano. Fix propuesto: Postgres function que re-linkea pedidos, integrada al chain `fn_run_linkers`.
+3. **Verificar en producción** que "netfleet.app/analizador-rutas.html" cargue viajes/pedidos correctamente. Al final de sesión anterior Bernardo reportó "no cargó" — probablemente cache/sesión, sin stack trace.
+4. **Test E2E de user reorder**: marcar priority / editar ventanas / cambiar días → "Recalcular con tu orden" → fila USR (abajo) se actualiza correctamente. Fix hecho pero sin verificación end-to-end.
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md (obligatorios).
+Especialmente el TL;DR "overhaul analizador-rutas.html"
+(sesión 2026-04-23 tarde/noche) para contexto de los últimos
+~20 commits relacionados al analizador.
+
+OBJETIVO: ajustes al analizador de rutas (analizador-rutas.html).
+
+CONTEXTO RÁPIDO (qué YA funciona, no re-construir):
+- Canonización 191 ciudades (netfleet-core.js CIUDADES + CORREDORES)
+- KPIs realistas: Duración total, Extracostos (viáticos+standby rojo),
+  descargue real por destino
+- Reprogramación secuencial respetando ventanas (drive time entre reprogs)
+- Día standby visible (sáb+dom cerrados visibles como fila)
+- Return event al final del timeline
+- Parser horario AM/PM/M con fallback a observaciones + filtro direcciones
+- Pedidos sintéticos + "prestados" (viajes duplicados)
+- OSRM fallback haversine 30 km/h
+- Input "Buscar por RT" en sidebar
+- userReorderedFlag en priority/descMin/ventanas/días
+
+DEUDAS ABIERTAS (posibles ajustes):
+1. Parser sabatino (segmentación L-V vs Sábado)
+2. Linker v6 TR REEMPLAZADA (84 viajes legacy con placeholder)
+3. Investigar "netfleet no cargó" reportado al cierre anterior
+4. Test E2E user reorder (priority/ventanas en fila USR)
+
+Te paso qué específicamente quiero ajustar.
+
+Cuenta staff: bernardoaristizabal@logxie.com
+```
+
+---
+
+### 🎯 Sesión C-OLD — COMPLETADA — **Auditoría funcional Pedidos + Viajes (control.html)**
 
 **Objetivo**: revisar con Bernardo, tab por tab, qué de lo que existe hoy se usa en la operación real, qué falta, y qué es candidato a eliminar. La base del panel creció mucho en los últimos días (pistas LogxIA, agrupar por ruta, sub-totales, hints, Scenarios, bloque tracking, Drive API para cumplidos) — hay que hacer un pase de consolidación antes de seguir construyendo arriba.
 

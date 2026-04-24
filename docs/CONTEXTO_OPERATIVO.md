@@ -354,7 +354,64 @@ Cuenta staff: bernardoaristizabal@logxie.com (logxie_staff).
 ---
 
 >
-> **Lo nuevo vs. bloque anterior (Catálogo Usuarios):** **LogxIA v1 en tab Pedidos + panel "Quién ofertó" inline en Viajes**. Tab Pedidos tiene 4ª opción "🤖 LogxIA" que canoniza bodegas (92 variantes YUMBO → 1 grupo), agrupa destinos por corredor logístico real (BOYACA-CUNDINAMARCA, EJE CAFETERO, SUR — no por zona administrativa que miente), filtra contenedores a banda separada, mezcla AVGUST+FATECO cuando corredor coincide, muestra ruta ordenada geográficamente y stats Ridge ($/kg, $/km, %flete-valor rojo si >3%). En Viajes, cards con ofertas muestran panel "Quién ofertó" sin expandir con KPIs históricos por transportadora. Validado con 1.297 viajes: Tunja-Villapinzón juntos 18x, Armenia-Chinchiná 43x — los corredores emergen de la operación real. Umbrales por corredor (BOYACA-CUND=10, EJE CAF=5) en tabla `zonas_umbrales`.
+> **Lo nuevo vs. bloque anterior (LogxIA+Ofertantes):** **Overhaul del analizador de rutas** (`analizador-rutas.html`). 18 commits en una sesión extendida atacaron bugs + mejoras de UX reportados por Bernardo al usar el analizador en casos reales. Lo más impactante: **KPIs que reflejan realidad** (duración total cargue→últ entrega, extracostos rojos con viáticos+standby, descargue real sumado), **reprogramación secuencial respetando ventanas** (no más 8 AM para todos), **parser horario AM/PM/M/mediodía + fallback a observaciones**, **pedidos sintéticos + "prestados"** para viajes duplicados con linker imperfecto, **fallback haversine cuando OSRM público satura**, **input búsqueda por RT** en sidebar para histórico. Cada fix con un símtoma concreto de Bernardo. Commits: `ceae39a` → `83bf046`.
+
+## TL;DR de la sesión 2026-04-23 (tarde/noche — analizador-rutas.html overhaul)
+
+### Contexto
+
+Después de cerrar el bloque LogxIA v1 + Ofertantes (commit `ceae39a`), Bernardo pasó a probar el analizador de rutas con un scenario y viaje reales. Detectó 15+ síntomas distintos que colectivamente volvían el análisis poco confiable: horas irreales (12:34 PM cuando cliente cerrado), extracostos subestimados (1 pernocta de $100K para un viaje de 3 días que toma fin de semana), destinos faltantes (18 pedidos → mapa con 7), ventanas no respetadas en reprogramaciones. La sesión se volvió un walkthrough estilo "paso por paso, fix por fix" hasta que el analizador quedó representando la operación real.
+
+### Fixes agrupados por tema
+
+**KPIs realistas (duración, extracostos, descargue)**
+- "Conducción 11h7m · sin paradas" reemplazado por **"Duración total 3d 12h · cargue → últ entrega"** — refleja días calendario reales incluyendo pernoctas y fin de semana.
+- **Pernoctas reales** = totalDays - 1 (antes contaba solo las visibles en timeline, ahora las implícitas por fin de semana también).
+- **Standby** nuevo: días sin entregas entre primero y último a **$500.000/día** (sáb+dom cerrados por clientes Boyacá = $1M extra).
+- KPI **"Extracostos"** en rojo reemplaza "Precio publicado" (que era siempre $0 para scenarios). Suma viáticos ($100K/noche × N pernoctas) + standby.
+- "10h desc. total" (asumía 60min×10) → **descargue real** sumando `descMin` individual de cada destino.
+- Fix división por cero: "+Infinity% vs sheet 0 km" cuando `trip.km=0` (scenario nuevo) → mensaje informativo.
+
+**Reprogramación secuencial que respeta ventanas** — `b1f9c6c`, `60151b7`, `d014c75`
+- Antes: destinos saltados (ventana cerrada >1 día) se programaban TODOS a `nextOpenDay 8 AM` sin drive time entre ellos.
+- Ahora: **primer reprog a 8 AM + siguientes con drive haversine×1.25 @ 40 km/h + descMin**. Si llegan fuera de horario del cliente (12:34 PM con ventana hasta 12:00) timeline agrega `⏳ Espera hasta 14:00` y posterga la entrega.
+- **Día standby visible** entre primer y último día: banner amarillo `📅 Día 3 · domingo · 💤 standby · $500K` (antes se saltaba).
+- **Unifica con/sin retorno**: antes `con retorno` usaba código viejo (todos a 8 AM) y `sin retorno` usaba el nuevo. Ahora ambos usan el mismo cálculo secuencial. Return event se mueve al final para sumar drive real desde la últ reprog al origen.
+- Fix duplicado reprog cuando hay retorno: `skippedDests.length = 0` después del primer reprogramming, previene que el post-loop duplique.
+
+**Parser horario robusto** — `d014c75`, `1a821ef`
+- Antes: `parseHorarioLibre` solo reconocía formatos tipo `8:00-12:00` o `8 a 12`. Default 08:00-17:00 cuando no parseaba.
+- Ahora: entiende `AM/PM`, `A.M./P.M.`, `M` (mediodía = 12:00), `"2-4 PM"` con inferencia (si solo end tiene suffix PM y h1<12, aplica PM también a h1).
+- **Fallback a `pedido.observaciones`** cuando `pedido.horario` es NULL. Mayoría de pedidos Avgust legacy tienen el horario embebido en texto libre tipo `"RECIBEN DE L-V DE 8:00 A.M A 3:30 P.M"`.
+- **Pre-procesa direcciones/teléfonos** para evitar falsos positivos: `"CLL 6 SUR # 10-146 BRR"` antes daba ventana 10:00-14:00 (extraía "10-146"). Ahora se eliminan patrones de calle (CRA/CLL/CALLE/AV/DIAG), numeración (`#`, `Nº`), teléfonos (CEL:, ≥7 dígitos).
+- Testeado contra 13 observaciones reales del scenario de Bernardo: **10 parsean correctamente**, 3 requieren segmentación por día (deuda documentada — pendiente).
+
+**Data: viajes incompletos + duplicados** — `d40f2a9`, `462f2bb`, `e2f0308`
+- **Pedidos sintéticos** para destinos listados en `v.destino` pero sin pedido linkeado. RT-TOTAL-1775753721851 tenía 12 ciudades en `v.destino` pero solo 7 pedidos linkeados (por linker v3/v4 con rangos/refs raras). Ahora las 12 aparecen en el mapa (las sin pedido con ref `(sin pedido linkeado)` y peso 0).
+- **Pedidos "prestados"** vía consecutivos: cuando un viaje tiene duplicado/reconsolidación (`TR REEMPLAZADA` + viaje real con mismos consecutivos), el analizador trae pedidos con sus horarios aunque estén linkeados al otro viaje. Fetch por `pedido_ref IN (tokens de v.consecutivos)` además del `viaje_id`.
+- **Input "Buscar por RT"** en sidebar — bypass del fetch limit (100) para consultar cualquier viaje del histórico. ILIKE para match parcial. Ideal para auditar viajes viejos finalizados.
+- Fetch default ahora incluye **estado `finalizado`** + limit `100` (antes 50 sin finalizados).
+
+**OSRM saturado → fallback haversine** — `b7b18b4`, `df0ab3e`
+- Antes: si OSRM público (router.project-osrm.org) no respondía tras 3 intentos (30s × 3 = 93s), error final "saturado" y analizador bloqueado.
+- Ahora: timeout 30s → **10s por intento** (total 33s max). Si los 3 fallan, **fallback haversine × 1.25 @ 30 km/h** con banner amarillo "⚠ OSRM saturado — usando distancia aproximada [Reintentar]". Usuario sigue trabajando con distancias y duraciones aproximadas.
+
+**Otros fixes** — `74672a5`, `402fbdc`, `83bf046`
+- Colisión `CC_ZONA_AJUSTE` al centralizar en `netfleet-core.js`: eliminada declaración local en `analizador-rutas.html`.
+- `dateFechaBase` scope fix en `renderResults` (estaba definido solo en `runAnalysis`).
+- Scenarios dropdown completo: antes solo mostraba el scenario inicial cuando se deep-linkeaba con `?scenario=<id>`; ahora trae sus pedidos junto con los 100 scenarios restantes en BG fetch.
+- **Ediciones manuales marcan `userReorderedFlag=true`**: antes `togglePrio`, `updateDescMin`, `updateDestWin`, `toggleDay` no seteaban el flag, entonces "Recalcular con tu orden" renderizaba en la fila SUG (arriba) en vez de USR (abajo). Fix + aclaración: priority solo cambia orden visible si rompe la secuencia NN (un destino que ya era #1 por cercanía no se nota al marcarlo como priority).
+- Fix bug latente en `updateDestWin`: la 2da ventana usaba `.dw-to-1` como from (mismo campo que from de v1) en vez de `.dw-from-2`.
+
+### Deuda abierta documentada
+
+- **Parser de ventanas sabatinas**: cuando el texto tiene `"L-V 8am-5:30pm. Sábado 8am-11am"` el parser toma las 2 primeras sin distinguir día (v2 = 08:00-11:00 incorrecto). Requiere segmentación por día (sección L-V vs Sábado). Afecta ~1 de cada 10 pedidos con observaciones complejas.
+- **Linker v6 — TR REEMPLAZADA**: hay **84 viajes legacy** con `proveedor='TR REEMPLAZADA'` que son placeholders del AppSheet (reemplazados por otro viaje real con mismos consecutivos). El linker v3/v4 a veces asigna pedidos al TR REEMPLAZADA en lugar del real. Fix propuesto (no implementado): Postgres function que re-linkea pedidos de viajes TR REEMPLAZADA a su hermano con proveedor real, integrada al chain `fn_run_linkers`. Bernardo paró para hacer primero audit del analizador.
+- **Recalcular en producción**: Bernardo reportó "netfleet no cargo ni viaje ni pedidos" al final de la sesión. Probablemente sesión expirada / Cloudflare aún deployando — sin stack trace. A verificar primera cosa de la próxima sesión.
+
+### 18 commits de la sesión
+
+`ceae39a` LogxIA v1 + panel Ofertantes · `302a82f` docs TL;DR · `74672a5` CC_ZONA_AJUSTE colisión + regla 5 candidatos on-route · `b7b18b4` fallback haversine OSRM · `df0ab3e` scenarios dropdown + timeouts 30→10s · `263b1bb` reprog saltados + div/0 · `60151b7` KPIs realistas (duración, pernoctas, standby, descargue) · `6f34571` dup reprog fix · `b1f9c6c` reprog secuencial + standby visible + unifica retorno · `402fbdc` dateFechaBase scope · `3db0294` retorno en duración · `0546686` Extracostos KPI · `d014c75` ventanas AM/PM + observaciones fallback + finalizado + limit 100 · `1a821ef` parser direcciones + AM/PM heuristic · `e2f0308` input búsqueda por RT · `d40f2a9` pedidos sintéticos · `462f2bb` pedidos "prestados" consecutivos · `83bf046` userReorderedFlag en toggleDay/Prio/DescMin/DestWin + fix ventana 2.
 
 ## TL;DR de la sesión 2026-04-23 (tarde — LogxIA v1 + Ofertantes inline)
 

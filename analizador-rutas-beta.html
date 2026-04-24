@@ -64,23 +64,24 @@ input[type="number"]{font-family:var(--mono)}
 .trip-meta span{color:var(--text2)}
 .trip-meta strong{color:var(--text);font-weight:500}
 
-/* ── CENTER: 2 rows (suggested + user), each row = map + results ── */
+/* ── CENTER: shared map on top + N stacked vehicle panels below ── */
 .center{display:flex;flex-direction:column;overflow:hidden}
-.route-row{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0;border-bottom:2px solid var(--border2)}
-.route-row:last-child{border-bottom:none}
-/* BETA multi-vehículo: cuando usamos mapa unificado, el map panel de row2 desaparece
-   y los results V2 toman todo el ancho de la fila */
-.route-row.unified-map{grid-template-columns:0 1fr}
-.route-row.unified-map .map-panel{display:none}
-.route-row .map-panel{position:relative}
-.route-row .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
-.route-row.sug .map-label{background:var(--cyan);color:var(--navy)}
-.route-row.usr .map-label{background:var(--navy);color:#fff}
-.route-row .map-el{width:100%;height:100%}
-.route-row .results{overflow-y:auto;background:var(--bg)}
-.route-row.usr .results{opacity:.3}
-.route-row.usr.active .results{opacity:1}
-.results{overflow-y:auto;background:var(--bg)}
+/* Shared map — fixed height, all vehicles superimposed with palette colors */
+.map-row-shared{height:45vh;min-height:280px;position:relative;border-bottom:2px solid var(--border2);flex-shrink:0}
+.map-row-shared .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:4px 10px;border-radius:4px;pointer-events:none;background:rgba(255,255,255,.94);color:var(--navy);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:calc(100% - 140px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-row-shared .map-el{width:100%;height:100%}
+/* Vehicle timeline panels — stacked, scrollable */
+.vehicles-stack{flex:1 1 0;min-height:200px;overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+.veh-panel{border-bottom:3px solid var(--border2);flex-shrink:0}
+.veh-panel:last-child{border-bottom:none}
+.veh-header{padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;color:#fff;display:flex;align-items:center;gap:10px;border-bottom:2px solid rgba(0,0,0,.15)}
+.veh-header .veh-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.22);font-size:12px;font-weight:700}
+.veh-header .veh-name{flex:1}
+.veh-header .veh-stat{font-size:11px;font-weight:500;opacity:.92;font-family:var(--mono)}
+.veh-results{background:var(--bg)}
+.veh-results .empty{padding:28px;text-align:center;color:var(--text3);font-size:12px}
+/* Legacy compat: hidden single-vehicle user map (kept so Leaflet init doesn't throw) */
+#mapUsuario{display:none}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
 .kpi{background:var(--bg2);padding:8px 10px}
 .kpi-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
@@ -279,30 +280,30 @@ input[type="number"]{font-family:var(--mono)}
     </div>
   </div>
 
-  <!-- CENTER: vehicle rows (V1 always; V2 shown if multi-vehicle needed) -->
+  <!-- CENTER: shared map on top + dynamic vehicle panels below -->
   <div class="center">
     <!-- Multi-vehículo summary banner -->
-    <div id="multiSummary" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 12px;font-size:11px;color:var(--text2)"></div>
-    <!-- ROW 1: Vehículo 1 -->
-    <div class="route-row sug" id="rowVeh1">
-      <div class="map-panel">
-        <div class="map-label" id="labelVeh1">🚚 Vehículo 1</div>
-        <div class="map-el" id="mapSugerido"></div>
-      </div>
-      <div class="results" id="resultsSug">
-        <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular plan multi-vehículo</strong></div>
+    <div id="multiSummary" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 12px;font-size:11px;color:var(--text2);max-height:140px;overflow-y:auto;flex-shrink:0"></div>
+    <!-- Shared map: all vehicles draw here with palette colors -->
+    <div class="map-row-shared">
+      <div class="map-label" id="labelShared">🗺 Mapa unificado</div>
+      <div class="map-el" id="mapSugerido"></div>
+    </div>
+    <!-- Dynamic vehicle panels container. V1 always present; V2..Vn created by runAnalysisMulti -->
+    <div id="vehiclesStack" class="vehicles-stack">
+      <div class="veh-panel" id="vehPanel1" data-veh-n="1">
+        <div class="veh-header" id="vehHeader1" style="background:#00BFDF;color:#0E1B4D">
+          <span class="veh-badge">1</span>
+          <span class="veh-name">VEHÍCULO 1</span>
+          <span class="veh-stat" id="vehStat1"></span>
+        </div>
+        <div class="veh-results" id="resultsV1">
+          <div class="empty" id="emptyState">Selecciona un viaje y presiona <strong>Calcular plan multi-vehículo</strong></div>
+        </div>
       </div>
     </div>
-    <!-- ROW 2: Vehículo 2 (oculto si no hace falta) -->
-    <div class="route-row usr" id="rowUsuario" style="display:none">
-      <div class="map-panel">
-        <div class="map-label" id="labelVeh2" style="background:#FFB800;color:#0E1B4D">🚚 Vehículo 2</div>
-        <div class="map-el" id="mapUsuario"></div>
-      </div>
-      <div class="results" id="resultsUsr">
-        <div class="empty">Vehículo 2 (se muestra si la consolidación no cabe en uno solo)</div>
-      </div>
-    </div>
+    <!-- Legacy element kept hidden (Leaflet init avoids throwing) -->
+    <div id="mapUsuario" style="display:none"></div>
   </div>
 
   <!-- TOGGLE BUTTONS -->
@@ -1275,24 +1276,70 @@ function updateCompareBar(){
 }
 
 // ================================================================
-// MAPS — Suggested (top) + User order (bottom)
+// MAPS — 1 shared map, all vehicles draw here with palette colors
 // ================================================================
 const mapSug=L.map('mapSugerido',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapSug);
-let mapSugLayers=[];
+// Legacy alias kept so code paths still compile — everything renders on mapSug now.
+const mapUsr=mapSug;
 
-const mapUsr=L.map('mapUsuario',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapUsr);
-let mapUsrLayers=[];
+// BETA multi-N — paleta de 15 colores (cyan, naranja, violeta, verde, rojo, amarillo,
+// teal, rosa, azul, lima, indigo, pink, emerald, orange, slate).
+// Índice i-1 → vehículo i (V1 usa [0], V2 usa [1], etc.)
+const VEH_COLORS = [
+  '#00BFDF', // V1  cyan
+  '#FF8C00', // V2  orange
+  '#9333EA', // V3  violet
+  '#16A34A', // V4  green
+  '#DC2626', // V5  red
+  '#EAB308', // V6  amber
+  '#0891B2', // V7  teal
+  '#DB2777', // V8  pink
+  '#2563EB', // V9  blue
+  '#84CC16', // V10 lime
+  '#6366F1', // V11 indigo
+  '#C026D3', // V12 fuchsia
+  '#10B981', // V13 emerald
+  '#EA580C', // V14 deep orange
+  '#475569'  // V15 slate
+];
+function vehColor(n){ return VEH_COLORS[(n-1) % VEH_COLORS.length]; }
+// Text color sobre header (cyan + amber + lime + amber necesitan texto oscuro).
+function vehTextColor(n){
+  const dark = ['#00BFDF','#EAB308','#84CC16']; // fondos claros
+  return dark.includes(vehColor(n)) ? '#0E1B4D' : '#fff';
+}
+
+// Per-vehicle layer bookkeeping. Key = N, value = array of Leaflet layers.
+// runAnalysisMulti limpia cada vehículo individualmente antes de re-renderizar.
+let vehLayers = {};
+// Per-vehicle last-route snapshot (para PDF export / Check de Ruta).
+let vehRoutes = {};
+// Legacy aliases (mantienen compatibilidad con renderRoute/renderMap en modo single).
+let mapSugLayers = [];
+let mapUsrLayers = [];
+
+function _clearVehLayers(n){
+  if(vehLayers[n]){ vehLayers[n].forEach(l=>mapSug.removeLayer(l)); }
+  vehLayers[n] = [];
+}
+function _clearAllVehLayers(){
+  Object.keys(vehLayers).forEach(k=>{
+    vehLayers[k].forEach(l=>mapSug.removeLayer(l));
+  });
+  vehLayers = {};
+}
 
 function clearMap(target){
-  if(target==='sug'||target==='both'){mapSugLayers.forEach(l=>mapSug.removeLayer(l));mapSugLayers=[];}
-  if(target==='usr'||target==='both'){
-    // En multi-mode los layers 'usr' viven en mapSug; en legacy en mapUsr
-    const m = (_multiVehNum > 0) ? mapSug : mapUsr;
-    mapUsrLayers.forEach(l=>m.removeLayer(l));
-    mapUsrLayers=[];
+  // Legacy API: 'sug'|'usr'|'both' → en multi-N todos viven en mapSug.
+  if(target==='both'){
+    _clearAllVehLayers();
+    mapSugLayers.forEach(l=>mapSug.removeLayer(l)); mapSugLayers=[];
+    mapUsrLayers.forEach(l=>mapSug.removeLayer(l)); mapUsrLayers=[];
+    return;
   }
+  if(target==='sug'){ mapSugLayers.forEach(l=>mapSug.removeLayer(l)); mapSugLayers=[]; }
+  if(target==='usr'){ mapUsrLayers.forEach(l=>mapSug.removeLayer(l)); mapUsrLayers=[]; }
 }
 
 // ================================================================
@@ -1424,28 +1471,52 @@ function splitVehicles(destGeo, capKg, deadlineMinPerVeh, origin, descMinPerStop
   return subsets;
 }
 
-function renderMultiSummary(subsets, capKg, deadlineH, origin, descMinPerStop, cargueMin, includeReturn){
-  const el = document.getElementById('multiSummary');
-  if(!el) return;
-  if(!subsets.length){ el.style.display='none'; return; }
-  const rows = subsets.map((sub, i) => {
-    const kg = sub.reduce((s,x)=>s+(x.peso||0),0);
-    const minTotal = cargueMin + _estimaMinutosSet(sub, origin, descMinPerStop, includeReturn);
-    const h = Math.floor(minTotal/60), m = minTotal%60;
-    const fits = minTotal <= deadlineH*60 && kg <= capKg;
-    const color = fits ? '#0a8a3a' : '#c2410c';
-    return `<span style="display:inline-block;margin-right:14px;color:${color}"><strong>🚚 V${i+1}:</strong> ${sub.length} dest · ${fmt(kg)} kg · ~${h}h${m?' '+m+'m':''}</span>`;
-  }).join('');
-  let header;
-  if(subsets.length === 1){
-    header = `<strong style="color:#0a8a3a">✓ Cabe en 1 vehículo</strong>`;
-  } else if(subsets.length === 2){
-    header = `<strong style="color:#0E1B4D">🚚 ${subsets.length} vehículos sugeridos</strong>`;
-  } else {
-    header = `<strong style="color:#c2410c">⚠ ${subsets.length} vehículos necesarios</strong> — sesión 1 muestra V1 + V2 (los otros se rendererizan en sesión 2). Considerá aumentar capacidad o deadline.`;
-  }
-  el.innerHTML = `${header} &nbsp;·&nbsp; cap ${fmt(capKg)} kg · deadline ${deadlineH}h<br><div style="margin-top:4px">${rows}</div>`;
-  el.style.display = 'block';
+// BETA multi-N — factoría de paneles de vehículo
+function _ensureVehPanel(n){
+  let panel = document.getElementById(`vehPanel${n}`);
+  if(panel) return panel;
+  panel = document.createElement('div');
+  panel.className = 'veh-panel';
+  panel.id = `vehPanel${n}`;
+  panel.setAttribute('data-veh-n', n);
+  const color = vehColor(n), textColor = vehTextColor(n);
+  panel.innerHTML = `
+    <div class="veh-header" id="vehHeader${n}" style="background:${color};color:${textColor}">
+      <span class="veh-badge" style="background:rgba(255,255,255,${textColor==='#fff'?'.22':'.35'})">${n}</span>
+      <span class="veh-name">VEHÍCULO ${n}</span>
+      <span class="veh-stat" id="vehStat${n}"></span>
+    </div>
+    <div class="veh-results" id="resultsV${n}"></div>
+  `;
+  document.getElementById('vehiclesStack').appendChild(panel);
+  return panel;
+}
+
+function _removeExtraVehPanels(keepN){
+  const stack = document.getElementById('vehiclesStack');
+  Array.from(stack.children).forEach(panel => {
+    const n = parseInt(panel.getAttribute('data-veh-n'), 10);
+    if(n > keepN){
+      // Limpiar layers de este V del mapa antes de eliminar.
+      _clearVehLayers(n);
+      delete vehRoutes[n];
+      panel.remove();
+    }
+  });
+}
+
+// Cheap fitness: estima duración de un subset aplicando el factor de camión.
+// Usa _estimaMinutosSet (40 km/h baseline) y lo corrige a 35 km/h + overheads.
+function _cheapTruckEstimate(sub, origin, descMinPerStop, cargueMin, includeReturn){
+  // _estimaMinutosSet devuelve driveMin + stopMin. El driveMin asume 40 km/h;
+  // para camión escalamos por 40/35 ≈ 1.143. Sumamos salida planta + entrada urbana/dest.
+  const baseMin = _estimaMinutosSet(sub, origin, descMinPerStop, includeReturn);
+  const kmFactor = 40 / TRUCK_VEL_KMH; // 1.143
+  const stopMin = sub.length * descMinPerStop;
+  const driveMin40 = baseMin - stopMin; // separar drive de stops
+  const driveMin35 = driveMin40 * kmFactor;
+  const overheads = cargueMin + TRUCK_SALIDA_ORIGEN_MIN + sub.length * TRUCK_ENTRADA_URBANA_MIN;
+  return Math.round(driveMin35 + stopMin + overheads);
 }
 
 async function runAnalysisMulti(){
@@ -1453,18 +1524,31 @@ async function runAnalysisMulti(){
   if(tripIdx === '') return alert('Selecciona un viaje');
   if(!destConditions.length) return alert('No hay destinos cargados');
   const btn = document.getElementById('btnRun');
-  const lbl = btn.textContent;
   btn.disabled = true; btn.textContent = 'Calculando split…';
+
+  // Helper para leer duración real desde _lastRoute (con ventanas/pernoctas/standby).
+  const _realDurMinFromRoute = (route) => {
+    if(!route?.timeline) return 0;
+    const tl = route.timeline;
+    const cargueT = tl.find(t=>t.type==='cargue')?.time || 0;
+    let lastEnd = cargueT;
+    tl.forEach(t => {
+      const end = (t.time||0) + (t.dur||0);
+      if(end > lastEnd) lastEnd = end;
+    });
+    return Math.max(0, lastEnd - cargueT);
+  };
 
   try {
     const trip = TRIPS[tripIdx];
     const capKg = parseInt(document.getElementById('inCapKg').value) || 8500;
     const deadlineH = parseInt(document.getElementById('inDeadlineH').value) || 24;
+    const deadlineMin = deadlineH * 60;
     const cargueMin = parseInt(document.getElementById('inCargue').value) || 180;
     const descMinPerStop = parseInt(document.getElementById('inDescargue').value) || 60;
     const includeReturn = document.getElementById('inRetorno').value === 'yes';
 
-    // Geocode origen para el split
+    // Geocode origen
     const origenCiudad = extraerCiudad(trip.origenes[0]);
     let origin = geo(origenCiudad);
     if(!origin){
@@ -1473,7 +1557,7 @@ async function runAnalysisMulti(){
     }
     if(!origin){ alert('Sin coords para origen: '+trip.origenes[0]); return; }
 
-    // Geocodear cada destino con su peso
+    // Geocode destinos
     const destGeo = [];
     for(let i=0; i<destConditions.length; i++){
       const cond = destConditions[i];
@@ -1487,21 +1571,19 @@ async function runAnalysisMulti(){
     }
     if(!destGeo.length){ alert('Sin destinos con coordenadas — revisar consola'); return; }
 
-    // Backup destConditions Y descMin original (para restore al final)
+    // Backup para restore
     const fullDC = [...destConditions];
     const _origDescMins = destConditions.map(c => c.descMin);
     const totalKgFull = destGeo.reduce((s,d)=>s+(d.peso||0),0);
 
-    // ── BETA truck realism: pre-procesar descMin por destino según direcciones únicas + pedidos ──
-    // Villapinzón con 3 pedidos en 3 direcciones → 3×60 + 2×15 transit = 210 min (vs 60 default)
-    // Villapinzón con 3 pedidos en 1 dirección → 60 + 2×20 admin = 100 min
+    // Truck realism: pre-ajustar descMin por dirs únicas + pedidos extra
     let _descAdjusted = 0;
-    destConditions.forEach((c, ci) => {
+    destConditions.forEach((c) => {
       const peds = c.pedidos || [];
       const numPedidos = peds.length;
-      if(numPedidos <= 1) return; // 1 pedido o sintético — sin ajuste
+      if(numPedidos <= 1) return;
       const dirsUnicas = new Set(peds.map(p => (p.direccion||'').trim().toLowerCase()).filter(Boolean));
-      const numStops = Math.max(1, dirsUnicas.size || numPedidos); // sin dirs → conservador (cada pedido = stop)
+      const numStops = Math.max(1, dirsUnicas.size || numPedidos);
       const baseMin = c.descMin || descMinPerStop;
       const extraStops = numStops - 1;
       const extraPedidosSameDir = numPedidos - numStops;
@@ -1512,123 +1594,122 @@ async function runAnalysisMulti(){
       }
     });
 
-    // Activar truck mode para que el motor use 35 km/h + overheads
     _truckMode = true;
 
-    // ── PASS 1: Run con TODO el set para obtener duración real (incluye ventanas/pernoctas/standby) ──
-    btn.textContent = 'Pase 1: calculando plan completo (OSRM)…';
+    // Limpieza UI previa
+    _clearAllVehLayers();
+    document.getElementById('labelShared').textContent = '🗺 Mapa unificado — calculando…';
+
+    // ── PASS 1: plan completo para obtener duración real ──
+    btn.textContent = 'Pase 1: plan completo (OSRM)…';
     _multiVehNum = 1;
-    document.getElementById('rowUsuario').style.display = 'none';
-    document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — calculando plan completo…`;
+    _removeExtraVehPanels(1); // quita V2+ si quedaron de runs previos
     userOrder = fullDC.map((_,i)=>i);
     suggestedOrder = [];
     userReorderedFlag = false;
     suggestedKPIs = null;
     await runAnalysis();
-
-    // Leer duración REAL del plan completo desde el timeline persistido
-    const _realDurMinFromRoute = (route) => {
-      if(!route?.timeline) return 0;
-      const tl = route.timeline;
-      const cargueT = tl.find(t=>t.type==='cargue')?.time || 0;
-      let lastEnd = cargueT;
-      tl.forEach(t => {
-        const end = (t.time||0) + (t.dur||0);
-        if(end > lastEnd) lastEnd = end;
-      });
-      return Math.max(0, lastEnd - cargueT);
-    };
     const realDurMin = _realDurMinFromRoute(window._lastRoute);
-    const realDays = Math.ceil(realDurMin / (24*60));
-    const deadlineMin = deadlineH * 60;
+    const realDays = Math.max(1, Math.ceil(realDurMin / (24*60)));
 
-    // Decidir vehículos necesarios (cap a 2 en sesión 1 por layout)
-    const fitsCap = totalKgFull <= capKg;
-    const fitsTime = realDurMin <= deadlineMin;
-    let needsSplit = !fitsCap || !fitsTime;
-    let nVeh = needsSplit ? Math.min(2, Math.max(2, Math.ceil(realDurMin / deadlineMin), Math.ceil(totalKgFull / capKg))) : 1;
+    // ── Decidir k inicial ──
+    const kByTime = Math.ceil(realDurMin / deadlineMin);
+    const kByKg = Math.ceil(totalKgFull / capKg);
+    let k = Math.max(1, kByTime, kByKg);
+    const MAX_K = 15;
+    if(k > MAX_K){ k = MAX_K; } // cap duro
 
-    // ── PASS 2: si hace falta split, partir en N por distancia desde origen y re-correr ──
-    let subsets = [destGeo];
-    if(nVeh >= 2){
-      // K-means geográfico: agrupa por proximidad ENTRE destinos.
-      // Antes: chunks por distancia al origen (rompe clusters naturales — un dest
-      // a 100 km del resto de su vehículo cuando otro vehículo lo tenía a 20 km).
-      subsets = kMeansSplit(destGeo, nVeh);
-      // Re-render banner con la realidad
+    // ── Cheap-fitness loop: aumentá k hasta que todos los subsets estimen dentro de deadline ──
+    let subsets;
+    if(k === 1){
+      subsets = [destGeo];
+    } else {
+      while(k <= MAX_K){
+        subsets = kMeansSplit(destGeo, k);
+        const worstDur = Math.max(...subsets.map(s => _cheapTruckEstimate(s, origin, descMinPerStop, cargueMin, includeReturn)));
+        const worstKg = Math.max(...subsets.map(s => s.reduce((a,x)=>a+(x.peso||0),0)));
+        if(worstDur <= deadlineMin && worstKg <= capKg) break;
+        k++;
+      }
+      if(k > MAX_K) k = MAX_K;
+      subsets = kMeansSplit(destGeo, Math.min(k, MAX_K));
+    }
+
+    // ── PASS 2: render cada subset ──
+    if(subsets.length === 1){
+      // Plan completo cabe: el Pase 1 ya renderizó V1 con todos los dests.
+      // Solo actualizamos banner.
+      _removeExtraVehPanels(1);
+      const v1Kg = destGeo.reduce((s,d)=>s+(d.peso||0),0);
+      const v1Dur = _realDurMinFromRoute(window._lastRoute);
+      const fits = v1Dur <= deadlineMin;
+      const color = fits ? '#0a8a3a' : '#c2410c';
+      const icon = fits ? '✓' : '⚠';
+      const h = (v1Dur/60).toFixed(1);
+      document.getElementById('multiSummary').innerHTML =
+        `<strong style="color:${color}">${icon} Cabe en 1 vehículo</strong> &nbsp;·&nbsp; `+
+        `V1=${h}h${fits?'':` (excede deadline ${deadlineH}h)`} · ${fmt(v1Kg)}/${fmt(capKg)} kg · ${destGeo.length} destinos`;
+      document.getElementById('multiSummary').style.display = 'block';
+      document.getElementById('labelShared').textContent = `🗺 Vehículo 1 — ${destGeo.length} destinos`;
+    } else {
+      // Multi-N: renderizar cada vehículo con su subset
+      _removeExtraVehPanels(subsets.length);
+      // Crear paneles V2..Vn si no existen
+      for(let i=2; i<=subsets.length; i++){ _ensureVehPanel(i); }
+
+      // Banner inicial (se completa al final con durs reales)
       const summaryHtml = `<strong style="color:#c2410c">⚠ Plan completo: ${realDays}d (${Math.round(realDurMin/60)}h) · excede deadline ${deadlineH}h</strong><br>`+
         `<span style="color:#0a8a3a">→ Sugerido: ${subsets.length} vehículo${subsets.length>1?'s':''} para entregar en ${deadlineH}h</span><br>`+
         `<span style="color:var(--text2);font-size:10px">Cap ${fmt(capKg)} kg · peso total ${fmt(totalKgFull)} kg · ${destGeo.length} destinos</span>`;
       document.getElementById('multiSummary').innerHTML = summaryHtml;
       document.getElementById('multiSummary').style.display = 'block';
 
-      // Show V2 row con mapa unificado (su map panel queda oculto;
-      // V1 y V2 se dibujan en el MISMO mapa de arriba, con colores distintos)
-      const row2 = document.getElementById('rowUsuario');
-      row2.classList.add('unified-map');
-      row2.style.display = 'grid';
-      // Etiqueta del mapa unificado: leyenda V1 cyan + V2 naranja
-      document.getElementById('labelVeh1').innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:3px;background:#00BFDF;display:inline-block"></span>V1 &nbsp;<span style="width:10px;height:3px;background:#FF8C00;display:inline-block"></span>V2</span>`;
+      // Label del mapa con leyenda de colores
+      const legend = subsets.map((_,i)=>{
+        const c = vehColor(i+1);
+        return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px"><span style="width:12px;height:3px;background:${c};display:inline-block;border-radius:1px"></span>V${i+1}</span>`;
+      }).join('');
+      document.getElementById('labelShared').innerHTML = legend;
 
-      // Re-correr V1 con subset[0]
-      btn.textContent = 'Pase 2: V1 con subset (OSRM)…';
-      _multiVehNum = 1;
-      destConditions = subsets[0].map(d => fullDC[d.origIdx]);
-      userOrder = destConditions.map((_,i)=>i);
-      suggestedOrder = [];
-      userReorderedFlag = false;
-      suggestedKPIs = null;
-      const v1Kg = destConditions.reduce((s,c)=>s+(c.pesoGrp||0),0);
-      document.getElementById('labelVeh1').textContent = `🚚 V1 — ${destConditions.length} dest · ${fmt(v1Kg)} kg`;
-      await runAnalysis();
-      const _durV1Min = _realDurMinFromRoute(window._lastRoute);
+      // Renderizar cada vehículo secuencialmente
+      const realDurs = [];
+      for(let i=0; i<subsets.length; i++){
+        const vNum = i + 1;
+        _multiVehNum = vNum;
+        btn.textContent = `Pase 2: V${vNum}/${subsets.length} (OSRM)…`;
+        destConditions = subsets[i].map(d => fullDC[d.origIdx]);
+        userOrder = destConditions.map((_,j)=>j);
+        suggestedOrder = [];
+        userReorderedFlag = false;
+        suggestedKPIs = null;
+        await runAnalysis();
+        realDurs.push(_realDurMinFromRoute(window._lastRoute));
+      }
 
-      // V2
-      _multiVehNum = 2;
-      btn.textContent = 'Pase 2: V2 con subset (OSRM)…';
-      destConditions = subsets[1].map(d => fullDC[d.origIdx]);
-      userOrder = destConditions.map((_,i)=>i);
-      suggestedOrder = [];
-      userReorderedFlag = false;
-      suggestedKPIs = null;
-      const v2Kg = destConditions.reduce((s,c)=>s+(c.pesoGrp||0),0);
-      document.getElementById('labelVeh2').textContent = `🚚 V2 — ${destConditions.length} dest · ${fmt(v2Kg)} kg`;
-      await runAnalysis();
-      const _durV2Min = _realDurMinFromRoute(window._lastRoute);
+      // Validación honesta post-render
+      const excedidos = realDurs.map((d,i)=>({v:i+1, dur:d, exc:d>deadlineMin})).filter(x=>x.exc);
+      const durSummary = realDurs.map((d,i)=>{
+        const c = vehColor(i+1);
+        const h = (d/60).toFixed(1);
+        const exc = d>deadlineMin;
+        return `<span style="color:${c};font-weight:600">V${i+1}=${h}h</span>${exc?' <span style="color:#dc2626">(excede)</span>':''}`;
+      }).join(' · ');
 
-      // ── Validación honesta: ambos vehículos vs deadline ──
-      const v1Excede = _durV1Min > deadlineMin;
-      const v2Excede = _durV2Min > deadlineMin;
-      if(v1Excede || v2Excede){
-        // Total real y N necesario para cumplir deadline
-        const sumDur = _durV1Min + _durV2Min;
-        const nNeeded = Math.min(15, Math.max(2, Math.ceil(sumDur / deadlineMin)));
-        const v1H = (_durV1Min/60).toFixed(1), v2H = (_durV2Min/60).toFixed(1);
-        const warn = `<br><span style="color:#dc2626;font-size:11px;font-weight:600">⚠ V1=${v1H}h${v1Excede?' (excede)':''} · V2=${v2H}h${v2Excede?' (excede)':''} — ambos exceden deadline ${deadlineH}h.</span>`+
-          `<br><span style="color:#dc2626;font-size:10px">→ Para cumplir realmente con ${deadlineH}h harían falta ~${nNeeded} vehículos. Sesión 1 muestra solo V1+V2 — sesión 2 implementa multi-N (3+ vehículos + bucle de re-clustering).</span>`;
+      if(excedidos.length){
+        const sumDur = realDurs.reduce((a,b)=>a+b, 0);
+        const nNeeded = Math.min(MAX_K, Math.max(subsets.length+1, Math.ceil(sumDur / deadlineMin)));
+        const warn = `<br><span style="color:#dc2626;font-size:11px;font-weight:600">⚠ ${excedidos.length}/${realDurs.length} vehículos exceden deadline ${deadlineH}h</span>`+
+          `<br><span style="font-size:11px">${durSummary}</span>`+
+          `<br><span style="color:#dc2626;font-size:10px">→ Harían falta ~${nNeeded} vehículos. Considerá aumentar capacidad, extender deadline, o reasignar destinos manualmente (commit 2 — dropdown por dest).</span>`;
         document.getElementById('multiSummary').innerHTML += warn;
-      } else if(subsets.length >= 3){
-        const extras = subsets.slice(2).map((s,i)=>`V${i+3}: ${s.length} dest`).join(' · ');
-        const extra = `<br><span style="color:#c2410c;font-size:10px">⚠ K-means propuso ${subsets.length} clusters (${extras}). V1+V2 cumplen el deadline; los extras quedaron sin renderizar — sesión 2 los soporta.</span>`;
-        document.getElementById('multiSummary').innerHTML += extra;
       } else {
-        // V1 y V2 cumplen — confirmación verde
-        const v1H = (_durV1Min/60).toFixed(1), v2H = (_durV2Min/60).toFixed(1);
-        const ok = `<br><span style="color:#0a8a3a;font-size:11px;font-weight:600">✓ V1=${v1H}h · V2=${v2H}h — ambos cumplen deadline ${deadlineH}h</span>`;
+        const ok = `<br><span style="color:#0a8a3a;font-size:11px;font-weight:600">✓ Todos los vehículos cumplen deadline ${deadlineH}h</span>`+
+          `<br><span style="font-size:11px">${durSummary}</span>`;
         document.getElementById('multiSummary').innerHTML += ok;
       }
-    } else {
-      // 1 vehículo cabe — limpiar estado de modo unificado y actualizar label V1
-      document.getElementById('rowUsuario').classList.remove('unified-map');
-      document.getElementById('rowUsuario').style.display = 'none';
-      const v1Kg = destGeo.reduce((s,d)=>s+(d.peso||0),0);
-      document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — ${destGeo.length} dest · ${fmt(v1Kg)} kg`;
-      const summaryHtml = `<strong style="color:#0a8a3a">✓ Cabe en 1 vehículo</strong> &nbsp;·&nbsp; ${realDays}d (${Math.round(realDurMin/60)}h) ≤ deadline ${deadlineH}h · ${fmt(v1Kg)}/${fmt(capKg)} kg`;
-      document.getElementById('multiSummary').innerHTML = summaryHtml;
-      document.getElementById('multiSummary').style.display = 'block';
     }
 
-    // Restore: descMin originales, destConditions, flags, truck mode OFF
+    // Restore
     fullDC.forEach((c, i) => { c.descMin = _origDescMins[i]; });
     _multiVehNum = 0;
     _truckMode = false;
@@ -1639,7 +1720,7 @@ async function runAnalysisMulti(){
     suggestedKPIs = null;
     reRenderDestList();
 
-    // Append nota de ajustes truck-mode al final del banner del multi-summary
+    // Append truck-mode note al banner
     const truckNote = `<br><span style="color:var(--text2);font-size:10px;font-style:italic">⏱ Plan ajustado camión: ${TRUCK_VEL_KMH} km/h · +${TRUCK_SALIDA_ORIGEN_MIN}min salida planta · +${TRUCK_ENTRADA_URBANA_MIN}min/destino entrada urbana${_descAdjusted>0?` · ${_descAdjusted} destino${_descAdjusted>1?'s':''} con descMin auto-ajustado por direcciones múltiples`:''}</span>`;
     const summaryEl = document.getElementById('multiSummary');
     if(summaryEl && summaryEl.style.display !== 'none'){
@@ -2158,17 +2239,11 @@ async function runAnalysis(){
     window._lastRoute={trip,timeline,totalKm,totalDriveMin,ordered,tripData,missing,fecha:dateFechaBase,destConditions:[...destConditions],isUserOrder:userReorderedFlag};
     document.getElementById('btnPdf').style.display='block';
     document.getElementById('btnCheck').style.display='block';
-    // BETA multi-vehículo: _multiVehNum=1→sug, =2→usr. Si =0, comportamiento legacy.
-    if(_multiVehNum === 2){
-      renderMap(tripData,ordered,'usr');
-    } else if(_multiVehNum === 1){
-      renderMap(tripData,ordered,'sug');
-      // No clear 'usr' acá — V2 puede venir después en el mismo runMulti
-    } else if(!userReorderedFlag){
-      renderMap(tripData,ordered,'sug');
-      clearMap('usr');
-    } else {
-      renderMap(tripData,ordered,'usr');
+    // BETA multi-N: renderMap usa _multiVehNum (1..N) + vehLayers[n] + paleta.
+    renderMap(tripData,ordered);
+    // Snapshot per-vehicle para PDF/Check de Ruta.
+    if(_multiVehNum > 0){
+      vehRoutes[_multiVehNum] = window._lastRoute;
     }
     
   }catch(err){
@@ -2267,14 +2342,17 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   }
   
   const kw=totalDays>1?'kw':'';const kd=totalDays>2?'kd':'';
-  const routeLabel = _multiVehNum === 1 ? 'Vehículo 1' : _multiVehNum === 2 ? 'Vehículo 2' : (isUserReorder?'Tu orden':'Ruta sugerida');
-  // BETA multi-vehículo: header destacado con color del vehículo, sticky para no perderse al scrollear
-  let h = '';
-  if(_multiVehNum === 1){
-    h += `<div style="background:#00BFDF;color:#0E1B4D;padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;position:sticky;top:0;z-index:10;border-bottom:2px solid #009BB5">🚚 VEHÍCULO 1 — ${numDests} destinos · ${fmt(durTotalMin/60|0)}h ${durTotalMin%60}min</div>`;
-  } else if(_multiVehNum === 2){
-    h += `<div style="background:#FF8C00;color:#fff;padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;position:sticky;top:0;z-index:10;border-bottom:2px solid #c46e00">🚚 VEHÍCULO 2 — ${numDests} destinos · ${fmt(durTotalMin/60|0)}h ${durTotalMin%60}min</div>`;
+  const routeLabel = _multiVehNum > 0 ? `Vehículo ${_multiVehNum}` : (isUserReorder?'Tu orden':'Ruta sugerida');
+  // BETA multi-vehículo: el header destacado ahora vive en .veh-header (fuera de este HTML).
+  // Actualizamos su contenido desde acá con nombre + estadística en vivo.
+  if(_multiVehNum > 0){
+    const statEl = document.getElementById(`vehStat${_multiVehNum}`);
+    if(statEl){
+      const hh = Math.floor(durTotalMin/60), mm = durTotalMin%60;
+      statEl.textContent = `${numDests} dest · ${hh}h${mm?' '+mm+'m':''} · ${fmt(totalKm)} km`;
+    }
   }
+  let h = '';
   h += `<div class="kpis">
     <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder && !_multiActive ? 'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
     <div class="kpi"><div class="kpi-l">Duración total</div><div class="kpi-v">${durTotalStr}</div><div class="kpi-s">cargue → últ entrega</div></div>
@@ -2333,58 +2411,37 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   h+='</div>';
   
   const emptyEl=document.getElementById('emptyState');if(emptyEl)emptyEl.style.display='none';
-  
-  // Render to the correct panel — BETA multi-vehículo override
-  if(_multiVehNum === 2){
-    document.getElementById('resultsUsr').innerHTML=h;
-    document.getElementById('rowUsuario').classList.add('active');
-  } else if(_multiVehNum === 1){
-    document.getElementById('resultsSug').innerHTML=h;
-  } else if(isUserReorder){
-    document.getElementById('resultsUsr').innerHTML=h;
-    document.getElementById('rowUsuario').classList.add('active');
-  } else {
-    document.getElementById('resultsSug').innerHTML=h;
+
+  // Render to the correct vehicle panel. En multi-N routeamos por _multiVehNum (1..N).
+  // En modo legacy single-vehicle todo va a V1 (el panel que siempre existe).
+  const targetN = _multiVehNum > 0 ? _multiVehNum : 1;
+  const targetEl = document.getElementById(`resultsV${targetN}`);
+  if(targetEl){
+    targetEl.innerHTML = h;
   }
 }
 
 function renderMap(tripData,ordered,target){
-  // target: 'sug' for suggested map, 'usr' for user map
-  const tgt=target||'sug';
-  // BETA multi-vehículo: V1 y V2 comparten un MISMO mapa Leaflet (mapSug) con
-  // colores distintos. En modo legacy, target='usr' usa mapUsr (panel inferior).
-  const m = (_multiVehNum > 0) ? mapSug : (tgt==='sug'?mapSug:mapUsr);
-  const layers=tgt==='sug'?mapSugLayers:mapUsrLayers;
-  // Color por contexto: V1=cyan, V2=naranja; legacy: sug=cyan, usr=navy
-  let routeColor;
-  if(_multiVehNum===1) routeColor='#00BFDF';
-  else if(_multiVehNum===2) routeColor='#FF8C00';
-  else routeColor = (tgt==='sug'?'#00BFDF':'#0E1B4D');
+  // BETA multi-N: todos los vehículos comparten mapSug con color de paleta por V.
+  // target se ignora en multi-N (param legacy kept for signature compat).
+  const m = mapSug;
+  const n = _multiVehNum > 0 ? _multiVehNum : 1;
+  const routeColor = vehColor(n);
 
-  // Clear THIS vehicle's layers from m (preserva los del otro vehículo)
-  layers.forEach(l=>m.removeLayer(l));
-  if(tgt==='sug') mapSugLayers=[]; else mapUsrLayers=[];
-  const addLayer=(l)=>{l.addTo(m);if(tgt==='sug')mapSugLayers.push(l);else mapUsrLayers.push(l);};
+  // Clear solo los layers de ESTE vehículo (preserva otros V).
+  _clearVehLayers(n);
+  const addLayer=(l)=>{ l.addTo(m); vehLayers[n].push(l); };
 
   if(tripData.geometry){
     const coords=tripData.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const line=L.polyline(coords,{color:routeColor,weight:3,opacity:.7});addLayer(line);
-    // En multi V2: fit combinado a ambas rutas. En cualquier otro caso: fit a esta ruta.
-    if(_multiVehNum===2){
-      const all=L.latLngBounds([]);
-      mapSugLayers.forEach(l=>{ if(l.getBounds) all.extend(l.getBounds()); });
-      mapUsrLayers.forEach(l=>{ if(l.getBounds) all.extend(l.getBounds()); });
-      if(all.isValid()) m.fitBounds(all,{padding:[30,30],maxZoom:12});
-    } else {
-      m.fitBounds(line.getBounds(),{padding:[30,30],maxZoom:12});
-    }
+    const line=L.polyline(coords,{color:routeColor,weight:3,opacity:.72});addLayer(line);
   }
-  
-  // Build numbered dest markers (divIcons are picked up by html2canvas and render the number on pin)
+
+  // Markers numerados por vehículo.
   let destCounter=0;
   ordered.forEach((s,i)=>{
     if(s.type==='origin'){
-      // Origin: cyan pin with "C" inside
+      // Origin: mismo color del vehículo, etiqueta "C" (cargue).
       const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:12px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">C</div>`;
       const icon=L.divIcon({className:'num-marker',html,iconSize:[26,26],iconAnchor:[13,13]});
       const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:1000});
@@ -2393,15 +2450,18 @@ function renderMap(tripData,ordered,target){
       addLayer(mk);
     } else if(s.type==='dest'){
       destCounter++;
-      const n=destCounter;
-      const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:${n>99?9:n>9?11:13}px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">${n}</div>`;
+      const num=destCounter;
+      // Label "V{n}.{idx}" si multi-N, solo idx si single. Corto para caber en pin.
+      const labelTxt = _multiVehNum > 0 ? `${n}.${num}` : `${num}`;
+      const fontSize = labelTxt.length > 4 ? 8 : labelTxt.length > 3 ? 9 : labelTxt.length > 2 ? 11 : 13;
+      const html=`<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${routeColor};color:#fff;font-weight:700;font-size:${fontSize}px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">${labelTxt}</div>`;
       const icon=L.divIcon({className:'num-marker',html,iconSize:[26,26],iconAnchor:[13,13]});
-      const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:500+n});
-      mk.bindPopup(`<b>#${n} ${s.name}</b>`,{closeButton:false});
-      mk.bindTooltip(`<b>#${n} ${s.name}</b>`,{direction:'top',offset:[0,-14]});
+      const mk=L.marker([s.lat,s.lng],{icon,zIndexOffset:500+num});
+      const popupLabel = _multiVehNum > 0 ? `V${n} · #${num}` : `#${num}`;
+      mk.bindPopup(`<b>${popupLabel} ${s.name}</b>`,{closeButton:false});
+      mk.bindTooltip(`<b>${popupLabel} ${s.name}</b>`,{direction:'top',offset:[0,-14]});
       addLayer(mk);
     } else if(s.type==='return'){
-      // Return: smaller gray marker, no number (it's the origin)
       const html=`<div style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#8890AB;color:#fff;font-weight:700;font-size:10px;font-family:Arial,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">R</div>`;
       const icon=L.divIcon({className:'num-marker',html,iconSize:[20,20],iconAnchor:[10,10]});
       const mk=L.marker([s.lat,s.lng],{icon});
@@ -2409,6 +2469,13 @@ function renderMap(tripData,ordered,target){
       addLayer(mk);
     }
   });
+
+  // fitBounds combinado: todas las rutas de todos los vehículos.
+  const all=L.latLngBounds([]);
+  Object.values(vehLayers).forEach(arr=>{
+    arr.forEach(l=>{ if(l.getBounds) all.extend(l.getBounds()); });
+  });
+  if(all.isValid()) m.fitBounds(all,{padding:[30,30],maxZoom:12});
 }
 
 // ================================================================

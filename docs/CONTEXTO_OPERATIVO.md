@@ -31,57 +31,62 @@ Commits: `b0ebe18` (fork inicial) + commit final sesión 1.
 
 ---
 
-### 🎯 Sesión E (parte 2) — **Multi-vehículo N dinámico (3+) + tracking real vs planeado** — pendiente
+### ✅ Sesión E (parte 2A) — COMPLETADA (2026-04-24): Multi-N dinámico (3+ vehículos)
 
-**Objetivo**: cerrar el plan original de 3 sesiones que quedó parcial en parte 1. Soporte para 3+ vehículos cuando el deadline real lo requiere + persistencia de horarios reales para comparar vs planeado.
+Refactor del BETA: el layout ahora soporta N vehículos dinámicos en lugar del hardcoded V1+V2.
 
-**Lo que YA ESTÁ hecho** (sesión E parte 1, no re-construir):
-- Fork BETA con link bidireccional al estable
-- Inputs deadline + capacidad
-- Pase 1 con dur real, pase 2 con k-means
-- 1 mapa con 2 colores, 2 timelines apilados con headers destacados
-- Truck mode realista (35 km/h, overheads salida/entrada, descMin por dirs/pedidos)
-- Warning honesto si exceden deadline + sugerencia de N reales
+**Lo implementado**:
+- **Layout nuevo**: 1 mapa compartido arriba (45vh fijo) + contenedor `#vehiclesStack` con N paneles apilados dinámicamente abajo (scroll interno)
+- **Paleta de 15 colores**: `VEH_COLORS` (cyan · naranja · violeta · verde · rojo · ámbar · teal · rosa · azul · lima · indigo · fucsia · esmeralda · naranja profundo · slate)
+- **Factory de paneles**: `_ensureVehPanel(n)` crea panel con header de color + stat + `#resultsV${n}` bajo demanda; `_removeExtraVehPanels(k)` limpia V3+ al volver a k menor
+- **Per-vehicle layer bookkeeping**: `vehLayers = {1:[], 2:[], ...}` reemplaza el viejo `mapSugLayers/mapUsrLayers` bimodal. `_clearVehLayers(n)` limpia solo ese vehículo
+- **Cheap-fitness k loop**: empieza con `k = max(ceil(realDur/deadline), ceil(totalKg/cap))`, incrementa hasta `MAX_K=15` o todos los subsets estimen dentro de deadline. Función `_cheapTruckEstimate` escala 40→35 km/h + overheads
+- **Post-render validation**: después de renderizar los N, lee durs reales y muestra "✓ Todos cumplen" o "⚠ N/M exceden · sumá vehículos o extendé deadline"
+- **Labels del mapa**: leyenda dinámica con N rectángulos de color (V1, V2, ... Vn)
+- **Markers con label V.idx**: V3.2, V7.1, etc. — cada pin indica a qué vehículo pertenece
+- **Smoke test OK**: con 19 dests y deadline 24h, crea 7 paneles con 7 colores distintos; con deadline 1000h colapsa a 1 panel (sin leak de V2+)
 
-**Lo que falta** (parte 2):
+**Limitación conocida documentada**: el cheap-fitness es optimista — ignora pernoctas y ventanas horarias, que inflan la duración real 30-80% vs estimada. Con 19 dests el loop propone k=7 pero la validación post-render honesta reporta que hacen falta ~11. El usuario puede ajustar deadline/cap o reasignar manualmente (feature que viene en parte 2B).
 
-A) **Multi-N dinámico (3+ vehículos)**:
-- Refactor de layout: contenedor `vehiclesContainer` con N paneles dinámicos en lugar de 2 fixed rows
-- Mapa unificado con N colores distintos por vehículo (paleta cyan/naranja/violeta/verde/rojo/...)
-- Bucle iterativo de re-clustering: si V1 con k=2 excede deadline, probar k=3, k=4... hasta cap (15) o todos cumplen
-- Drag&drop entre vehículos (mover dest de V1 a V3, etc.) — recalc on drop
+Commit: ver hash final sesión 2A.
 
-B) **Tracking real vs planeado** (sesión 3 original):
-- Schema Supabase: `seguimiento_entregas` (id, pedido_id FK, vehiculo_num, hora_planeada_llegada, hora_real_llegada, hora_real_salida, notas, capturado_por, capturado_at)
-- RPC `fn_seguimiento_upsert` con audit
-- Inputs ⏱ por entrega en cada timeline → al guardar persiste + muestra delta vs plan
-- Vista comparativa: % on-time, deltas promedio por vehículo
+---
+
+### 🎯 Sesión E (parte 2B) — **Per-dest vehicle selector (reasignación manual)** — pendiente
+
+**Objetivo**: permitir al operador mover un destino de un vehículo a otro sin re-ejecutar todo el análisis. Útil cuando el k-means geográfico agrupó raro (dest aislado va mejor con un vehículo vecino) o cuando Bernardo conoce constraints que el algoritmo no ve.
+
+**Scope**:
+- En el panel derecho "Condiciones por destino" (RP) agregar columna/selector `Vehículo: [V1 ▼]` por dest. Opciones 1..N dinámicas según número de vehículos del run actual
+- Al cambiar: recalcular SOLO los 2 vehículos afectados (el que pierde + el que gana), no todo el set. Usa los mismos pasos que runAnalysisMulti para cada V
+- Persistir la asignación manual hasta próximo "Calcular plan" (que reset con k-means)
+- Warning visual 🔧 si el usuario movió dests manualmente (distingue plan auto vs edición)
+
+**Prereq**: conocer la estructura de `reRenderDestList` para agregar el select. Quedó fuera de commit parte 2A para mantener el commit atómico.
+
+---
+
+### 🎯 Sesión E (parte 2C) — **Tracking real vs planeado** — pendiente
+
+**Objetivo**: persistir horarios reales por entrega para comparar vs planeado (sesión 3 original del plan).
+
+**Scope**:
+- Schema Supabase: `seguimiento_entregas` (id, pedido_id FK, vehiculo_num, viaje_id FK, hora_planeada_llegada, hora_real_llegada, hora_real_salida, notas, capturado_por, capturado_at)
+- RPC `fn_seguimiento_upsert(pedido_id, vehiculo_num, hora_real_llegada, hora_real_salida, notas)` con audit a `acciones_operador`
+- UI: inputs ⏱ por entrega en cada timeline → al guardar persiste + muestra delta vs plan (verde si -15/+15min, ámbar si +15-60, rojo si +60)
+- Vista comparativa: % on-time, deltas promedio por vehículo, top 5 destinos más atrasados
 
 **Prompt para copiar al chat**:
 ```
 Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md (obligatorios).
-TL;DR sesión E parte 1 (multi-vehículo MVP) + qué falta para parte 2.
+TL;DR sesión E parte 2A (multi-N dinámico) + qué falta para 2B/2C.
 
-OBJETIVO sesión E parte 2: completar el BETA del analizador.
-Hoy soporta solo V1+V2; muchos casos reales necesitan 3+ vehículos.
-Más: persistir horarios reales por entrega para comparar vs planeado.
+OBJETIVO: elegir entre parte 2B (reasignación manual de dests) o
+parte 2C (tracking real vs planeado con supabase seguimiento_entregas).
 
-LO QUE YA FUNCIONA (no re-construir):
-- analizador-rutas-beta.html con inputs deadline+capacidad
-- Pase 1 dur real + pase 2 k-means
-- 1 mapa con 2 colores (V1 cyan + V2 naranja), 2 timelines apilados
-- Truck mode (35 km/h, +60min salida, +15min/dest entrada urbana)
-- descMin auto-ajustado por direcciones únicas + admin pedidos extra
-- Warning honesto si V1/V2 exceden deadline + sugerencia N
-
-PENDIENTE (parte 2):
-1. Multi-N dinámico: refactor layout a contenedor con N paneles, bucle
-   re-clustering hasta encontrar k que cumple, drag&drop entre vehículos
-2. Tracking real vs planeado: tabla supabase seguimiento_entregas,
-   RPC upsert, inputs ⏱ en cada timeline con delta vs plan
-
-¿Por dónde arrancamos? Multi-N primero (cierra el feature core)
-o tracking primero (Bernardo lo pidió como deliverable principal)?
+Multi-N ya funciona (hasta 15 vehículos con paleta + validación
+honesta + cheap-fitness k loop). El warning post-render dice si
+hacen falta más vehículos que los propuestos por el cheap fitness.
 
 Cuenta staff: bernardoaristizabal@logxie.com
 ```

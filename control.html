@@ -986,7 +986,7 @@
           <button class="ghost" onclick="bulkCambiarEstado()" title="Forzar cualquier estado">⇄ Cambiar estado</button>
           <button class="ghost" onclick="bulkCancelar()" style="color:#fca5a5" title="estado=cancelado">✕ Cancelar</button>
           <button class="ghost" onclick="bulkEliminar()" style="color:#ef4444" title="DELETE hard de la BD">🗑 Eliminar</button>
-          <button class="ghost" onclick="abrirModalConsolidar(false)" style="color:#f97316" title="Consolida directo ahora: crea viaje real y los pedidos SALEN de sin_consolidar. Úsalo si ya decidiste — te saltás los scenarios">⚡ Consolidar directo</button>
+          <button class="ghost" onclick="confirmarConsolidarDirecto()" style="color:#f97316" title="Consolida directo ahora: crea viaje real y los pedidos SALEN de sin_consolidar. Úsalo SOLO si ya decidiste — te saltás los scenarios">⚡ Consolidar directo</button>
           <button onclick="abrirModalConsolidar(true)" title="Crea scenario tentativo: los pedidos siguen en sin_consolidar y podés armar combinaciones alternativas en paralelo">🧪 Crear scenario →</button>
         </div>
       </div>
@@ -3077,6 +3077,24 @@
       document.getElementById('sel-resumen-text').textContent =
         `${fmtNum(kg)} kg · ${fmtCOP(val)} · ${[...clientes].join(', ')}`;
     }
+  }
+
+  // Doble confirm antes de consolidar directo — el botón se clickea por error y los
+  // pedidos quedan "comprometidos" (estado=consolidado) sin poder probar más scenarios.
+  // Bernardo: scenario (6) quedó inconsistente por este motivo. Forzamos al usuario a
+  // confirmar que entiende lo que hace.
+  function confirmarConsolidarDirecto() {
+    const ids = [...state.seleccionados];
+    if (!ids.length) { toast('Selecciona al menos 1 pedido', 'error'); return; }
+    const msg = `⚠ ESTO NO ES SCENARIO\n\n`
+              + `Vas a consolidar DIRECTO ${ids.length} pedido${ids.length!==1?'s':''}.\n\n`
+              + `• Se crea un VIAJE REAL inmediatamente\n`
+              + `• Los pedidos pasan a estado 'consolidado'\n`
+              + `• NO podrás armar más scenarios con ellos\n`
+              + `• Si querés probar combinaciones alternativas, cancelá y usá "🧪 Crear scenario →" en su lugar\n\n`
+              + `¿Estás seguro?`;
+    if (!confirm(msg)) return;
+    abrirModalConsolidar(false);
   }
 
   // ───────── MODAL CONSOLIDAR ─────────

@@ -14,9 +14,81 @@ Ver TL;DR abajo.
 ### ✅ Sesión C — COMPLETADA (2026-04-23 tarde/noche): Overhaul analizador-rutas.html
 18 commits con fixes de KPIs, reprogramación secuencial, parser horario, pedidos sintéticos/prestados, OSRM fallback, input búsqueda RT. Ver TL;DR abajo.
 
+### ✅ Sesión E (parte 1) — COMPLETADA (2026-04-24): Fork BETA + multi-vehículo MVP
+
+Fork `analizador-rutas-beta.html` (estable intacto, link 🧪 BETA en header). Implementa:
+- **Inputs deadline (h) + capacidad/veh (kg)** — defaults 24h / 8500 kg
+- **Pase 1**: corre el plan completo con todos los dests para obtener duración REAL (con ventanas/pernoctas/standby) — NO un estimador sintético
+- **Pase 2 con k-means geográfico**: si excede deadline o capacidad, agrupa por proximidad ENTRE destinos (no por distancia al origen — el chunk-by-distance generaba absurdos como "dest a 100km del resto del vehículo cuando otro vehículo lo tenía a 20km")
+- **1 mapa unificado, 2 colores**: V1 cyan + V2 naranja superpuestos en el mismo mapa Leaflet, fitBounds combinado
+- **2 timelines apilados verticalmente**, cada uno con header sticky destacado del color del vehículo ("🚚 VEHÍCULO 1 — N dest · Xh Ymin")
+- **Truck mode realista** (hardcoded): velocidad 35 km/h reemplaza OSRM (autos), +60min salida planta → carretera, +15min/destino entrada urbana, descMin auto-ajustado por direcciones únicas (Villapinzón con 3 dirs = 3×60+2×15=210min vs 60min default), admin extra +20min/pedido a misma dirección
+- **Validación post-Pase 2**: lee duración real de V1/V2, muestra warning rojo si exceden deadline ("V1=76h V2=81h ambos exceden 24h, harían falta ~7 vehículos") o ✓ verde si cumplen
+
+**Limitación conocida**: layout actual soporta solo V1+V2. Para deadlines estrictos (24h con consolidaciones grandes) frecuentemente harán falta 3+ vehículos — sesión E parte 2 implementa multi-N dinámico + bucle de re-clustering.
+
+Commits: `b0ebe18` (fork inicial) + commit final sesión 1.
+
 ---
 
-### 🎯 Sesión E — **Ajustes adicionales al analizador** — sin estimado, sigue sobre lo que quedó abierto del overhaul
+### 🎯 Sesión E (parte 2) — **Multi-vehículo N dinámico (3+) + tracking real vs planeado** — pendiente
+
+**Objetivo**: cerrar el plan original de 3 sesiones que quedó parcial en parte 1. Soporte para 3+ vehículos cuando el deadline real lo requiere + persistencia de horarios reales para comparar vs planeado.
+
+**Lo que YA ESTÁ hecho** (sesión E parte 1, no re-construir):
+- Fork BETA con link bidireccional al estable
+- Inputs deadline + capacidad
+- Pase 1 con dur real, pase 2 con k-means
+- 1 mapa con 2 colores, 2 timelines apilados con headers destacados
+- Truck mode realista (35 km/h, overheads salida/entrada, descMin por dirs/pedidos)
+- Warning honesto si exceden deadline + sugerencia de N reales
+
+**Lo que falta** (parte 2):
+
+A) **Multi-N dinámico (3+ vehículos)**:
+- Refactor de layout: contenedor `vehiclesContainer` con N paneles dinámicos en lugar de 2 fixed rows
+- Mapa unificado con N colores distintos por vehículo (paleta cyan/naranja/violeta/verde/rojo/...)
+- Bucle iterativo de re-clustering: si V1 con k=2 excede deadline, probar k=3, k=4... hasta cap (15) o todos cumplen
+- Drag&drop entre vehículos (mover dest de V1 a V3, etc.) — recalc on drop
+
+B) **Tracking real vs planeado** (sesión 3 original):
+- Schema Supabase: `seguimiento_entregas` (id, pedido_id FK, vehiculo_num, hora_planeada_llegada, hora_real_llegada, hora_real_salida, notas, capturado_por, capturado_at)
+- RPC `fn_seguimiento_upsert` con audit
+- Inputs ⏱ por entrega en cada timeline → al guardar persiste + muestra delta vs plan
+- Vista comparativa: % on-time, deltas promedio por vehículo
+
+**Prompt para copiar al chat**:
+```
+Lee CLAUDE.md y docs/CONTEXTO_OPERATIVO.md (obligatorios).
+TL;DR sesión E parte 1 (multi-vehículo MVP) + qué falta para parte 2.
+
+OBJETIVO sesión E parte 2: completar el BETA del analizador.
+Hoy soporta solo V1+V2; muchos casos reales necesitan 3+ vehículos.
+Más: persistir horarios reales por entrega para comparar vs planeado.
+
+LO QUE YA FUNCIONA (no re-construir):
+- analizador-rutas-beta.html con inputs deadline+capacidad
+- Pase 1 dur real + pase 2 k-means
+- 1 mapa con 2 colores (V1 cyan + V2 naranja), 2 timelines apilados
+- Truck mode (35 km/h, +60min salida, +15min/dest entrada urbana)
+- descMin auto-ajustado por direcciones únicas + admin pedidos extra
+- Warning honesto si V1/V2 exceden deadline + sugerencia N
+
+PENDIENTE (parte 2):
+1. Multi-N dinámico: refactor layout a contenedor con N paneles, bucle
+   re-clustering hasta encontrar k que cumple, drag&drop entre vehículos
+2. Tracking real vs planeado: tabla supabase seguimiento_entregas,
+   RPC upsert, inputs ⏱ en cada timeline con delta vs plan
+
+¿Por dónde arrancamos? Multi-N primero (cierra el feature core)
+o tracking primero (Bernardo lo pidió como deliverable principal)?
+
+Cuenta staff: bernardoaristizabal@logxie.com
+```
+
+---
+
+### 🎯 Sesión E (parte 1 original — ahora descompuesta) — **Ajustes adicionales al analizador estable** — sin estimado
 
 **Objetivo**: atacar las deudas documentadas del analizador + cualquier ajuste que Bernardo encuentre al usarlo en producción con viajes reales.
 

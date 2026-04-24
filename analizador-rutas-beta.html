@@ -68,6 +68,10 @@ input[type="number"]{font-family:var(--mono)}
 .center{display:flex;flex-direction:column;overflow:hidden}
 .route-row{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0;border-bottom:2px solid var(--border2)}
 .route-row:last-child{border-bottom:none}
+/* BETA multi-vehículo: cuando usamos mapa unificado, el map panel de row2 desaparece
+   y los results V2 toman todo el ancho de la fila */
+.route-row.unified-map{grid-template-columns:0 1fr}
+.route-row.unified-map .map-panel{display:none}
 .route-row .map-panel{position:relative}
 .route-row .map-label{position:absolute;top:8px;left:50px;z-index:999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;pointer-events:none}
 .route-row.sug .map-label{background:var(--cyan);color:var(--navy)}
@@ -1244,6 +1248,7 @@ function reRenderDestList(){
   const list=document.getElementById('destList');list.innerHTML='';
   userOrder.forEach((origIdx,pos)=>{
     const cond=destConditions[origIdx];
+    if(!cond) return; // BETA multi-vehículo: subset puede no tener todos los origIdx originales
     list.appendChild(createDestCard(cond,pos));
   });
   updateCompareBar();
@@ -1282,7 +1287,12 @@ let mapUsrLayers=[];
 
 function clearMap(target){
   if(target==='sug'||target==='both'){mapSugLayers.forEach(l=>mapSug.removeLayer(l));mapSugLayers=[];}
-  if(target==='usr'||target==='both'){mapUsrLayers.forEach(l=>mapUsr.removeLayer(l));mapUsrLayers=[];}
+  if(target==='usr'||target==='both'){
+    // En multi-mode los layers 'usr' viven en mapSug; en legacy en mapUsr
+    const m = (_multiVehNum > 0) ? mapSug : mapUsr;
+    mapUsrLayers.forEach(l=>m.removeLayer(l));
+    mapUsrLayers=[];
+  }
 }
 
 // ================================================================
@@ -1291,6 +1301,16 @@ function clearMap(target){
 // y reusa el motor de runAnalysis() para renderizar cada uno.
 // ================================================================
 let _multiVehNum = 0; // 0 = legacy single-vehicle mode, 1=Vehículo 1, 2=Vehículo 2
+
+// BETA "realismo de carga pesada" — solo se activa desde runAnalysisMulti.
+// Cuando true, el motor reemplaza la duración OSRM (autos) por velocidad camión 35 km/h
+// y suma overheads operativos (salida origen, entrada urbana).
+let _truckMode = false;
+const TRUCK_VEL_KMH = 35;          // velocidad promedio camión carga
+const TRUCK_SALIDA_ORIGEN_MIN = 60; // overhead salida planta → carretera principal
+const TRUCK_ENTRADA_URBANA_MIN = 15; // overhead carretera → punto descargue por destino
+const TRUCK_TRANSIT_INTRA_CIUDAD_MIN = 15; // entre direcciones distintas misma ciudad
+const TRUCK_ADMIN_PEDIDO_EXTRA_MIN = 20;   // pedido extra a la misma dirección
 
 function _havKm(a, b){
   const R = 6371;
@@ -1325,7 +1345,62 @@ function _estimaMinutosSet(destSet, origin, descMinPerStop, includeReturn){
   return Math.round(driveMin + stopMin);
 }
 
-// Greedy split: ordena por distancia desde origen, llena vehículo hasta saturar
+// K-means geográfico: agrupa puntos por proximidad ENTRE ellos (no al origen).
+// Inicialización: para k=2 elige los 2 puntos más alejados; para k>2 usa k-means++ simple.
+// Devuelve [[p,p,p],[p,p],...] — clusters no vacíos.
+function kMeansSplit(points, k){
+  if(points.length <= k){
+    return points.map(p => [p]);
+  }
+  // Inicialización inteligente: puntos más alejados entre sí
+  let centroids;
+  if(k === 2){
+    let maxD = 0, p1 = points[0], p2 = points[1];
+    for(let i=0; i<points.length; i++){
+      for(let j=i+1; j<points.length; j++){
+        const d = _havKm(points[i], points[j]);
+        if(d > maxD){ maxD = d; p1 = points[i]; p2 = points[j]; }
+      }
+    }
+    centroids = [{lat:p1.lat,lng:p1.lng}, {lat:p2.lat,lng:p2.lng}];
+  } else {
+    centroids = [{lat:points[0].lat, lng:points[0].lng}];
+    while(centroids.length < k){
+      let maxD = 0, best = points[0];
+      for(const p of points){
+        const dToNearest = Math.min(...centroids.map(c => _havKm(p, c)));
+        if(dToNearest > maxD){ maxD = dToNearest; best = p; }
+      }
+      centroids.push({lat:best.lat, lng:best.lng});
+    }
+  }
+
+  let clusters = [];
+  for(let iter=0; iter<25; iter++){
+    clusters = Array.from({length: k}, () => []);
+    points.forEach(p => {
+      let minD = Infinity, bestI = 0;
+      centroids.forEach((c, i) => {
+        const d = _havKm(p, c);
+        if(d < minD){ minD = d; bestI = i; }
+      });
+      clusters[bestI].push(p);
+    });
+    const newCentroids = clusters.map((cluster, i) => {
+      if(!cluster.length) return centroids[i];
+      const lat = cluster.reduce((s,p)=>s+p.lat, 0) / cluster.length;
+      const lng = cluster.reduce((s,p)=>s+p.lng, 0) / cluster.length;
+      return {lat, lng};
+    });
+    let moved = 0;
+    newCentroids.forEach((nc, i) => moved += _havKm(nc, centroids[i]));
+    centroids = newCentroids;
+    if(moved < 1) break;
+  }
+  return clusters.filter(c => c.length > 0);
+}
+
+// Greedy split (legacy MVP): ordena por distancia desde origen, llena vehículo hasta saturar
 // peso o tiempo, abre el siguiente. Devuelve [[d, d, d], [d, d], ...].
 function splitVehicles(destGeo, capKg, deadlineMinPerVeh, origin, descMinPerStop, cargueMin, includeReturn){
   if(!destGeo.length) return [];
@@ -1408,54 +1483,175 @@ async function runAnalysisMulti(){
         const coords = await geocodeCiudad(ciudadReal || cond.city);
         if(coords) c = {lat:coords[0], lng:coords[1], name:cond.city.trim()};
       }
-      if(c) destGeo.push({...c, origIdx:i, peso:cond.peso||0});
+      if(c) destGeo.push({...c, origIdx:i, peso:cond.pesoGrp||0});
     }
     if(!destGeo.length){ alert('Sin destinos con coordenadas — revisar consola'); return; }
 
-    // SPLIT
-    const subsets = splitVehicles(destGeo, capKg, deadlineH*60, origin, descMinPerStop, cargueMin, includeReturn);
-    renderMultiSummary(subsets, capKg, deadlineH, origin, descMinPerStop, cargueMin, includeReturn);
-    document.getElementById('rowUsuario').style.display = subsets.length >= 2 ? 'grid' : 'none';
-
-    // Backup destConditions
+    // Backup destConditions Y descMin original (para restore al final)
     const fullDC = [...destConditions];
+    const _origDescMins = destConditions.map(c => c.descMin);
+    const totalKgFull = destGeo.reduce((s,d)=>s+(d.peso||0),0);
 
-    // ── Vehículo 1 (siempre) ──
+    // ── BETA truck realism: pre-procesar descMin por destino según direcciones únicas + pedidos ──
+    // Villapinzón con 3 pedidos en 3 direcciones → 3×60 + 2×15 transit = 210 min (vs 60 default)
+    // Villapinzón con 3 pedidos en 1 dirección → 60 + 2×20 admin = 100 min
+    let _descAdjusted = 0;
+    destConditions.forEach((c, ci) => {
+      const peds = c.pedidos || [];
+      const numPedidos = peds.length;
+      if(numPedidos <= 1) return; // 1 pedido o sintético — sin ajuste
+      const dirsUnicas = new Set(peds.map(p => (p.direccion||'').trim().toLowerCase()).filter(Boolean));
+      const numStops = Math.max(1, dirsUnicas.size || numPedidos); // sin dirs → conservador (cada pedido = stop)
+      const baseMin = c.descMin || descMinPerStop;
+      const extraStops = numStops - 1;
+      const extraPedidosSameDir = numPedidos - numStops;
+      const ajustado = baseMin + extraStops * (baseMin + TRUCK_TRANSIT_INTRA_CIUDAD_MIN) + Math.max(0, extraPedidosSameDir) * TRUCK_ADMIN_PEDIDO_EXTRA_MIN;
+      if(ajustado > baseMin){
+        c.descMin = ajustado;
+        _descAdjusted++;
+      }
+    });
+
+    // Activar truck mode para que el motor use 35 km/h + overheads
+    _truckMode = true;
+
+    // ── PASS 1: Run con TODO el set para obtener duración real (incluye ventanas/pernoctas/standby) ──
+    btn.textContent = 'Pase 1: calculando plan completo (OSRM)…';
     _multiVehNum = 1;
-    btn.textContent = 'Calculando V1 (OSRM)…';
-    destConditions = subsets[0].map(d => fullDC[d.origIdx]);
-    userOrder = destConditions.map((_,i)=>i);
+    document.getElementById('rowUsuario').style.display = 'none';
+    document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — calculando plan completo…`;
+    userOrder = fullDC.map((_,i)=>i);
     suggestedOrder = [];
     userReorderedFlag = false;
     suggestedKPIs = null;
-    document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — ${destConditions.length} dest · ${fmt(destConditions.reduce((s,c)=>s+(c.peso||0),0))} kg`;
     await runAnalysis();
 
-    // ── Vehículo 2 (si hace falta) ──
-    if(subsets.length >= 2){
+    // Leer duración REAL del plan completo desde el timeline persistido
+    const _realDurMinFromRoute = (route) => {
+      if(!route?.timeline) return 0;
+      const tl = route.timeline;
+      const cargueT = tl.find(t=>t.type==='cargue')?.time || 0;
+      let lastEnd = cargueT;
+      tl.forEach(t => {
+        const end = (t.time||0) + (t.dur||0);
+        if(end > lastEnd) lastEnd = end;
+      });
+      return Math.max(0, lastEnd - cargueT);
+    };
+    const realDurMin = _realDurMinFromRoute(window._lastRoute);
+    const realDays = Math.ceil(realDurMin / (24*60));
+    const deadlineMin = deadlineH * 60;
+
+    // Decidir vehículos necesarios (cap a 2 en sesión 1 por layout)
+    const fitsCap = totalKgFull <= capKg;
+    const fitsTime = realDurMin <= deadlineMin;
+    let needsSplit = !fitsCap || !fitsTime;
+    let nVeh = needsSplit ? Math.min(2, Math.max(2, Math.ceil(realDurMin / deadlineMin), Math.ceil(totalKgFull / capKg))) : 1;
+
+    // ── PASS 2: si hace falta split, partir en N por distancia desde origen y re-correr ──
+    let subsets = [destGeo];
+    if(nVeh >= 2){
+      // K-means geográfico: agrupa por proximidad ENTRE destinos.
+      // Antes: chunks por distancia al origen (rompe clusters naturales — un dest
+      // a 100 km del resto de su vehículo cuando otro vehículo lo tenía a 20 km).
+      subsets = kMeansSplit(destGeo, nVeh);
+      // Re-render banner con la realidad
+      const summaryHtml = `<strong style="color:#c2410c">⚠ Plan completo: ${realDays}d (${Math.round(realDurMin/60)}h) · excede deadline ${deadlineH}h</strong><br>`+
+        `<span style="color:#0a8a3a">→ Sugerido: ${subsets.length} vehículo${subsets.length>1?'s':''} para entregar en ${deadlineH}h</span><br>`+
+        `<span style="color:var(--text2);font-size:10px">Cap ${fmt(capKg)} kg · peso total ${fmt(totalKgFull)} kg · ${destGeo.length} destinos</span>`;
+      document.getElementById('multiSummary').innerHTML = summaryHtml;
+      document.getElementById('multiSummary').style.display = 'block';
+
+      // Show V2 row con mapa unificado (su map panel queda oculto;
+      // V1 y V2 se dibujan en el MISMO mapa de arriba, con colores distintos)
+      const row2 = document.getElementById('rowUsuario');
+      row2.classList.add('unified-map');
+      row2.style.display = 'grid';
+      // Etiqueta del mapa unificado: leyenda V1 cyan + V2 naranja
+      document.getElementById('labelVeh1').innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:3px;background:#00BFDF;display:inline-block"></span>V1 &nbsp;<span style="width:10px;height:3px;background:#FF8C00;display:inline-block"></span>V2</span>`;
+
+      // Re-correr V1 con subset[0]
+      btn.textContent = 'Pase 2: V1 con subset (OSRM)…';
+      _multiVehNum = 1;
+      destConditions = subsets[0].map(d => fullDC[d.origIdx]);
+      userOrder = destConditions.map((_,i)=>i);
+      suggestedOrder = [];
+      userReorderedFlag = false;
+      suggestedKPIs = null;
+      const v1Kg = destConditions.reduce((s,c)=>s+(c.pesoGrp||0),0);
+      document.getElementById('labelVeh1').textContent = `🚚 V1 — ${destConditions.length} dest · ${fmt(v1Kg)} kg`;
+      await runAnalysis();
+      const _durV1Min = _realDurMinFromRoute(window._lastRoute);
+
+      // V2
       _multiVehNum = 2;
-      btn.textContent = 'Calculando V2 (OSRM)…';
+      btn.textContent = 'Pase 2: V2 con subset (OSRM)…';
       destConditions = subsets[1].map(d => fullDC[d.origIdx]);
       userOrder = destConditions.map((_,i)=>i);
       suggestedOrder = [];
       userReorderedFlag = false;
       suggestedKPIs = null;
-      document.getElementById('labelVeh2').textContent = `🚚 Vehículo 2 — ${destConditions.length} dest · ${fmt(destConditions.reduce((s,c)=>s+(c.peso||0),0))} kg`;
+      const v2Kg = destConditions.reduce((s,c)=>s+(c.pesoGrp||0),0);
+      document.getElementById('labelVeh2').textContent = `🚚 V2 — ${destConditions.length} dest · ${fmt(v2Kg)} kg`;
       await runAnalysis();
+      const _durV2Min = _realDurMinFromRoute(window._lastRoute);
+
+      // ── Validación honesta: ambos vehículos vs deadline ──
+      const v1Excede = _durV1Min > deadlineMin;
+      const v2Excede = _durV2Min > deadlineMin;
+      if(v1Excede || v2Excede){
+        // Total real y N necesario para cumplir deadline
+        const sumDur = _durV1Min + _durV2Min;
+        const nNeeded = Math.min(15, Math.max(2, Math.ceil(sumDur / deadlineMin)));
+        const v1H = (_durV1Min/60).toFixed(1), v2H = (_durV2Min/60).toFixed(1);
+        const warn = `<br><span style="color:#dc2626;font-size:11px;font-weight:600">⚠ V1=${v1H}h${v1Excede?' (excede)':''} · V2=${v2H}h${v2Excede?' (excede)':''} — ambos exceden deadline ${deadlineH}h.</span>`+
+          `<br><span style="color:#dc2626;font-size:10px">→ Para cumplir realmente con ${deadlineH}h harían falta ~${nNeeded} vehículos. Sesión 1 muestra solo V1+V2 — sesión 2 implementa multi-N (3+ vehículos + bucle de re-clustering).</span>`;
+        document.getElementById('multiSummary').innerHTML += warn;
+      } else if(subsets.length >= 3){
+        const extras = subsets.slice(2).map((s,i)=>`V${i+3}: ${s.length} dest`).join(' · ');
+        const extra = `<br><span style="color:#c2410c;font-size:10px">⚠ K-means propuso ${subsets.length} clusters (${extras}). V1+V2 cumplen el deadline; los extras quedaron sin renderizar — sesión 2 los soporta.</span>`;
+        document.getElementById('multiSummary').innerHTML += extra;
+      } else {
+        // V1 y V2 cumplen — confirmación verde
+        const v1H = (_durV1Min/60).toFixed(1), v2H = (_durV2Min/60).toFixed(1);
+        const ok = `<br><span style="color:#0a8a3a;font-size:11px;font-weight:600">✓ V1=${v1H}h · V2=${v2H}h — ambos cumplen deadline ${deadlineH}h</span>`;
+        document.getElementById('multiSummary').innerHTML += ok;
+      }
+    } else {
+      // 1 vehículo cabe — limpiar estado de modo unificado y actualizar label V1
+      document.getElementById('rowUsuario').classList.remove('unified-map');
+      document.getElementById('rowUsuario').style.display = 'none';
+      const v1Kg = destGeo.reduce((s,d)=>s+(d.peso||0),0);
+      document.getElementById('labelVeh1').textContent = `🚚 Vehículo 1 — ${destGeo.length} dest · ${fmt(v1Kg)} kg`;
+      const summaryHtml = `<strong style="color:#0a8a3a">✓ Cabe en 1 vehículo</strong> &nbsp;·&nbsp; ${realDays}d (${Math.round(realDurMin/60)}h) ≤ deadline ${deadlineH}h · ${fmt(v1Kg)}/${fmt(capKg)} kg`;
+      document.getElementById('multiSummary').innerHTML = summaryHtml;
+      document.getElementById('multiSummary').style.display = 'block';
     }
 
-    // Restore para que el right panel siga usando el set completo
+    // Restore: descMin originales, destConditions, flags, truck mode OFF
+    fullDC.forEach((c, i) => { c.descMin = _origDescMins[i]; });
     _multiVehNum = 0;
+    _truckMode = false;
     destConditions = fullDC;
     userOrder = fullDC.map((_,i)=>i);
+    suggestedOrder = [];
     userReorderedFlag = false;
     suggestedKPIs = null;
+    reRenderDestList();
+
+    // Append nota de ajustes truck-mode al final del banner del multi-summary
+    const truckNote = `<br><span style="color:var(--text2);font-size:10px;font-style:italic">⏱ Plan ajustado camión: ${TRUCK_VEL_KMH} km/h · +${TRUCK_SALIDA_ORIGEN_MIN}min salida planta · +${TRUCK_ENTRADA_URBANA_MIN}min/destino entrada urbana${_descAdjusted>0?` · ${_descAdjusted} destino${_descAdjusted>1?'s':''} con descMin auto-ajustado por direcciones múltiples`:''}</span>`;
+    const summaryEl = document.getElementById('multiSummary');
+    if(summaryEl && summaryEl.style.display !== 'none'){
+      summaryEl.innerHTML += truckNote;
+    }
 
   } catch(e){
     console.error('[multi] error:', e);
     alert('Error: '+(e.message||e));
   } finally {
     _multiVehNum = 0;
+    _truckMode = false;
     btn.disabled = false;
     btn.textContent = 'Calcular plan multi-vehículo';
   }
@@ -1730,11 +1926,27 @@ async function runAnalysis(){
     for(let i=0;i<ordered.length-1;i++){
       const from=ordered[i],to=ordered[i+1];
       if(!legs[i])continue;
-      const driveMin=Math.round(legs[i].duration/60);
       const legKm=Math.round(legs[i].distance/1000*10)/10;
+      // BETA truck mode: reemplaza OSRM duration (auto) por velocidad camión 35 km/h
+      let driveMin = _truckMode
+        ? Math.round((legs[i].distance / 1000) / TRUCK_VEL_KMH * 60)
+        : Math.round(legs[i].duration/60);
+      // BETA truck mode: salida origen → carretera (overhead primer leg desde planta)
+      if(_truckMode && from.type === 'origin'){
+        clock += TRUCK_SALIDA_ORIGEN_MIN;
+        timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
+          action:`🛻 Salida planta → carretera (+${TRUCK_SALIDA_ORIGEN_MIN} min, tráfico interno)`,dur:TRUCK_SALIDA_ORIGEN_MIN});
+      }
       cumKm+=legKm;clock+=driveMin;
-      
-      timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',action:`${driveMin} min / ${legKm} km`,cumKm:Math.round(cumKm)});
+
+      timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'drive',city:'',action:`${driveMin} min / ${legKm} km${_truckMode?' (camión 35 km/h)':''}`,cumKm:Math.round(cumKm)});
+
+      // BETA truck mode: entrada urbana → punto descargue (overhead por destino)
+      if(_truckMode && to.type === 'dest'){
+        clock += TRUCK_ENTRADA_URBANA_MIN;
+        timeline.push({time:clock,day:Math.floor(clock/(24*60)),type:'wait',city:'',
+          action:`🚦 Entrada urbana → punto descargue (+${TRUCK_ENTRADA_URBANA_MIN} min)`,dur:TRUCK_ENTRADA_URBANA_MIN});
+      }
       
       if(to.type==='return'){
         // Solo registrar el retorno; la reprogramación de skippedDests la maneja
@@ -2056,7 +2268,14 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
   
   const kw=totalDays>1?'kw':'';const kd=totalDays>2?'kd':'';
   const routeLabel = _multiVehNum === 1 ? 'Vehículo 1' : _multiVehNum === 2 ? 'Vehículo 2' : (isUserReorder?'Tu orden':'Ruta sugerida');
-  let h=`<div class="kpis">
+  // BETA multi-vehículo: header destacado con color del vehículo, sticky para no perderse al scrollear
+  let h = '';
+  if(_multiVehNum === 1){
+    h += `<div style="background:#00BFDF;color:#0E1B4D;padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;position:sticky;top:0;z-index:10;border-bottom:2px solid #009BB5">🚚 VEHÍCULO 1 — ${numDests} destinos · ${fmt(durTotalMin/60|0)}h ${durTotalMin%60}min</div>`;
+  } else if(_multiVehNum === 2){
+    h += `<div style="background:#FF8C00;color:#fff;padding:10px 14px;font-weight:700;font-size:14px;letter-spacing:.5px;position:sticky;top:0;z-index:10;border-bottom:2px solid #c46e00">🚚 VEHÍCULO 2 — ${numDests} destinos · ${fmt(durTotalMin/60|0)}h ${durTotalMin%60}min</div>`;
+  }
+  h += `<div class="kpis">
     <div class="kpi"><div class="kpi-l">Km ${routeLabel}</div><div class="kpi-v">${fmt(totalKm)}</div><div class="kpi-s">${isUserReorder && !_multiActive ? 'vs '+fmt(suggestedKPIs.km)+' sugerido':'OSRM nearest-neighbor'}</div></div>
     <div class="kpi"><div class="kpi-l">Duración total</div><div class="kpi-v">${durTotalStr}</div><div class="kpi-s">cargue → últ entrega</div></div>
     <div class="kpi"><div class="kpi-l">Paradas</div><div class="kpi-v">${numDests}</div><div class="kpi-s">${(() => {
@@ -2132,19 +2351,33 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
 function renderMap(tripData,ordered,target){
   // target: 'sug' for suggested map, 'usr' for user map
   const tgt=target||'sug';
-  const m=tgt==='sug'?mapSug:mapUsr;
+  // BETA multi-vehículo: V1 y V2 comparten un MISMO mapa Leaflet (mapSug) con
+  // colores distintos. En modo legacy, target='usr' usa mapUsr (panel inferior).
+  const m = (_multiVehNum > 0) ? mapSug : (tgt==='sug'?mapSug:mapUsr);
   const layers=tgt==='sug'?mapSugLayers:mapUsrLayers;
-  const routeColor=tgt==='sug'?'#00BFDF':'#0E1B4D';
-  
-  // Clear this map
+  // Color por contexto: V1=cyan, V2=naranja; legacy: sug=cyan, usr=navy
+  let routeColor;
+  if(_multiVehNum===1) routeColor='#00BFDF';
+  else if(_multiVehNum===2) routeColor='#FF8C00';
+  else routeColor = (tgt==='sug'?'#00BFDF':'#0E1B4D');
+
+  // Clear THIS vehicle's layers from m (preserva los del otro vehículo)
   layers.forEach(l=>m.removeLayer(l));
   if(tgt==='sug') mapSugLayers=[]; else mapUsrLayers=[];
   const addLayer=(l)=>{l.addTo(m);if(tgt==='sug')mapSugLayers.push(l);else mapUsrLayers.push(l);};
-  
+
   if(tripData.geometry){
     const coords=tripData.geometry.coordinates.map(c=>[c[1],c[0]]);
     const line=L.polyline(coords,{color:routeColor,weight:3,opacity:.7});addLayer(line);
-    m.fitBounds(line.getBounds(),{padding:[30,30]});
+    // En multi V2: fit combinado a ambas rutas. En cualquier otro caso: fit a esta ruta.
+    if(_multiVehNum===2){
+      const all=L.latLngBounds([]);
+      mapSugLayers.forEach(l=>{ if(l.getBounds) all.extend(l.getBounds()); });
+      mapUsrLayers.forEach(l=>{ if(l.getBounds) all.extend(l.getBounds()); });
+      if(all.isValid()) m.fitBounds(all,{padding:[30,30],maxZoom:12});
+    } else {
+      m.fitBounds(line.getBounds(),{padding:[30,30],maxZoom:12});
+    }
   }
   
   // Build numbered dest markers (divIcons are picked up by html2canvas and render the number on pin)

@@ -2354,7 +2354,8 @@ function renderResults(trip,timeline,totalKm,totalDriveMin,ordered,tripData,miss
     const statEl = document.getElementById(`vehStat${_multiVehNum}`);
     if(statEl){
       const hh = Math.floor(durTotalMin/60), mm = durTotalMin%60;
-      statEl.textContent = `${numDests} dest · ${hh}h${mm?' '+mm+'m':''} · ${fmt(totalKm)} km`;
+      const totalKg = destConditions.reduce((s,c)=>s+(c.pesoGrp||0),0);
+      statEl.textContent = `${numDests} dest · ${fmt(totalKg)} kg · ${hh}h${mm?' '+mm+'m':''} · ${fmt(totalKm)} km`;
     }
   }
   let h = '';

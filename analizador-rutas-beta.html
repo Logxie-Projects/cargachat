@@ -1837,7 +1837,7 @@ async function runAnalysis(){
   if(!hasUserOrder&&!prioIdxs.length){
     const regularDests=orderedDests.filter(d=>!d.isReturnDest);
     const returnDests=orderedDests.filter(d=>d.isReturnDest);
-    
+
     // Nearest-neighbor for regular destinations
     const nnOrdered=[];let remaining=[...regularDests];let cur=origin;
     while(remaining.length>0){
@@ -1845,9 +1845,42 @@ async function runAnalysis(){
       for(let i=0;i<remaining.length;i++){const d=haversine(cur,remaining[i]);if(d<minD){minD=d;nearest=i;}}
       nnOrdered.push(remaining[nearest]);cur=remaining[nearest];remaining.splice(nearest,1);
     }
+    // 2-opt local search: refina el orden NN swapeando pares para minimizar km totales
+    // (haversine round-trip incluyendo return al origen). Atrapa el caso "NN salió al
+    // extremo más lejano primero" — ej. Funza→Arcabuco→Tuta→Toca→Funza vs el orden
+    // óptimo Funza→Toca→Tuta→Arcabuco→Funza (mismo total km, mejor visualmente).
+    function _routeKm(order){
+      let d=0, cur=origin;
+      for(const p of order){ d += haversine(cur,p); cur=p; }
+      // Round-trip: incluir vuelta al origen siempre que el viaje retorne
+      if(includeReturn || returnDests.length){ d += haversine(cur, origin); }
+      return d;
+    }
+    if(nnOrdered.length >= 3){
+      let best = [...nnOrdered];
+      let bestKm = _routeKm(best);
+      let improved = true, iter = 0;
+      while(improved && iter < 50){
+        improved = false; iter++;
+        for(let i=0; i<best.length-1; i++){
+          for(let j=i+1; j<best.length; j++){
+            // Reverse segment [i..j]
+            const cand = [...best.slice(0,i), ...best.slice(i,j+1).reverse(), ...best.slice(j+1)];
+            const candKm = _routeKm(cand);
+            if(candKm < bestKm - 0.5){ // umbral 500m para evitar oscilaciones por floating point
+              best = cand; bestKm = candKm; improved = true;
+            }
+          }
+        }
+      }
+      // nnOrdered = best (preserva el array original para el código siguiente)
+      nnOrdered.length = 0;
+      nnOrdered.push(...best);
+    }
     // Append return-to-origin destinations at the end (closest to origin last = natural on way back)
     if(returnDests.length){
-      const rrSorted=[...returnDests].sort((a,b)=>haversine(cur,a)-haversine(cur,b));
+      const lastP = nnOrdered.length ? nnOrdered[nnOrdered.length-1] : origin;
+      const rrSorted=[...returnDests].sort((a,b)=>haversine(lastP,a)-haversine(lastP,b));
       nnOrdered.push(...rrSorted);
     }
     orderedDests=nnOrdered;

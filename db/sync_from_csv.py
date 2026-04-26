@@ -74,7 +74,9 @@ VIAJES_COLS = {
 # Mapping Base_inicio-def → pedidos (headers confirmados 2026-04-19)
 # ============================================================
 PEDIDOS_COLS = {
-    'ID_Inicio':                   'id_inicio',     # llave estable AppSheet (col A)
+    # Nota: ID_Inicio (col A AppSheet) NO se mapea — es residuo del Sheet,
+    # sin equivalente en schema Netfleet. Si se necesita para auditoría,
+    # queda en raw_payload (JSON crudo).
     'CONSECUTIVO IMP / LOG / CRM': 'pedido_ref',
     'ID_consecutivo':              'id_consecutivo',
     'EMPRESA':                     'empresa',
@@ -118,7 +120,9 @@ PEDIDOS_COLS = {
     'bodega email':                'bodega_email',
     'Confirmar  Vehiculo':         'confirma_vehiculo',  # Sheet tiene 2 espacios
     'Confirmar Vehiculo':          'confirma_vehiculo',
-    # Ignorados: ID_Inicio (interno AppSheet), KM (no en schema), SELECCIONAR, Fecha Creacion, soportes (columna extra)
+    'Fecha Creacion':              'fecha_creacion',     # fecha real cuando Avgust creó el pedido (sin tilde)
+    'Fecha Creación':              'fecha_creacion',     # con tilde (variante esperada)
+    # Ignorados: ID_Inicio (interno AppSheet), KM (no en schema), SELECCIONAR, soportes (columna extra)
 }
 
 
@@ -136,7 +140,7 @@ DATE_FORMATS = [
     '%m/%d/%Y',             # US sin hora (fallback)
 ]
 
-DATE_KEYS = ('fecha_cargue','fecha_entrega','fecha_consolidacion')
+DATE_KEYS = ('fecha_cargue','fecha_entrega','fecha_consolidacion','fecha_creacion')
 NUM_KEYS  = ('km_total','flete_total','peso_kg','valor_mercancia','valor_factura',
              'cantidad_pedidos','contenedores','cajas','bidones','canecas',
              'unidades_sueltas','flete','standby','candado','escolta','itr','otros')

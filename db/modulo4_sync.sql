@@ -24,7 +24,10 @@
 BEGIN;
 
 -- ------------------------------------------------------------
--- Extender CHECK de acciones_operador.accion con 'sync_viajes' y 'sync_pedidos'
+-- Extender CHECK de acciones_operador.accion con TODOS los valores
+-- usados por features actuales (listado consolidado a 2026-04-22).
+-- Si una nueva sesión agrega un value, agregarlo acá también para
+-- evitar que re-aplicar este archivo rompa el CHECK.
 -- ------------------------------------------------------------
 DO $$
 DECLARE c record;
@@ -41,15 +44,24 @@ END $$;
 ALTER TABLE acciones_operador
   ADD CONSTRAINT acciones_operador_accion_check
   CHECK (accion IN (
+    -- Módulo 4 ciclo viaje
     'consolidar','agregar_pedido','quitar_pedido','desconsolidar',
     'ajustar_precio','publicar','invitar','asignar_directo',
     'adjudicar','cancelar','reasignar','reabrir',
-    'sync_viajes','sync_pedidos',
-    'revisar_pedido','desmarcar_revision',
     'cerrar','cerrar_batch','reabrir_cierre',
+    'asociar_viaje','desasociar_viaje',
+    -- Sync Sheets→Netfleet
+    'sync_viajes','sync_pedidos','sync_seguimiento','run_linkers',
+    -- Admin pedidos
+    'revisar_pedido','desmarcar_revision',
     'cancelar_pedidos_batch','resetear_pedidos_batch','clonar_pedido',
     'editar_pedido','cambiar_estado_pedido','eliminar_pedido',
-    'run_linkers'
+    -- Scenarios (consolidación tentativa)
+    'scenario_crear','scenario_descartar',
+    -- Flota (transportadoras)
+    'flota_conductor_crear','flota_doc_subir','flota_vehiculo_crear',
+    -- Admin usuarios
+    'usuario_crear','usuario_eliminar','usuario_reset_password','usuario_toggle_active'
   ));
 
 -- ------------------------------------------------------------
@@ -362,6 +374,7 @@ BEGIN
           prioridad              = COALESCE(v_row->>'prioridad',              prioridad),
           fecha_cargue           = COALESCE((v_row->>'fecha_cargue')::timestamptz, fecha_cargue),
           fecha_entrega          = COALESCE((v_row->>'fecha_entrega')::timestamptz, fecha_entrega),
+          fecha_creacion         = COALESCE((v_row->>'fecha_creacion')::timestamptz, fecha_creacion),
           peso_kg                = COALESCE((v_row->>'peso_kg')::numeric,     peso_kg),
           tipo_mercancia         = COALESCE(v_row->>'tipo_mercancia',         tipo_mercancia),
           contenedores           = COALESCE((v_row->>'contenedores')::int,    contenedores),
@@ -404,7 +417,7 @@ BEGIN
         -- INSERT nuevo pedido
         INSERT INTO pedidos (
           pedido_ref, id_consecutivo, cliente_id, empresa, zona, origen, destino, fuente,
-          motivo_viaje, prioridad, fecha_cargue, fecha_entrega,
+          motivo_viaje, prioridad, fecha_cargue, fecha_entrega, fecha_creacion,
           peso_kg, tipo_mercancia, contenedores, cajas, bidones, canecas, unidades_sueltas,
           valor_mercancia, valor_factura, tipo_vehiculo,
           flete, standby, candado, escolta, itr, cargue_descargue,
@@ -419,6 +432,7 @@ BEGIN
           'sheet',
           v_row->>'motivo_viaje', v_row->>'prioridad',
           (v_row->>'fecha_cargue')::timestamptz, (v_row->>'fecha_entrega')::timestamptz,
+          (v_row->>'fecha_creacion')::timestamptz,
           (v_row->>'peso_kg')::numeric, v_row->>'tipo_mercancia',
           COALESCE((v_row->>'contenedores')::int, 0), COALESCE((v_row->>'cajas')::int, 0),
           COALESCE((v_row->>'bidones')::int, 0), COALESCE((v_row->>'canecas')::int, 0),

@@ -235,7 +235,7 @@ ID: `1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4`
 **Sheet secundaria — Seguimiento y Cumplidos**
 Alimentada por IMPORTRANGE desde DATA UNIFICADA. Consumida por APP Donde Está mi Pedido y Navegador. Se elimina con Módulo 3.
 
-**CSV VIAJES_LANDING:** `gid=1690776181` · `CSV_URL` en `index.html` línea 1186
+**CSV VIAJES_LANDING:** `gid=1363853325` (republicada 2026-09-29) · `CSV_URL` en `index.html` línea 1186
 **CSV DETALLE_PEDIDOS:** `gid=749562420` · consumido por `analizador-rutas.html`
 
 **Síntoma de rotura:** mapa muestra solo 2 viajes hardcoded. Fix: Archivo → Publicar en la Web → republicar → actualizar URL → push.

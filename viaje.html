@@ -172,8 +172,6 @@
     .card-footer      { text-align: center; padding-top: 0.6rem; border-top: 1px solid var(--gray-border); }
     .card-footer-text { font-size: 11px; color: var(--gray-text); }
     .card-footer-url  { font-weight: 600; color: var(--navy); }
-    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
-    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
   </style>
 </head>
 <body>
@@ -550,8 +548,8 @@
       // {s} = subdomain (a,b,c,d) para distribuir la carga de requests
       // {z}/{x}/{y} = nivel de zoom y coordenadas del tile
       // {r} = sufijo "@2x" en pantallas de alta densidad
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16
       }).addTo(map);
 
       // ── Icono personalizado para el ORIGEN ────────────────────

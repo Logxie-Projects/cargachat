@@ -475,8 +475,6 @@ footer { background: var(--navy); padding: 3rem; }
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.3) transparent;
 }
-    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
-    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
   </style>
 </head>
 <body>
@@ -2138,9 +2136,9 @@ footer { background: var(--navy); padding: 3rem; }
         .setView([4.5709, -74.2973], 6);
       window._mapaIniciado = true;
 
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 18
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri, HERE, Garmin, © OpenStreetMap',
+        maxZoom: 16
       }).addTo(mapaLeaflet);
 
       mapaCapas = [];

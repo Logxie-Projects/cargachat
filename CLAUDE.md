@@ -235,7 +235,7 @@ ID: `1rqCdVATX9cWQJ3zL2s5PO82EE_KmXTqIeg_oj7DAHE4`
 **Sheet secundaria — Seguimiento y Cumplidos**
 Alimentada por IMPORTRANGE desde DATA UNIFICADA. Consumida por APP Donde Está mi Pedido y Navegador. Se elimina con Módulo 3.
 
-**Mapa de netfleet.app:** desde 2026-09-29 `index.html` lee `viajes_consolidados` de Supabase (`obtenerViajesLanding`, fecha_cargue >= hoy - `DIAS_LANDING`). VIAJES_LANDING del Sheet ya no alimenta la landing.
+**Mapa de netfleet.app:** desde 2026-09-29 `index.html` lee `viajes_consolidados` de Supabase (`obtenerViajesLanding`): los `VIAJES_LANDING` (12) viajes más recientes con `km_total`, uno por ruta; precio = Ridge `estimarPrecio`. VIAJES_LANDING del Sheet ya no alimenta la landing.
 **CSV DETALLE_PEDIDOS:** `gid=749562420` · consumido por `analizador-rutas.html`
 
 **Síntoma de rotura:** mapa muestra solo 2 viajes hardcoded. Fix: Archivo → Publicar en la Web → republicar → actualizar URL → push.

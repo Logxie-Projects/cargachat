@@ -475,7 +475,9 @@ footer { background: var(--navy); padding: 3rem; }
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.3) transparent;
 }
-</style>
+    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
+  </style>
 </head>
 <body>
 
@@ -2029,9 +2031,8 @@ footer { background: var(--navy); padding: 3rem; }
         .setView([4.5709, -74.2973], 6);
       window._mapaIniciado = true;
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO',
-        subdomains: 'abcd',
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
         maxZoom: 18
       }).addTo(mapaLeaflet);
 

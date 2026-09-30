@@ -317,6 +317,8 @@
     .paso-num { display: inline-flex; width: 36px; height: 36px; align-items: center; justify-content: center; background: #22c55e; color: #fff; border-radius: 50%; font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; }
     .paso-t strong { display: block; color: #0E1B4D; margin-bottom: 4px; }
     .paso-t p { font-size: 0.85rem; color: #666; margin: 0; }
+    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
   </style>
 </head>
 <body>
@@ -1755,8 +1757,8 @@
     if (!mapEl || typeof L === 'undefined' || !viajesDisp.length) return;
 
     mapaLeaflet = L.map('map', { zoomControl: true }).setView([4.5709, -74.2973], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '\u00a9 OpenStreetMap \u00a9 CARTO', subdomains: 'abcd', maxZoom: 18
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '\u00a9 OpenStreetMap', maxZoom: 18
     }).addTo(mapaLeaflet);
 
     setTimeout(() => mapaLeaflet.invalidateSize(), 100);

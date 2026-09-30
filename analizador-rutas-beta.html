@@ -182,6 +182,8 @@ input[type="number"]{font-family:var(--mono)}
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
 </style>
 </head>
 <body>
@@ -1284,7 +1286,7 @@ function updateCompareBar(){
 // MAPS — 1 shared map, all vehicles draw here with palette colors
 // ================================================================
 const mapSug=L.map('mapSugerido',{zoomControl:true,attributionControl:false}).setView([5.2,-73.8],6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(mapSug);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(mapSug);
 // Legacy alias kept so code paths still compile — everything renders on mapSug now.
 const mapUsr=mapSug;
 

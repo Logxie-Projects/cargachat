@@ -144,6 +144,8 @@ details.report-config summary:hover{color:var(--text2)}
   .map-panel{height:40vh}
   .exec-panel{height:auto;min-height:40vh}
 }
+    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
 </style>
 </head>
 <body>
@@ -390,8 +392,8 @@ details.report-config summary:hover{color:var(--text2)}
 
   // ── MAP ──
   const map = L.map('map',{zoomControl:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:19, subdomains:'abcd'
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19
   }).addTo(map);
 
   const markers = {}; // keyed by origIdx

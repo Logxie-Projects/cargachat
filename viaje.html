@@ -172,6 +172,8 @@
     .card-footer      { text-align: center; padding-top: 0.6rem; border-top: 1px solid var(--gray-border); }
     .card-footer-text { font-size: 11px; color: var(--gray-text); }
     .card-footer-url  { font-weight: 600; color: var(--navy); }
+    /* Fondo OpenStreetMap en gris (CARTO ahora exige API key) */
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.08); }
   </style>
 </head>
 <body>
@@ -548,8 +550,7 @@
       // {s} = subdomain (a,b,c,d) para distribuir la carga de requests
       // {z}/{x}/{y} = nivel de zoom y coordenadas del tile
       // {r} = sufijo "@2x" en pantallas de alta densidad
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18
       }).addTo(map);
 

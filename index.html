@@ -1183,9 +1183,22 @@ footer { background: var(--navy); padding: 3rem; }
     // ================================================================
 
     // Los viajes del mapa salen de Supabase (viajes_consolidados), no del Sheet.
-    // Se muestran los VIAJES_LANDING viajes más recientes que tienen km reales
-    // (el Ridge de estimarPrecio los necesita), uno por ruta para dar variedad.
-    const VIAJES_LANDING = 12;
+    // Vitrina: viajes con varias paradas entre FECHA_DESDE y FECHA_HASTA, repartidos por zona
+    // (hasta VIAJES_POR_ZONA por zona) y completados hasta VIAJES_LANDING.
+    // Si un viaje no trae km, se calcula por carretera para que el Ridge
+    // (estimarPrecio) pueda dar precio.
+    const VIAJES_LANDING  = 12;
+    const VIAJES_POR_ZONA = 2;
+    const FECHA_DESDE = '2026-05-01';   // rango de fecha_cargue de la vitrina
+    const FECHA_HASTA = '2026-06-30';
+    const ZONAS_LANDING = [
+      ['boyaca', 'tunja', 'sogamoso', 'duitama', 'ventaquemada', 'ramiriqui'],
+      ['medellin', 'urrao', 'la ceja', 'rionegro', 'concordia'],
+      ['pasto', 'tuquerres', 'ipiales', 'el tigre'],
+      ['armenia', 'manizales', 'chinchina', 'pereira'],
+      ['giron', 'bucaramanga', 'cucuta', 'pamplona'],
+      ['valledupar', 'aguachica'],
+    ];
 
     /**
      * Trae los viajes de Supabase y los devuelve con la misma forma que
@@ -1198,31 +1211,43 @@ footer { background: var(--navy); padding: 3rem; }
         'unidades_sueltas','empresa'
       ].join(',');
       const url = `${SUPABASE_URL}/rest/v1/viajes_consolidados?select=${cols}`
-                + `&km_total=gt.0&peso_kg=gt.0`
+                + `&destino=like.*,*&peso_kg=gt.0`
+                + `&fecha_cargue=gte.${FECHA_DESDE}&fecha_cargue=lte.${FECHA_HASTA}T23:59:59`
                 + `&estado=not.in.(cancelado,anulado)`
-                + `&order=fecha_cargue.desc.nullslast&limit=300`;
+                + `&order=fecha_cargue.desc.nullslast&limit=1000`;
       const resp = await fetch(url, {
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
       });
       if (!resp.ok) throw new Error(`Supabase ${resp.status}`);
       const rows = await resp.json();
 
-      const rutasVistas = {};
-      const viajes = [];
+      // Por zona: primero los que ya traen km, luego los que no
+      const conKmPrimero = [...rows.filter(v => v.km_total > 0), ...rows.filter(v => !(v.km_total > 0))];
+      const elegidos = new Set();
+      for (const claves of ZONAS_LANDING) {
+        let n = 0;
+        for (const v of conKmPrimero) {
+          if (n >= VIAJES_POR_ZONA) break;
+          if (elegidos.has(v)) continue;
+          const texto = ccNorm(`${v.origen} ${v.destino}`);
+          if (claves.some(c => texto.includes(c))) { elegidos.add(v); n++; }
+        }
+      }
       for (const v of rows) {
-        if (viajes.length >= VIAJES_LANDING) break;
-        const ruta = `${v.origen}|${v.destino}`.toLowerCase();
-        if (rutasVistas[ruta]) continue;
-        rutasVistas[ruta] = true;
+        if (elegidos.size >= VIAJES_LANDING) break;
+        if (v.km_total > 0) elegidos.add(v);
+      }
+
+      const viajes = rows.filter(v => elegidos.has(v)).map(v => {
         const [a, m, d] = (v.fecha_cargue || '').substring(0, 10).split('-');
         const empresa = (v.empresa || '').toUpperCase();
-        viajes.push({
-          rt_total:         v.viaje_ref || ruta,
+        return {
+          rt_total:         v.viaje_ref || `${v.origen}|${v.destino}`,
           origen:           v.origen || '',
           destino:          v.destino || '',
           fecha_cargue:     d ? `${d}/${m}/${a}` : '',
           peso_kg:          String(v.peso_kg ?? ''),
-          km:               String(v.km_total),
+          km:               v.km_total > 0 ? String(v.km_total) : '',
           valor_mercancia:  String(v.valor_mercancia ?? ''),
           contenedores:     String(v.contenedores ?? 0),
           cajas:            String(v.cajas ?? 0),
@@ -1231,9 +1256,41 @@ footer { background: var(--navy); padding: 3rem; }
           unidades_sueltas: String(v.unidades_sueltas ?? 0),
           tipo_mercancia:   (empresa.includes('AVGUST') || empresa.includes('FATECO')) ? 'Productos químicos' : 'General',
           precio_base:      '0',
-        });
-      }
+        };
+      });
+
+      await Promise.all(viajes.filter(v => !v.km).map(async v => {
+        const km = await calcularKmViaje(v);
+        if (km) v.km = String(km);
+      }));
       return viajes;
+    }
+
+    /**
+     * Km por carretera origen → destinos (en orden) vía OSRM.
+     * Si OSRM no responde, usa línea recta × 1,3.
+     */
+    async function calcularKmViaje(v) {
+      const nombres = [(v.origen || '').split(',')[0], ...(v.destino || '').split(',')]
+        .map(s => s.trim()).filter(Boolean);
+      const puntos = (await Promise.all(nombres.map(n => getCoords(n)))).filter(Boolean);
+      if (puntos.length < 2) return 0;
+      try {
+        const coords = puntos.map(p => `${p[1]},${p[0]}`).join(';');
+        const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`,
+                                 { signal: AbortSignal.timeout(6000) });
+        const data = await resp.json();
+        if (data.code === 'Ok' && data.routes.length) return Math.round(data.routes[0].distance / 1000);
+      } catch (e) { /* fallback abajo */ }
+      const rad = x => x * Math.PI / 180;
+      let km = 0;
+      for (let i = 1; i < puntos.length; i++) {
+        const [la1, lo1] = puntos[i - 1], [la2, lo2] = puntos[i];
+        const h = Math.sin(rad(la2 - la1) / 2) ** 2
+                + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2;
+        km += 6371 * 2 * Math.asin(Math.sqrt(h));
+      }
+      return Math.round(km * 1.3);
     }
 
     // Google Maps API Key para geocoding de ciudades desconocidas
@@ -1447,6 +1504,7 @@ footer { background: var(--navy); padding: 3rem; }
     const CIUDADES = {
       // ── Bodegas principales Logxie / Avgust ──
       'funza':   [4.7132, -74.1966],
+      'altamira': [6.2194, -75.9494],  // corregimiento de Betulia (Antioquia), no Altamira (Huila)
       'yumbo':   [3.5928, -76.4944],
       'espinal': [4.1544, -74.8864],
 
